@@ -96,8 +96,10 @@ Handles staking, yield accrual, penalties, and the unstaking queue.
 - `totalStaked` — total $CAMPAIGN staked
 - `maxSupply` — max $CAMPAIGN tokens (for yield rate calculation)
 - `rewardPerTokenStored` — Synthetix accumulator
-- `stakes[user]` — struct: amount, startTime, rewardPerTokenPaid
-- `unstakeQueue[]` — FIFO queue of (user, owedAmount)
+- `nextPositionId` — auto-incrementing position ID counter
+- `positions[positionId]` — struct: owner, amount, startTime, rewardPerTokenPaid, seasonId, active
+- `userPositions[user]` — array of position IDs owned by user
+- `unstakeQueue[]` — FIFO queue of (user, positionId, owedAmount)
 - `totalQueueDebt` — sum of all pending unstake obligations
 - `currentSeason` — active season ID
 
@@ -113,14 +115,30 @@ yieldRate = 5 - 4 × (totalStaked / maxSupply)
 Recalculated on every stake/unstake event. Accumulator is updated before rate changes, locking in previously earned $YIELD at the old rate.
 
 **Functions:**
-- `stake(amount)` — update accumulator, deposit $CAMPAIGN, recalculate yieldRate
-- `unstake()` — update accumulator, apply linear penalty (burn), forfeit $YIELD, recalculate yieldRate, return/queue remainder
-- `restake()` — roll $CAMPAIGN into next season (keep position, start earning fresh $YIELD)
-- `claimYield()` — view accumulated $YIELD balance
+- `stake(amount)` → `positionId` — update accumulator, deposit $CAMPAIGN, create new position, recalculate yieldRate. Returns the new position ID.
+- `unstake(positionId)` — update accumulator, apply linear penalty based on this position's startTime, forfeit this position's $YIELD, recalculate yieldRate, return/queue remainder
+- `restake(positionId)` — roll a specific position into next season (keep amount, reset startTime, start earning fresh $YIELD)
+- `restakeAll()` — convenience: restake all active positions for the user
+- `claimYield(positionId)` — view accumulated $YIELD for a specific position
+- `claimAllYield()` — view total accumulated $YIELD across all user positions
+- `getPositions(user)` — view: returns all position IDs and details for a user
 - `endSeason()` — finalize season, stop $YIELD accrual
 - `startSeason(newSeasonId)` — begin new season, reset $YIELD accrual
 - `processQueue(incomingFunds)` — called by Campaign.buy() to drain unstake queue FIFO
 - `currentYieldRate()` — view: returns current dynamic yield rate
+
+**Multiple Positions:**
+Each `stake()` call creates an independent position with its own:
+- `positionId` — unique identifier
+- `amount` — tokens staked in this position
+- `startTime` — when this position was created
+- `rewardPerTokenPaid` — accumulator snapshot at stake time
+
+This means:
+- Each position has its own penalty calculation (based on its own startTime)
+- Users can unstake one position while keeping others
+- Early positions earn more $YIELD (higher rate when campaign was emptier + longer duration)
+- Users can manage risk by staking in tranches
 
 **Penalty Logic:**
 ```
@@ -271,18 +289,19 @@ event CampaignPaused(bool paused);
 ### StakingVault Events
 
 ```solidity
-// Emitted when a user stakes $CAMPAIGN tokens
+// Emitted when a user stakes $CAMPAIGN tokens (creates a new position)
 event Staked(
     address indexed user,
+    uint256 indexed positionId,
     uint256 amount,
-    uint256 totalUserStake,
     uint256 newTotalStaked,
     uint256 newYieldRate          // updated dynamic yield rate
 );
 
-// Emitted when a user unstakes early (with penalty)
+// Emitted when a user unstakes a specific position early (with penalty)
 event Unstaked(
     address indexed user,
+    uint256 indexed positionId,
     uint256 stakedAmount,
     uint256 penaltyAmount,       // burned
     uint256 returnedAmount,      // returned or queued
@@ -295,6 +314,7 @@ event Unstaked(
 // Emitted when a user cancels their unstake request and re-stakes
 event UnstakeCancelled(
     address indexed user,
+    uint256 indexed positionId,
     uint256 amount,
     uint256 newTotalStaked,
     uint256 newYieldRate
@@ -303,13 +323,15 @@ event UnstakeCancelled(
 // Emitted when an unstake queue entry is (partially) filled
 event UnstakeQueueFilled(
     address indexed user,
+    uint256 indexed positionId,
     uint256 filledAmount,
     uint256 remainingOwed
 );
 
-// Emitted when a user restakes for the next season
+// Emitted when a user restakes a specific position for the next season
 event Restaked(
     address indexed user,
+    uint256 indexed positionId,
     uint256 amount,
     uint256 newSeasonId
 );
@@ -317,6 +339,7 @@ event Restaked(
 // Emitted when $YIELD is minted to a staker (on claim or season end)
 event YieldMinted(
     address indexed user,
+    uint256 indexed positionId,
     uint256 yieldAmount,
     uint256 seasonId
 );

@@ -86,7 +86,7 @@ type Campaign @entity {
   createdAt: BigInt!
   acceptedTokens: [AcceptedToken!]! @derivedFrom(field: "campaign")
   seasons: [Season!]! @derivedFrom(field: "campaign")
-  stakes: [Stake!]! @derivedFrom(field: "campaign")
+  positions: [Position!]! @derivedFrom(field: "campaign")
 }
 
 type AcceptedToken @entity {
@@ -114,12 +114,14 @@ type Season @entity {
   claims: [Claim!]! @derivedFrom(field: "season")
 }
 
-type Stake @entity {
+type Position @entity {
   id: ID!
   campaign: Campaign!
+  positionId: BigInt!
   user: Bytes!
   amount: BigInt!
   startTime: BigInt!
+  seasonId: BigInt!
   yieldEarned: BigInt!
   active: Boolean!
 }
@@ -149,7 +151,7 @@ type UnstakeRequest @entity {
 
 type User @entity {
   id: ID!
-  stakes: [Stake!]! @derivedFrom(field: "user")
+  positions: [Position!]! @derivedFrom(field: "user")
   claims: [Claim!]! @derivedFrom(field: "user")
 }
 ```
@@ -162,8 +164,8 @@ type User @entity {
 | `AcceptedTokenAdded` | Create AcceptedToken entity |
 | `AcceptedTokenRemoved` | Remove AcceptedToken entity |
 | `TokensPurchased` | Update Campaign.currentSupply (includes paymentToken + amount) |
-| `Staked` | Create/update Stake entity, update Campaign.totalStaked + currentYieldRate |
-| `Unstaked` | Update Stake, create UnstakeRequest, update Campaign.totalStaked + currentYieldRate |
+| `Staked` | Create Position entity, update Campaign.totalStaked + currentYieldRate |
+| `Unstaked` | Update Position (deactivate), create UnstakeRequest, update Campaign.totalStaked + currentYieldRate |
 | `UnstakeQueueFilled` | Update UnstakeRequest status |
 | `SeasonCreated` | Create Season entity |
 | `HarvestReported` | Update Season with harvest data |
@@ -188,13 +190,15 @@ type User @entity {
   }
 }
 
-# User's portfolio across campaigns
+# User's positions across campaigns
 {
-  stakes(where: { user: "0x...", active: true }) {
+  positions(where: { user: "0x...", active: true }) {
+    positionId
     campaign { id pricePerToken }
     amount
     yieldEarned
     startTime
+    seasonId
   }
 }
 
