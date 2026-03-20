@@ -46,4 +46,4 @@ $YIELD    = the fruit (seasonal, consumable, burned on redemption)
 
 ## License
 
-TBD
+MIT
