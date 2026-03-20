@@ -21,18 +21,53 @@ Registry and deployer for new campaigns.
 - Enforces protocol constants: dynamic yield rate (5→1 linear decay), linear penalty, 90-day USDC deposit window, 30% producer share (off-chain), 2% protocol fee (on-chain), 1,000 tokens per asset
 
 #### 2. `Campaign`
-Handles token sales and routes funds.
+Handles token sales with multi-token support and routes funds.
 
 **State:**
-- `pricePerToken` — fixed price in stablecoin (USDC/USDT)
+- `pricePerToken` — base price denominated in USD (e.g., $0.144)
 - `maxSupply` — max tokens mintable
 - `currentSupply` — tokens minted so far
 - `seasonDuration` — season length (≥ 365 days)
 - `state` — enum: Active, Ended
+- `acceptedTokens[]` — list of accepted ERC20 tokens for payment
+- `tokenConfig[address]` — per-token config: pricing mode (fixed or oracle), fixed rate, oracle feed address
+
+**Multi-Token Payment:**
+```
+For each accepted ERC20, the producer configures:
+  - FIXED mode: set a manual conversion rate (e.g., 1 TOKEN = X $CAMPAIGN)
+  - ORACLE mode: provide a Chainlink price feed address (e.g., WETH/USD)
+    → contract reads oracle, converts to $CAMPAIGN amount at current price
+```
+
+**Example:**
+```
+Base price: $0.144 per $CAMPAIGN
+
+USDC:  FIXED mode, 1:1 with base price → 0.144 USDC = 1 $CAMPAIGN
+WETH:  ORACLE mode, Chainlink WETH/USD feed
+       → WETH at $2,880 → 0.144/2880 = 0.00005 WETH = 1 $CAMPAIGN
+DAI:   FIXED mode, 1:1 with base price → 0.144 DAI = 1 $CAMPAIGN
+Custom: FIXED mode, producer sets rate manually
+```
 
 **Functions:**
-- `buy(amount)` — accept native token or stablecoins, mint $CAMPAIGN, routes funds to unstake queue first
+- `addAcceptedToken(tokenAddress, pricingMode, fixedRate, oracleFeed)` — producer adds a payment token
+- `removeAcceptedToken(tokenAddress)` — producer removes a payment token
+- `buy(tokenAddress, amount)` — pay with any accepted ERC20, mint $CAMPAIGN based on pricing mode, routes funds to unstake queue first
+- `getPrice(tokenAddress, campaignAmount)` — view: returns cost in the specified token for X $CAMPAIGN
 - `emergencyPause()` — pause all operations
+
+**Price Calculation:**
+```
+If FIXED mode:
+  tokensOut = paymentAmount / fixedRate
+
+If ORACLE mode:
+  usdPrice = oracle.latestAnswer()  (e.g., WETH/USD)
+  paymentValueUSD = paymentAmount × usdPrice
+  tokensOut = paymentValueUSD / pricePerToken
+```
 
 **Note:** $CAMPAIGN is only minted during initial sales. No new minting after that. Supply is strictly deflationary.
 

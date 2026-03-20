@@ -123,7 +123,8 @@ Recommended payback range: **3-5 years** (20-33% annual ROI)
 1. CAMPAIGN LAUNCHES
    Producer sets: token price, max supply, season duration (≥ 1 year),
                   minimum product claim amount
-   → Users buy $CAMPAIGN with native token or stablecoins
+   → Users buy $CAMPAIGN with any accepted ERC20 (USDC, WETH, etc.)
+   → Price set per token: fixed rate or via Chainlink oracle
 
 2. STAKING
    → Users stake $CAMPAIGN → earn $YIELD over time

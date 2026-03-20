@@ -84,8 +84,19 @@ type Campaign @entity {
   currentYieldRate: BigDecimal!
   state: String!
   createdAt: BigInt!
+  acceptedTokens: [AcceptedToken!]! @derivedFrom(field: "campaign")
   seasons: [Season!]! @derivedFrom(field: "campaign")
   stakes: [Stake!]! @derivedFrom(field: "campaign")
+}
+
+type AcceptedToken @entity {
+  id: ID!
+  campaign: Campaign!
+  tokenAddress: Bytes!
+  symbol: String!
+  pricingMode: String!  # "fixed" or "oracle"
+  fixedRate: BigDecimal
+  oracleFeed: Bytes
 }
 
 type Season @entity {
@@ -148,7 +159,9 @@ type User @entity {
 | Contract Event | Subgraph Action |
 |---|---|
 | `CampaignCreated` | Create Campaign entity |
-| `TokensPurchased` | Update Campaign.currentSupply |
+| `AcceptedTokenAdded` | Create AcceptedToken entity |
+| `AcceptedTokenRemoved` | Remove AcceptedToken entity |
+| `TokensPurchased` | Update Campaign.currentSupply (includes paymentToken + amount) |
 | `Staked` | Create/update Stake entity, update Campaign.totalStaked + currentYieldRate |
 | `Unstaked` | Update Stake, create UnstakeRequest, update Campaign.totalStaked + currentYieldRate |
 | `UnstakeQueueFilled` | Update UnstakeRequest status |

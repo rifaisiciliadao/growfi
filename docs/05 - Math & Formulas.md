@@ -50,15 +50,37 @@ annualROI    = 1 / paybackYears × 100%
 
 ---
 
-## 3. Token Purchase
+## 3. Token Purchase (Multi-Token)
+
+Base price is denominated in USD. Payments accepted in any configured ERC20.
+
+### Fixed-rate tokens (USDC, DAI, etc.)
 
 ```
-tokensOut = amountPaid / pricePerToken
+tokensOut = paymentAmount / fixedRate
 tokensOut = min(tokensOut, maxSupply - currentSupply)
-refund    = amountPaid - (tokensOut × pricePerToken)
+refund    = paymentAmount - (tokensOut × fixedRate)
 ```
 
-Purchase routing priority:
+### Oracle-priced tokens (WETH, etc.)
+
+```
+usdPrice = oracle.latestAnswer()             (e.g., WETH/USD from Chainlink)
+paymentValueUSD = paymentAmount × usdPrice
+tokensOut = paymentValueUSD / pricePerToken
+tokensOut = min(tokensOut, maxSupply - currentSupply)
+refund    = paymentAmount - (tokensOut × pricePerToken / usdPrice)
+```
+
+Example (WETH at $2,880, pricePerToken = $0.144):
+
+```
+User sends 0.05 WETH
+paymentValueUSD = 0.05 × $2,880 = $144
+tokensOut = $144 / $0.144 = 1,000 $CAMPAIGN (1 tree)
+```
+
+### Purchase routing priority
 
 ```
 1. incomingFunds → drain unstaking queue (FIFO)
