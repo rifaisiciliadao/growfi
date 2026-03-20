@@ -208,6 +208,222 @@ Season N:
   Supply continuously deflating
 ```
 
+## Contract Events
+
+All events emitted for subgraph indexing.
+
+### CampaignFactory Events
+
+```solidity
+// Emitted when a new campaign is deployed
+event CampaignCreated(
+    address indexed campaign,
+    address indexed producer,
+    address campaignToken,
+    address yieldToken,
+    address stakingVault,
+    address harvestManager,
+    uint256 pricePerToken,
+    uint256 maxSupply,
+    uint256 seasonDuration,
+    uint256 minProductClaim,
+    uint256 createdAt
+);
+```
+
+### Campaign Events
+
+```solidity
+// Emitted when a user purchases $CAMPAIGN tokens
+event TokensPurchased(
+    address indexed buyer,
+    address indexed paymentToken,
+    uint256 paymentAmount,
+    uint256 campaignTokensOut,
+    uint256 oraclePriceUsed,     // 0 if fixed mode
+    uint256 newCurrentSupply
+);
+
+// Emitted when a payment token is added
+event AcceptedTokenAdded(
+    address indexed tokenAddress,
+    string symbol,
+    uint8 pricingMode,           // 0 = fixed, 1 = oracle
+    uint256 fixedRate,           // 0 if oracle mode
+    address oracleFeed           // address(0) if fixed mode
+);
+
+// Emitted when a payment token is removed
+event AcceptedTokenRemoved(
+    address indexed tokenAddress
+);
+
+// Emitted when campaign state changes
+event CampaignStateChanged(
+    uint8 oldState,
+    uint8 newState
+);
+
+// Emitted on emergency pause/unpause
+event CampaignPaused(bool paused);
+```
+
+### StakingVault Events
+
+```solidity
+// Emitted when a user stakes $CAMPAIGN tokens
+event Staked(
+    address indexed user,
+    uint256 amount,
+    uint256 totalUserStake,
+    uint256 newTotalStaked,
+    uint256 newYieldRate          // updated dynamic yield rate
+);
+
+// Emitted when a user unstakes early (with penalty)
+event Unstaked(
+    address indexed user,
+    uint256 stakedAmount,
+    uint256 penaltyAmount,       // burned
+    uint256 returnedAmount,      // returned or queued
+    uint256 yieldForfeited,      // $YIELD lost
+    bool queued,                 // true if entered unstake queue
+    uint256 newTotalStaked,
+    uint256 newYieldRate
+);
+
+// Emitted when a user cancels their unstake request and re-stakes
+event UnstakeCancelled(
+    address indexed user,
+    uint256 amount,
+    uint256 newTotalStaked,
+    uint256 newYieldRate
+);
+
+// Emitted when an unstake queue entry is (partially) filled
+event UnstakeQueueFilled(
+    address indexed user,
+    uint256 filledAmount,
+    uint256 remainingOwed
+);
+
+// Emitted when a user restakes for the next season
+event Restaked(
+    address indexed user,
+    uint256 amount,
+    uint256 newSeasonId
+);
+
+// Emitted when $YIELD is minted to a staker (on claim or season end)
+event YieldMinted(
+    address indexed user,
+    uint256 yieldAmount,
+    uint256 seasonId
+);
+
+// Emitted when the dynamic yield rate changes
+event YieldRateUpdated(
+    uint256 newYieldRate,        // scaled by 1e18
+    uint256 totalStaked,
+    uint256 maxSupply
+);
+
+// Emitted when a new season starts
+event SeasonStarted(
+    uint256 indexed seasonId,
+    uint256 startTime
+);
+
+// Emitted when a season ends
+event SeasonEnded(
+    uint256 indexed seasonId,
+    uint256 endTime,
+    uint256 totalYieldMinted
+);
+```
+
+### HarvestManager Events
+
+```solidity
+// Emitted when the producer reports a harvest
+event HarvestReported(
+    uint256 indexed seasonId,
+    uint256 totalHarvestValueUSD, // 70% of gross (after producer's 30%)
+    uint256 protocolFee,          // 2% of reported
+    uint256 holderPool,           // 98% of reported
+    uint256 totalProductUnits,
+    bytes32 merkleRoot,
+    uint256 claimStart,
+    uint256 claimEnd,
+    uint256 usdcDeadline          // claimEnd + 90 days
+);
+
+// Emitted when a user redeems $YIELD for physical product
+event ProductRedeemed(
+    address indexed user,
+    uint256 indexed seasonId,
+    uint256 yieldBurned,
+    uint256 productAmount,        // in product units (e.g., liters)
+    bytes32 merkleLeaf
+);
+
+// Emitted when a user redeems $YIELD for USDC (step 1 — intent declared)
+event USDCRedeemed(
+    address indexed user,
+    uint256 indexed seasonId,
+    uint256 yieldBurned,
+    uint256 usdcAmount            // amount owed
+);
+
+// Emitted when the producer deposits USDC to cover redemptions
+event USDCDeposited(
+    uint256 indexed seasonId,
+    address indexed producer,
+    uint256 amount,
+    uint256 totalDeposited,
+    uint256 totalOwed
+);
+
+// Emitted when a user claims their deposited USDC (step 2)
+event USDCClaimed(
+    address indexed user,
+    uint256 indexed seasonId,
+    uint256 amount
+);
+
+// Emitted when protocol fee is collected
+event ProtocolFeeCollected(
+    uint256 indexed seasonId,
+    uint256 amount,
+    address recipient
+);
+```
+
+### CampaignToken Events
+
+Standard ERC20 + ERC20Votes events (inherited from OpenZeppelin):
+
+```solidity
+// Standard ERC20
+event Transfer(address indexed from, address indexed to, uint256 value);
+event Approval(address indexed owner, address indexed spender, uint256 value);
+
+// ERC20Votes
+event DelegateChanged(address indexed delegator, address indexed fromDelegate, address indexed toDelegate);
+event DelegateVotesChanged(address indexed delegate, uint256 previousVotes, uint256 newVotes);
+```
+
+### YieldToken Events
+
+Standard ERC20 events (inherited from OpenZeppelin):
+
+```solidity
+event Transfer(address indexed from, address indexed to, uint256 value);
+event Approval(address indexed owner, address indexed spender, uint256 value);
+```
+
+---
+
 ## Technical Considerations
 
 - **Chain**: any EVM-compatible L2 (low gas required for micro-transactions)
