@@ -3,10 +3,10 @@ tags:
   - openrefi
   - app
   - frontend
-  - backend
+  - subgraph
 status: defined
 ---
-# App — Frontend & Backend
+# App — Frontend & Subgraph
 
 ## Architecture Overview
 
@@ -15,21 +15,19 @@ status: defined
 │            Frontend (Web)           │
 │  Next.js / React + wagmi + viem    │
 │  Valora / MetaMask wallet connect  │
+│  Reads from subgraph + contracts   │
 └──────────────┬──────────────────────┘
                │
-┌──────────────▼──────────────────────┐
-│            Backend API              │
-│  Node.js / Fastify                  │
-│  Campaign metadata, user profiles   │
-│  Merkle tree generation             │
-│  Fulfillment / shipping tracking    │
-└──────────────┬──────────────────────┘
-               │
-┌──────────────▼──────────────────────┐
-│          CELO L2 (on-chain)         │
-│  Smart contracts (see Protocol)     │
-└─────────────────────────────────────┘
+       ┌───────┴───────┐
+       │               │
+┌──────▼──────┐  ┌─────▼──────────┐
+│  Subgraph   │  │  CELO L2       │
+│  (indexer)  │  │  Smart contracts│
+│  Read-only  │  │  All state      │
+└─────────────┘  └────────────────┘
 ```
+
+**No backend.** All state lives on-chain. Subgraph indexes events for fast querying. Frontend reads from subgraph + direct contract calls. Merkle tree generation runs as an off-chain script (CLI) triggered by the producer.
 
 ## Frontend
 
@@ -50,124 +48,210 @@ status: defined
 - **Wallet**: wagmi v2 + viem for CELO L2 interaction
 - **Wallet support**: Valora (CELO native), MetaMask, WalletConnect
 - **Styling**: Tailwind CSS
-- **State**: React Query (TanStack) for contract reads
+- **Data**: Subgraph (The Graph) for indexed data + direct contract reads for real-time state
 - **Notifications**: Push Protocol or email for harvest announcements
+- **File storage**: IPFS (Pinata) for campaign media + dMRV reports
 
 ### Key UX Considerations
 - Mobile-first design (CELO's user base is mobile-heavy)
 - cUSD contribution option (users don't need to hold CELO)
-- Campaign fill progress with live dynamic yield rate (shows FOMO: "yield rate dropping as campaign fills!")
-- Staking dashboard: live $YIELD counter, penalty preview slider ("if you unstake now, you lose X%")
-- Unstake queue: position in queue, estimated fill time based on recent purchase volume
+- Campaign fill progress with live dynamic yield rate
+- Staking dashboard: live $YIELD counter, penalty preview slider
+- Unstake queue: position in queue, estimated fill time
 - Harvest redemption: clear comparison — product amount vs USDC value, minimum product claim warning
 - Token balance displayed with USD equivalent (using floor price after harvest)
 - dMRV badge: campaigns with Silvi.earth verification show a trust badge
-- ROI calculator: show projected returns based on staking time and current fill level
+- ROI calculator: projected returns based on staking time and current fill level
 
-## Backend
+## Subgraph (The Graph)
 
-### Responsibilities
+Indexes all contract events for fast frontend queries. No backend needed.
 
-1. **Campaign Metadata Storage**
-   - Campaign descriptions, images, producer info, asset count
-   - Stored in PostgreSQL + IPFS for decentralization
-   - On-chain stores only hashes/references
+### Entities
 
-2. **Merkle Tree Generation**
-   - At harvest time: snapshot $YIELD balances from CELO L2
-   - Compute proportional claims per holder
-   - Enforce minimum product claim threshold
-   - Generate Merkle tree
-   - Publish root on-chain via HarvestManager
-   - Serve proofs via API
+```graphql
+type Campaign @entity {
+  id: ID!
+  producer: Bytes!
+  campaignToken: Bytes!
+  yieldToken: Bytes!
+  pricePerToken: BigDecimal!
+  maxSupply: BigInt!
+  currentSupply: BigInt!
+  totalStaked: BigInt!
+  seasonDuration: BigInt!
+  minProductClaim: BigInt!
+  currentYieldRate: BigDecimal!
+  state: String!
+  createdAt: BigInt!
+  seasons: [Season!]! @derivedFrom(field: "campaign")
+  stakes: [Stake!]! @derivedFrom(field: "campaign")
+}
 
-3. **Fulfillment / Shipping**
-   - Listen to `Claimed` events from HarvestManager
-   - Queue shipping orders
-   - Track delivery status
-   - Notify users of shipment
-   - Shipping costs calculated and charged separately
+type Season @entity {
+  id: ID!
+  campaign: Campaign!
+  seasonId: BigInt!
+  totalHarvestValueUSD: BigDecimal!
+  totalYieldSupply: BigInt!
+  totalProductUnits: BigInt!
+  merkleRoot: Bytes!
+  claimStart: BigInt!
+  claimEnd: BigInt!
+  usdcDeadline: BigInt!
+  usdcDeposited: BigDecimal!
+  claims: [Claim!]! @derivedFrom(field: "season")
+}
 
-4. **User Profiles**
-   - Shipping addresses (encrypted at rest)
-   - Claim history
-   - Email for notifications (optional)
+type Stake @entity {
+  id: ID!
+  campaign: Campaign!
+  user: Bytes!
+  amount: BigInt!
+  startTime: BigInt!
+  yieldEarned: BigInt!
+  active: Boolean!
+}
 
-5. **Staking & Queue Monitoring**
-   - Index staking events for dashboard stats
-   - Track unstake queue state for UI display
-   - Calculate real-time yield rate based on current fill %
-   - Project $YIELD earnings for users
+type Claim @entity {
+  id: ID!
+  season: Season!
+  user: Bytes!
+  redemptionType: String!  # "product" or "usdc"
+  yieldBurned: BigInt!
+  productAmount: BigInt!
+  usdcAmount: BigDecimal!
+  fulfilled: Boolean!
+  claimedAt: BigInt!
+}
 
-6. **dMRV Integration (Silvi.earth)**
-   - Store links to Silvi.earth dMRV reports per campaign
-   - Fetch latest tree health status
-   - Store IPFS hashes of reports on-chain
-   - Display historical dMRV reports on campaign page
+type UnstakeRequest @entity {
+  id: ID!
+  campaign: Campaign!
+  user: Bytes!
+  owedAmount: BigInt!
+  filledAmount: BigInt!
+  penaltyBurned: BigInt!
+  status: String!  # "pending", "filled", "cancelled"
+  requestedAt: BigInt!
+}
 
-### Tech Stack
-- **Runtime**: Node.js
-- **Framework**: Fastify
-- **Database**: PostgreSQL (Prisma ORM)
-- **Queue**: BullMQ + Redis (for event processing, shipping)
-- **Blockchain indexing**: Ponder or custom event listener
-- **File storage**: IPFS (Pinata) for campaign media + dMRV reports
-- **Auth**: SIWE (Sign-In with Ethereum)
+type User @entity {
+  id: ID!
+  stakes: [Stake!]! @derivedFrom(field: "user")
+  claims: [Claim!]! @derivedFrom(field: "user")
+}
+```
 
-### API Endpoints
+### Event Handlers
+
+| Contract Event | Subgraph Action |
+|---|---|
+| `CampaignCreated` | Create Campaign entity |
+| `TokensPurchased` | Update Campaign.currentSupply |
+| `Staked` | Create/update Stake entity, update Campaign.totalStaked + currentYieldRate |
+| `Unstaked` | Update Stake, create UnstakeRequest, update Campaign.totalStaked + currentYieldRate |
+| `UnstakeQueueFilled` | Update UnstakeRequest status |
+| `SeasonCreated` | Create Season entity |
+| `HarvestReported` | Update Season with harvest data |
+| `ProductRedeemed` | Create Claim (type: product) |
+| `USDCRedeemed` | Create Claim (type: usdc) |
+| `USDCDeposited` | Update Season.usdcDeposited |
+| `USDCClaimed` | Update Claim.fulfilled |
+| `YieldRateUpdated` | Update Campaign.currentYieldRate |
+
+### Example Queries
+
+```graphql
+# Active campaigns with staking stats
+{
+  campaigns(where: { state: "Active" }) {
+    id
+    pricePerToken
+    maxSupply
+    totalStaked
+    currentYieldRate
+    currentSupply
+  }
+}
+
+# User's portfolio across campaigns
+{
+  stakes(where: { user: "0x...", active: true }) {
+    campaign { id pricePerToken }
+    amount
+    yieldEarned
+    startTime
+  }
+}
+
+# Season claims for a campaign
+{
+  claims(where: { season_: { campaign: "0x..." } }) {
+    user
+    redemptionType
+    yieldBurned
+    productAmount
+    usdcAmount
+  }
+}
+```
+
+## Merkle Tree Generation (Off-chain Script)
+
+Not a backend — a CLI script run by the producer (or protocol admin) at harvest time.
 
 ```
-# Campaigns
-GET    /api/campaigns                        — list all campaigns
-GET    /api/campaigns/:id                    — campaign detail + staking stats + current yield rate
-POST   /api/campaigns                        — create campaign (producer, auth required)
+Script: generate-merkle.ts
 
-# Staking
-GET    /api/staking/:campaignId/stats        — total staked, fill %, current yield rate, queue depth
-GET    /api/staking/:campaignId/:address     — user's stake, $YIELD earned, penalty preview
-GET    /api/staking/:campaignId/queue        — unstake queue state (positions, amounts)
-GET    /api/staking/:campaignId/roi          — projected ROI calculator (based on fill + time)
+Input:
+  - Campaign address
+  - Season ID
+  - Total product units
+  - Block number for snapshot
 
-# Harvests
-GET    /api/harvests/:campaignId             — list seasons for a campaign
-GET    /api/harvests/:seasonId/info          — season details, floor price, claim window
-GET    /api/claim-proof/:seasonId/:address   — get merkle proof for user
-
-# Redemption
-GET    /api/redemption/:campaignId/:address  — user's options: product amount vs USDC value, min claim check
-
-# User
-GET    /api/user/portfolio                   — tokens held + staked + yield across all campaigns
-POST   /api/user/shipping                    — save/update shipping address
-GET    /api/user/claims                      — claim history + tracking
-
-# Producer
-POST   /api/producer/harvest                 — report harvest value (totalUSD)
-POST   /api/producer/merkle                  — trigger merkle tree generation + publish root
-POST   /api/producer/dmrv                    — upload/link Silvi.earth dMRV report
-POST   /api/producer/deposit-usdc            — track USDC deposit status (90-day window)
-GET    /api/producer/campaigns               — producer's campaigns overview
-
-# dMRV
-GET    /api/dmrv/:campaignId                 — latest dMRV report + history
-GET    /api/dmrv/:campaignId/health          — current tree health summary
+Steps:
+  1. Query subgraph for all $YIELD balances at snapshot block
+  2. Compute: userClaim = (userYield / totalYield) × totalProductUnits
+  3. Filter out claims below minProductClaim (those go to USDC only)
+  4. Build Merkle tree
+  5. Output: merkleRoot + JSON file of proofs
+  6. Producer publishes merkleRoot on-chain via HarvestManager
+  7. Proof JSON hosted on IPFS (frontend fetches per user)
 ```
+
+## Shipping / Fulfillment
+
+Not part of the platform — handled by the producer off-chain.
+
+- Frontend emits shipping info with the product claim (encrypted, stored on IPFS or submitted via form to producer)
+- Producer monitors `ProductRedeemed` events (via subgraph or direct)
+- Producer handles shipping logistics independently
+- Shipping costs paid separately by the user (off-platform)
+
+## dMRV Integration (Silvi.earth)
+
+- Producer uploads dMRV report links via frontend
+- IPFS hash stored on-chain (in campaign metadata or separate mapping)
+- Frontend displays latest report on campaign page
+- Historical reports queryable via subgraph
 
 ## Infrastructure
-- **Hosting**: Vercel (frontend) + Railway/Fly.io (backend)
-- **Database**: Managed PostgreSQL (Neon or Supabase)
-- **RPC**: CELO public RPC or Ankr/QuickNode
-- **Monitoring**: Sentry for errors, basic analytics
+- **Hosting**: Vercel (frontend, static + SSR)
+- **Subgraph**: The Graph (hosted or decentralized network on CELO)
+- **RPC**: CELO public RPC or Ankr/QuickNode (for direct contract reads + tx submission)
+- **IPFS**: Pinata (campaign media, dMRV reports, Merkle proofs)
 - **CI/CD**: GitHub Actions
 
-## Integration Tests Needed
-- Campaign creation → buy tokens → token minting flow
-- Stake → dynamic yield rate update → $YIELD accrual flow
-- Early unstake → penalty → queue → filled by new buyer flow
-- Merkle tree generation → proof serving → on-chain claim (product path)
-- Merkle tree generation → min product claim enforcement
-- Harvest report → $YIELD floor price → USDC redemption two-step flow
-- USDC deposit by producer within 90-day window
-- Fulfillment pipeline: claim event → shipping queue → status update
-- Wallet connection flow (Valora + MetaMask)
-- dMRV report upload → IPFS storage → on-chain hash
+## What the Frontend Reads From
+
+| Data | Source |
+|---|---|
+| Campaign list, stats, history | Subgraph |
+| Current yield rate, token balances | Direct contract call (real-time) |
+| User's $YIELD earned | Direct contract call |
+| Staking history, claims | Subgraph |
+| Unstake queue position | Subgraph + contract call |
+| Merkle proofs for claims | IPFS (JSON file) |
+| Campaign metadata, images | IPFS |
+| dMRV reports | IPFS + Silvi.earth links |
