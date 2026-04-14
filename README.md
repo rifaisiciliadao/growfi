@@ -165,13 +165,6 @@ Across ~28k random action sequences per invariant, all held:
 - **Merkle tree construction** happens off-chain. If the producer publishes a malicious root, holders get the product allocation that root encodes. The protocol cannot validate that the root is fair — only that the producer signed it.
 - **USDC decimals** are assumed to be 6 globally. This holds on Ethereum, Base, and Arbitrum (all Circle native USDC) but would break on chains where USDC has other decimals.
 
-### Conclusion
-
-Under internal review and ~50k random-action executions across 107 tests, **no vulnerabilities remain that block mainnet deployment**, subject to:
-1. A third-party audit before production launch.
-2. A multisig protocol owner and a multisig producer for each campaign.
-3. Producer training on the non-guarantees above (token whitelisting, feed selection, Merkle publishing).
-
 ---
 
 ## Usage
