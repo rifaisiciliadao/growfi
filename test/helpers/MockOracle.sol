@@ -7,6 +7,8 @@ contract MockOracle is AggregatorV3Interface {
     int256 private _price;
     uint8 private _decimals;
     uint256 private _updatedAt;
+    uint80 private _roundId = 1;
+    uint80 private _answeredInRound = 1;
 
     constructor(int256 price_, uint8 decimals_) {
         _price = price_;
@@ -19,13 +21,22 @@ contract MockOracle is AggregatorV3Interface {
         _updatedAt = block.timestamp;
     }
 
+    function setUpdatedAt(uint256 updatedAt_) external {
+        _updatedAt = updatedAt_;
+    }
+
+    function setRoundData(uint80 roundId_, uint80 answeredInRound_) external {
+        _roundId = roundId_;
+        _answeredInRound = answeredInRound_;
+    }
+
     function latestRoundData()
         external
         view
         override
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound)
     {
-        return (1, _price, block.timestamp, _updatedAt, 1);
+        return (_roundId, _price, block.timestamp, _updatedAt, _answeredInRound);
     }
 
     function decimals() external view override returns (uint8) {

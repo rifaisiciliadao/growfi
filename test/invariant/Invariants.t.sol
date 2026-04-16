@@ -40,9 +40,9 @@ contract InvariantsTest is StdInvariant, Test {
 
     function setUp() public {
         usdc = new MockERC20("USDC", "USDC", 6);
-        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc));
+        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc), address(0));
 
-        vm.prank(protocolOwner);
+        vm.prank(producer);
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
                 producer: producer,
@@ -167,6 +167,38 @@ contract InvariantsTest is StdInvariant, Test {
     /// @dev INV-7: currentSupply never exceeds maxCap.
     function invariant_currentSupplyWithinMaxCap() public view {
         assertLe(campaign.currentSupply(), campaign.maxCap(), "currentSupply > maxCap");
+    }
+
+    /// @dev INV-9: per-user open sellback-order cap is always respected.
+    function invariant_sellbackOrderCapHolds() public view {
+        uint256 cap = campaign.MAX_OPEN_SELLBACK_ORDERS_PER_USER();
+        uint256 n = handler.actorsLength();
+        for (uint256 i = 0; i < n; i++) {
+            assertLe(campaign.openSellBackCount(handler.actors(i)), cap, "openSellBackCount > cap");
+        }
+    }
+
+    /// @dev INV-10: YieldToken supply never exceeds the cumulative totalYieldOwed
+    ///              across all seasons that have started (with a small floor-drift
+    ///              tolerance: per-position and aggregate floor divisions accumulate
+    ///              rounding at most O(positions * seasons) wei).
+    function invariant_yieldSupplyBoundedBySeasonAccruals() public view {
+        uint256 currentSeason = stakingVault.currentSeasonId();
+        if (currentSeason == 0 && !_seasonExists(0)) return; // no season yet
+        uint256 totalOwed;
+        for (uint256 sid = 0; sid <= currentSeason + 5; sid++) {
+            if (_seasonExists(sid)) {
+                totalOwed += stakingVault.seasonTotalYieldOwed(sid);
+            }
+        }
+        // Drift budget: up to nextPositionId wei per season boundary. Very loose.
+        uint256 drift = stakingVault.nextPositionId() * (currentSeason + 2);
+        assertLe(yieldToken.totalSupply(), totalOwed + drift, "YIELD supply > sum season.totalYieldOwed + drift");
+    }
+
+    function _seasonExists(uint256 sid) internal view returns (bool) {
+        (,,,,,, bool existed) = stakingVault.seasons(sid);
+        return existed;
     }
 
     /// @dev INV-8: State only progresses forward. We check via the fact that once

@@ -7,6 +7,7 @@ import {MerkleProof} from "@openzeppelin/contracts/utils/cryptography/MerkleProo
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 import {YieldToken} from "./YieldToken.sol";
+import {StakingVault} from "./StakingVault.sol";
 
 /// @title HarvestManager — Harvest Reporting & Two-Step Redemption
 /// @notice Producer reports harvest → holders burn $YIELD to redeem product (Merkle) or USDC.
@@ -26,7 +27,8 @@ contract HarvestManager is ReentrancyGuard, Pausable {
         uint256 usdcDeadline; // claimEnd + 90 days
         uint256 usdcDeposited;
         uint256 usdcOwed;
-        uint256 protocolFeeCollected;
+        uint256 protocolFeeCollected; // theoretical/target fee in 18-dec USD at report time
+        uint256 protocolFeeTransferred; // actual USDC (6-dec native) routed to feeRecipient so far
         bool reported;
     }
 
@@ -47,6 +49,7 @@ contract HarvestManager is ReentrancyGuard, Pausable {
     // --- State ---
 
     YieldToken public yieldToken;
+    StakingVault public stakingVault;
     IERC20 public immutable usdc;
     address public immutable producer;
     address public immutable factory;
@@ -54,6 +57,7 @@ contract HarvestManager is ReentrancyGuard, Pausable {
     uint256 public immutable protocolFeeBps; // 200 = 2%
     uint256 public immutable minProductClaim; // minimum product units for product redemption (18 decimals)
     bool private _yieldTokenSet;
+    bool private _stakingVaultSet;
 
     uint256 public constant USDC_DEPOSIT_WINDOW = 90 days;
 
@@ -86,7 +90,11 @@ contract HarvestManager is ReentrancyGuard, Pausable {
 
     event USDCClaimed(address indexed user, uint256 indexed seasonId, uint256 amount);
 
-    event ProtocolFeeCollected(uint256 indexed seasonId, uint256 amount, address recipient);
+    /// @notice Theoretical protocol fee, snapshotted at report time (18-dec USD).
+    event ProtocolFeeTargeted(uint256 indexed seasonId, uint256 amountUSD18, address recipient);
+
+    /// @notice Actual USDC transferred to the fee recipient on a producer deposit.
+    event ProtocolFeeTransferred(uint256 indexed seasonId, uint256 amountUsdc6, address recipient);
 
     // --- Errors ---
 
@@ -102,6 +110,9 @@ contract HarvestManager is ReentrancyGuard, Pausable {
     error ZeroAmount();
     error USDCNotDeposited();
     error DepositWindowClosed();
+    error DepositExceedsOwed();
+    error AlreadySet();
+    error NotUsdcRedemption();
 
     // --- Modifiers ---
 
@@ -135,9 +146,17 @@ contract HarvestManager is ReentrancyGuard, Pausable {
 
     /// @notice Set the YieldToken address. Can only be called once by the factory.
     function setYieldToken(address yieldToken_) external onlyFactory {
-        require(!_yieldTokenSet, "Already set");
+        if (_yieldTokenSet) revert AlreadySet();
         yieldToken = YieldToken(yieldToken_);
         _yieldTokenSet = true;
+    }
+
+    /// @notice Set the StakingVault address. Can only be called once by the factory.
+    ///         Used to snapshot the per-season totalYieldOwed in reportHarvest.
+    function setStakingVault(address stakingVault_) external onlyFactory {
+        if (_stakingVaultSet) revert AlreadySet();
+        stakingVault = StakingVault(stakingVault_);
+        _stakingVaultSet = true;
     }
 
     // --- Harvest Reporting ---
@@ -150,6 +169,7 @@ contract HarvestManager is ReentrancyGuard, Pausable {
     function reportHarvest(uint256 seasonId, uint256 totalValueUSD, bytes32 merkleRoot, uint256 totalUnits)
         external
         onlyProducer
+        whenNotPaused
     {
         SeasonHarvest storage harvest = seasonHarvests[seasonId];
         if (harvest.reported) revert AlreadyReported();
@@ -157,7 +177,10 @@ contract HarvestManager is ReentrancyGuard, Pausable {
         uint256 protocolFee = totalValueUSD * protocolFeeBps / 10_000;
         uint256 holderPool = totalValueUSD - protocolFee;
 
-        uint256 totalYieldSupply = yieldToken.totalSupply();
+        // Snapshot the canonical per-season yield total (accrued, not just
+        // minted). Immune to holders front-running or lagging claimYield
+        // around the reportHarvest transaction.
+        uint256 totalYieldSupply = stakingVault.seasonTotalYieldOwed(seasonId);
 
         harvest.merkleRoot = merkleRoot;
         harvest.totalHarvestValueUSD = totalValueUSD;
@@ -180,7 +203,7 @@ contract HarvestManager is ReentrancyGuard, Pausable {
             harvest.claimEnd,
             harvest.usdcDeadline
         );
-        emit ProtocolFeeCollected(seasonId, protocolFee, protocolFeeRecipient);
+        emit ProtocolFeeTargeted(seasonId, protocolFee, protocolFeeRecipient);
     }
 
     // --- Redemption ---
@@ -247,7 +270,7 @@ contract HarvestManager is ReentrancyGuard, Pausable {
     /// @notice Claim deposited USDC after producer has deposited. Can be called multiple times as producer deposits more.
     function claimUSDC(uint256 seasonId) external nonReentrant {
         Claim storage claim = claims[seasonId][msg.sender];
-        if (claim.redemptionType != RedemptionType.USDC) revert NotReported();
+        if (claim.redemptionType != RedemptionType.USDC) revert NotUsdcRedemption();
         if (claim.usdcAmount == 0) revert ZeroAmount();
 
         SeasonHarvest storage harvest = seasonHarvests[seasonId];
@@ -263,10 +286,12 @@ contract HarvestManager is ReentrancyGuard, Pausable {
         uint256 claimable = entitlement - claim.usdcClaimed;
         if (claimable == 0) revert ZeroAmount();
 
-        claim.usdcClaimed += claimable;
-
-        // Transfer USDC (18 decimals → 6 decimals)
+        // Transfer USDC (18 decimals → 6 decimals). Credit back ONLY what was
+        // actually transferred so sub-1e12 dust stays claimable after future
+        // deposits push usdcDeposited up the next boundary.
         uint256 usdcToTransfer = claimable / 1e12;
+        if (usdcToTransfer == 0) revert ZeroAmount();
+        claim.usdcClaimed += usdcToTransfer * 1e12;
         usdc.safeTransfer(msg.sender, usdcToTransfer);
 
         emit USDCClaimed(msg.sender, seasonId, usdcToTransfer);
@@ -275,15 +300,46 @@ contract HarvestManager is ReentrancyGuard, Pausable {
     // --- Producer USDC Deposit ---
 
     /// @notice Producer deposits USDC to cover USDC redemption claims.
-    function depositUSDC(uint256 seasonId, uint256 amount) external onlyProducer nonReentrant {
+    /// @dev    Each deposit is split: `protocolFeeBps` (2%) is forwarded directly
+    ///         to `protocolFeeRecipient`; the remainder credits the holder pool.
+    ///         Producer therefore must deposit `usdcOwed/1e12 * 10000/(10000-feeBps)`
+    ///         native USDC to fully cover claims.
+    function depositUSDC(uint256 seasonId, uint256 amount) external onlyProducer nonReentrant whenNotPaused {
         SeasonHarvest storage harvest = seasonHarvests[seasonId];
         if (!harvest.reported) revert NotReported();
         if (block.timestamp > harvest.usdcDeadline) revert DepositWindowClosed();
+        if (amount == 0) revert ZeroAmount();
+
+        uint256 feePortion = amount * protocolFeeBps / 10_000;
+        uint256 poolPortion = amount - feePortion;
+
+        // Prevent over-deposit: refuse if the resulting pool would exceed usdcOwed.
+        // Producer should call `remainingDepositGross` to size their transfer.
+        uint256 newPool18 = harvest.usdcDeposited + poolPortion * 1e12;
+        if (newPool18 > harvest.usdcOwed) revert DepositExceedsOwed();
 
         usdc.safeTransferFrom(msg.sender, address(this), amount);
-        harvest.usdcDeposited += uint256(amount) * 1e12; // 6 decimals → 18 decimals for comparison
+
+        if (feePortion > 0) {
+            usdc.safeTransfer(protocolFeeRecipient, feePortion);
+            harvest.protocolFeeTransferred += feePortion;
+            emit ProtocolFeeTransferred(seasonId, feePortion, protocolFeeRecipient);
+        }
+
+        harvest.usdcDeposited = newPool18;
 
         emit USDCDeposited(seasonId, msg.sender, amount, harvest.usdcDeposited, harvest.usdcOwed);
+    }
+
+    /// @notice Maximum gross USDC (6-dec) the producer can still deposit without exceeding `usdcOwed`.
+    ///         Floors conservatively so the resulting pool ≤ usdcOwed; may under-cover by < 1 USDC
+    ///         due to the 6→18 decimal scale; producers top up with a second call if needed.
+    function remainingDepositGross(uint256 seasonId) external view returns (uint256) {
+        SeasonHarvest storage harvest = seasonHarvests[seasonId];
+        if (harvest.usdcDeposited >= harvest.usdcOwed) return 0;
+        uint256 netBps = 10_000 - protocolFeeBps;
+        uint256 poolMax6 = (harvest.usdcOwed - harvest.usdcDeposited) / 1e12; // floor, 6-dec
+        return poolMax6 * 10_000 / netBps; // floor gross
     }
 
     // --- Pause ---

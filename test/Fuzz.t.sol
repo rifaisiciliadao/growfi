@@ -35,8 +35,8 @@ contract FuzzTest is Test {
 
     function setUp() public {
         usdc = new MockERC20("USDC", "USDC", 6);
-        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc));
-        vm.prank(protocolOwner);
+        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc), address(0));
+        vm.prank(producer);
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
                 producer: producer,
@@ -255,9 +255,12 @@ contract FuzzTest is Test {
         vm.prank(bob);
         harvestManager.redeemUSDC(1, bobYield);
 
-        (,,,,,,,, uint256 usdcOwed18,,) = harvestManager.seasonHarvests(1);
+        (,,,,,,,, uint256 usdcOwed18,,,) = harvestManager.seasonHarvests(1);
         uint256 usdcOwed6 = usdcOwed18 / 1e12;
-        uint256 deposit = usdcOwed6 * depositBps / 10_000;
+        // Target pool fill = depositBps/10000 of usdcOwed; gross = pool * 10000/netBps.
+        uint256 netBps = 10_000 - harvestManager.protocolFeeBps();
+        uint256 targetPool = usdcOwed6 * depositBps / 10_000;
+        uint256 deposit = targetPool * 10_000 / netBps;
         if (deposit == 0) return;
 
         usdc.mint(producer, deposit);

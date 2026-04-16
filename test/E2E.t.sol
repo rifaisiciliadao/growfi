@@ -55,9 +55,9 @@ contract E2ETest is Test {
         weth = new MockERC20("Wrapped ETH", "WETH", 18);
         wethOracle = new MockOracle(WETH_USD_PRICE, 8);
 
-        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc));
+        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc), address(0));
 
-        vm.prank(protocolOwner);
+        vm.prank(producer);
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
                 producer: producer,
@@ -274,7 +274,7 @@ contract E2ETest is Test {
         vm.prank(producer);
         harvestManager.reportHarvest(1, totalValueUSD, root, totalProductUnits);
 
-        (, uint256 harvestValueUSD,,,,,,,, uint256 feeCollected,) = harvestManager.seasonHarvests(1);
+        (, uint256 harvestValueUSD,,,,,,,, uint256 feeCollected,,) = harvestManager.seasonHarvests(1);
         assertEq(harvestValueUSD, totalValueUSD);
         assertEq(feeCollected, totalValueUSD * 200 / 10_000); // 2%
 
@@ -318,11 +318,8 @@ contract E2ETest is Test {
 
         // usdcOwed at struct index 8 (merkleRoot, totalValue, totalYieldSupply, totalProductUnits,
         //   claimStart, claimEnd, usdcDeadline, usdcDeposited, usdcOwed, protocolFeeCollected, reported)
-        (,,,,,,,, uint256 usdcOwed,,) = harvestManager.seasonHarvests(1);
-        uint256 usdcOwedSixDec = usdcOwed / 1e12;
-
-        // Producer deposits only 50%
-        uint256 firstDeposit = usdcOwedSixDec / 2;
+        // Producer splits deposit in two halves — each is the cap at that point.
+        uint256 firstDeposit = harvestManager.remainingDepositGross(1) / 2;
         usdc.mint(producer, firstDeposit);
         vm.startPrank(producer);
         usdc.approve(address(harvestManager), type(uint256).max);
@@ -336,8 +333,8 @@ contract E2ETest is Test {
         uint256 charlieFirstClaim = usdc.balanceOf(charlie) - charlieUsdcBefore;
         assertGt(charlieFirstClaim, 0);
 
-        // Producer deposits the rest
-        uint256 secondDeposit = usdcOwedSixDec - firstDeposit + 10; // +10 slack for rounding
+        // Producer deposits the remaining gross cap.
+        uint256 secondDeposit = harvestManager.remainingDepositGross(1);
         usdc.mint(producer, secondDeposit);
         vm.prank(producer);
         harvestManager.depositUSDC(1, secondDeposit);

@@ -45,9 +45,9 @@ contract RedTeamTest is Test {
         weth = new MockERC20("WETH", "WETH", 18);
         wethOracle = new MockOracle(2880e8, 8);
 
-        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc));
+        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc), address(0));
 
-        vm.prank(protocolOwner);
+        vm.prank(producer);
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
                 producer: producer,
@@ -138,7 +138,7 @@ contract RedTeamTest is Test {
         // Factory already called setCampaignToken during createCampaign
         // Even if factory could somehow re-call it, the one-time guard must block
         vm.prank(address(factory));
-        vm.expectRevert("Already set");
+        vm.expectRevert(Campaign.AlreadySet.selector);
         campaign.setCampaignToken(address(0xdead));
     }
 
@@ -150,7 +150,7 @@ contract RedTeamTest is Test {
 
     function test_attack_resetYieldTokenOnHarvest() public {
         vm.prank(address(factory));
-        vm.expectRevert("Already set");
+        vm.expectRevert(HarvestManager.AlreadySet.selector);
         harvestManager.setYieldToken(address(0xdead));
     }
 
@@ -469,7 +469,7 @@ contract RedTeamTest is Test {
         assertEq(uint8(campaign.state()), uint8(Campaign.State.Funding));
 
         vm.prank(producer);
-        vm.expectRevert("Min cap not reached");
+        vm.expectRevert(Campaign.MinCapNotReached.selector);
         campaign.activateCampaign();
     }
 
@@ -617,7 +617,7 @@ contract RedTeamTest is Test {
         // Producer cannot pull the USDC — no admin function on Campaign for that
         // Only path to release is _activate() or buyback(). Attacker calls whatever is callable.
         vm.prank(producer);
-        vm.expectRevert("Min cap not reached");
+        vm.expectRevert(Campaign.MinCapNotReached.selector);
         campaign.activateCampaign();
 
         // Funds remain escrowed

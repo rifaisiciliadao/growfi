@@ -45,10 +45,11 @@ contract IntegrationTest is Test {
         wethOracle = new MockOracle(2880e8, 8); // WETH = $2880, 8 decimals (Chainlink standard)
 
         // Deploy factory
-        factory = new CampaignFactory(owner, feeRecipient, address(usdc));
+        factory = new CampaignFactory(owner, feeRecipient, address(usdc), address(0));
 
         // Create campaign
         uint256 deadline = block.timestamp + 90 days;
+        vm.prank(producer);
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
                 producer: producer,

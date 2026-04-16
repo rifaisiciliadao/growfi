@@ -28,8 +28,9 @@ contract SecurityTest is Test {
     function setUp() public {
         usdc = new MockERC20("USDC", "USDC", 6);
         weth = new MockERC20("WETH", "WETH", 18);
-        factory = new CampaignFactory(owner, feeRecipient, address(usdc));
+        factory = new CampaignFactory(owner, feeRecipient, address(usdc), address(0));
 
+        vm.prank(producer);
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
                 producer: producer,
@@ -72,7 +73,7 @@ contract SecurityTest is Test {
         vm.prank(producer);
         campaign.startSeason(1);
 
-        (,,,, bool active,) = stakingVault.seasons(1);
+        (,,,,, bool active,) = stakingVault.seasons(1);
         assertTrue(active);
     }
 
@@ -86,7 +87,7 @@ contract SecurityTest is Test {
         vm.prank(producer);
         campaign.endSeason();
 
-        (,,,, bool active,) = stakingVault.seasons(1);
+        (,,,,, bool active,) = stakingVault.seasons(1);
         assertFalse(active);
     }
 
@@ -176,6 +177,7 @@ contract SecurityTest is Test {
     // --- Fix #4: Input validation ---
 
     function test_cannotCreateCampaignWithZeroPrice() public {
+        vm.prank(producer);
         vm.expectRevert("Zero price");
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
@@ -195,6 +197,7 @@ contract SecurityTest is Test {
     }
 
     function test_cannotCreateCampaignMinGtMax() public {
+        vm.prank(producer);
         vm.expectRevert("minCap > maxCap");
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
@@ -214,6 +217,7 @@ contract SecurityTest is Test {
     }
 
     function test_cannotCreateCampaignPastDeadline() public {
+        vm.prank(producer);
         vm.expectRevert("Deadline in past");
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
@@ -233,6 +237,7 @@ contract SecurityTest is Test {
     }
 
     function test_cannotCreateCampaignShortSeason() public {
+        vm.prank(producer);
         vm.expectRevert("Season too short");
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({

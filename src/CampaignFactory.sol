@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {CampaignToken} from "./CampaignToken.sol";
 import {YieldToken} from "./YieldToken.sol";
 import {Campaign} from "./Campaign.sol";
@@ -11,7 +12,7 @@ import {HarvestManager} from "./HarvestManager.sol";
 /// @title CampaignFactory — Deployer & Registry
 /// @notice Deploys and wires all campaign contracts. Stores registry of all campaigns.
 ///         Owner is the protocol multisig.
-contract CampaignFactory is Ownable {
+contract CampaignFactory is Ownable2Step {
     // --- Constants ---
 
     uint256 public constant PROTOCOL_FEE_BPS = 200; // 2%
@@ -32,6 +33,10 @@ contract CampaignFactory is Ownable {
 
     address public protocolFeeRecipient;
     address public immutable usdc;
+    /// @notice Chainlink L2 sequencer-uptime feed; `address(0)` on L1.
+    ///         Propagated into every Campaign so oracle pricing refuses to mint
+    ///         while the sequencer is down or within its recovery grace window.
+    address public immutable sequencerUptimeFeed;
 
     CampaignContracts[] public campaigns;
     mapping(address => bool) public isCampaign;
@@ -58,9 +63,12 @@ contract CampaignFactory is Ownable {
 
     // --- Constructor ---
 
-    constructor(address owner_, address protocolFeeRecipient_, address usdc_) Ownable(owner_) {
+    constructor(address owner_, address protocolFeeRecipient_, address usdc_, address sequencerUptimeFeed_)
+        Ownable(owner_)
+    {
         protocolFeeRecipient = protocolFeeRecipient_;
         usdc = usdc_;
+        sequencerUptimeFeed = sequencerUptimeFeed_;
     }
 
     // --- Campaign Creation ---
@@ -79,9 +87,11 @@ contract CampaignFactory is Ownable {
         uint256 minProductClaim;
     }
 
-    /// @notice Deploy a full campaign suite. Deployment order resolves circular deps via setters.
-    function createCampaign(CreateCampaignParams calldata params) external onlyOwner returns (address) {
+    /// @notice Deploy a full campaign suite. Permissionless — anyone can create a campaign as producer.
+    /// @dev Deployment order resolves circular deps via setters.
+    function createCampaign(CreateCampaignParams calldata params) external returns (address) {
         require(params.producer != address(0), "Zero producer");
+        require(params.producer == msg.sender, "producer must be caller");
         require(params.pricePerToken > 0, "Zero price");
         require(params.maxCap > 0, "Zero maxCap");
         require(params.minCap <= params.maxCap, "minCap > maxCap");
@@ -98,7 +108,8 @@ contract CampaignFactory is Ownable {
             params.fundingDeadline,
             params.seasonDuration,
             PROTOCOL_FEE_BPS,
-            protocolFeeRecipient
+            protocolFeeRecipient,
+            sequencerUptimeFeed
         );
 
         // 2. Deploy CampaignToken pointing to Campaign
@@ -124,8 +135,9 @@ contract CampaignFactory is Ownable {
         YieldToken yieldToken =
             new YieldToken(params.yieldName, params.yieldSymbol, address(stakingVault), address(harvestManager));
 
-        // 8. Wire HarvestManager ↔ YieldToken
+        // 8. Wire HarvestManager ↔ YieldToken + StakingVault (for per-season yield snapshot)
         harvestManager.setYieldToken(address(yieldToken));
+        harvestManager.setStakingVault(address(stakingVault));
 
         // 9. Wire StakingVault ↔ YieldToken (via Campaign, which is the authorized caller)
         campaign.setYieldToken(address(yieldToken));

@@ -35,6 +35,11 @@ abstract contract ForkBase is Test {
     function _weth() internal view virtual returns (address);
     function _chainName() internal view virtual returns (string memory);
 
+    /// @dev Chain-specific L2 sequencer uptime feed. L1 children return address(0).
+    function _sequencerUptimeFeed() internal view virtual returns (address) {
+        return address(0);
+    }
+
     function setUp() public virtual {
         string memory rpc = _rpcUrl();
         try vm.createSelectFork(rpc) {
@@ -44,9 +49,9 @@ abstract contract ForkBase is Test {
             return;
         }
 
-        factory = new CampaignFactory(protocolOwner, feeRecipient, _usdc());
+        factory = new CampaignFactory(protocolOwner, feeRecipient, _usdc(), _sequencerUptimeFeed());
 
-        vm.prank(protocolOwner);
+        vm.prank(producer);
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
                 producer: producer,
@@ -142,7 +147,7 @@ abstract contract ForkBase is Test {
         harvestManager.redeemUSDC(1, aliceYield);
 
         // Producer deposits real USDC
-        (,,,,,,,, uint256 owed18,,) = harvestManager.seasonHarvests(1);
+        (,,,,,,,, uint256 owed18,,,) = harvestManager.seasonHarvests(1);
         uint256 owed6 = owed18 / 1e12;
         deal(_usdc(), producer, owed6);
         vm.startPrank(producer);

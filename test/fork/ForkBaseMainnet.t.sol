@@ -23,4 +23,9 @@ contract ForkBaseMainnetTest is ForkBase {
     function _chainName() internal pure override returns (string memory) {
         return "base-mainnet";
     }
+
+    // Chainlink L2 Sequencer Uptime Feed (Base Mainnet)
+    function _sequencerUptimeFeed() internal pure override returns (address) {
+        return 0xBCF85224fc0756B9Fa45aA7892530B47e10b6433;
+    }
 }

@@ -17,8 +17,8 @@ contract GasBoundsTest is Test {
 
     function setUp() public {
         usdc = new MockERC20("USDC", "USDC", 6);
-        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc));
-        vm.prank(protocolOwner);
+        factory = new CampaignFactory(protocolOwner, feeRecipient, address(usdc), address(0));
+        vm.prank(producer);
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
                 producer: producer,

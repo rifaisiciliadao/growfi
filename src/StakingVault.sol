@@ -39,6 +39,12 @@ contract StakingVault is ReentrancyGuard, Pausable {
         uint256 endTime;
         uint256 totalYieldMinted;
         uint256 rewardPerTokenAtEnd; // snapshot of accumulator when season ended
+        /// @notice Running sum of all yield ACCRUED for this season — both minted and
+        ///         still-owed (unclaimed). Grows with the accumulator, shrinks when a
+        ///         position unstakes early (forfeits its pending yield).
+        ///         Locked in at endSeason, used as the canonical snapshot denominator
+        ///         for harvest redemption (immune to post-snapshot claim timing).
+        uint256 totalYieldOwed;
         bool active;
         bool existed; // true once this seasonId has been used
     }
@@ -167,7 +173,9 @@ contract StakingVault is ReentrancyGuard, Pausable {
     }
 
     /// @notice Unstake a specific position. Applies linear penalty, forfeits $YIELD.
-    function unstake(uint256 positionId) external nonReentrant whenNotPaused updateReward {
+    /// @dev    Not gated by `whenNotPaused`: users must always be able to exit their
+    ///         principal even during an emergency pause. Pause only blocks NEW stakes.
+    function unstake(uint256 positionId) external nonReentrant updateReward {
         Position storage pos = positions[positionId];
         if (pos.owner != msg.sender) revert NotPositionOwner();
         if (!pos.active) revert PositionNotActive();
@@ -190,6 +198,18 @@ contract StakingVault is ReentrancyGuard, Pausable {
             // Linear penalty: penaltyRate = 1 - (elapsed / seasonDuration)
             penaltyAmount = stakedAmount * (seasonDuration - elapsed) / seasonDuration;
             returnedAmount = stakedAmount - penaltyAmount;
+        }
+
+        // Forfeited yield is subtracted from the season's owed total so the
+        // snapshot used by HarvestManager reflects only yield that will be
+        // minted, not yield that will never exist.
+        if (yieldForfeited > 0) {
+            Season storage posSeason = seasons[pos.seasonId];
+            if (posSeason.totalYieldOwed >= yieldForfeited) {
+                posSeason.totalYieldOwed -= yieldForfeited;
+            } else {
+                posSeason.totalYieldOwed = 0;
+            }
         }
 
         // Deactivate position
@@ -310,6 +330,7 @@ contract StakingVault is ReentrancyGuard, Pausable {
             endTime: 0,
             totalYieldMinted: 0,
             rewardPerTokenAtEnd: 0,
+            totalYieldOwed: 0,
             active: true,
             existed: true
         });
@@ -375,6 +396,13 @@ contract StakingVault is ReentrancyGuard, Pausable {
         return userPositionIds[user];
     }
 
+    /// @notice Total yield ever accrued for a season (minted + still-owed, minus forfeits).
+    ///         Frozen after `endSeason`; used as the canonical snapshot denominator for
+    ///         harvest redemption so late claims cannot oversubscribe the USDC pool.
+    function seasonTotalYieldOwed(uint256 seasonId) external view returns (uint256) {
+        return seasons[seasonId].totalYieldOwed;
+    }
+
     /// @notice Remove inactive positions from the caller's array to free slots for new stakes.
     function compactPositions() external {
         uint256[] storage ids = userPositionIds[msg.sender];
@@ -396,7 +424,12 @@ contract StakingVault is ReentrancyGuard, Pausable {
     // --- Internal ---
 
     function _updateRewardPerToken() internal {
-        rewardPerTokenStored = _rewardPerTokenCurrent();
+        uint256 current = _rewardPerTokenCurrent();
+        if (current > rewardPerTokenStored && totalStaked > 0 && seasons[currentSeasonId].active) {
+            uint256 delta = current - rewardPerTokenStored;
+            seasons[currentSeasonId].totalYieldOwed += delta * totalStaked / RATE_PRECISION;
+        }
+        rewardPerTokenStored = current;
         lastUpdateTime = block.timestamp;
     }
 

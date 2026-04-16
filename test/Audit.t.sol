@@ -28,8 +28,9 @@ contract AuditTest is Test {
 
     function setUp() public {
         usdc = new MockERC20("USDC", "USDC", 6);
-        factory = new CampaignFactory(owner, feeRecipient, address(usdc));
+        factory = new CampaignFactory(owner, feeRecipient, address(usdc), address(0));
 
+        vm.prank(producer);
         factory.createCampaign(
             CampaignFactory.CreateCampaignParams({
                 producer: producer,
@@ -207,9 +208,9 @@ contract AuditTest is Test {
         vm.prank(alice);
         harvestManager.redeemUSDC(1, aliceYield);
 
-        // Producer deposits 50%
-        (,,,,,,,, uint256 usdcOwed,,) = harvestManager.seasonHarvests(1);
-        uint256 halfDeposit = (usdcOwed / 1e12) / 2; // convert to 6 decimals, then half
+        // Producer deposits 50% of the remaining gross cap (2% of each deposit
+        // is routed to feeRecipient → contract exposes `remainingDepositGross`).
+        uint256 halfDeposit = harvestManager.remainingDepositGross(1) / 2;
         usdc.mint(producer, halfDeposit * 2);
         vm.prank(producer);
         usdc.approve(address(harvestManager), type(uint256).max);
@@ -223,9 +224,11 @@ contract AuditTest is Test {
         uint256 firstClaim = usdc.balanceOf(alice) - aliceBefore;
         assertGt(firstClaim, 0);
 
-        // Producer deposits the rest
+        // Producer deposits the rest (up to remaining cap after first half)
+        uint256 secondDeposit = harvestManager.remainingDepositGross(1);
+        usdc.mint(producer, secondDeposit);
         vm.prank(producer);
-        harvestManager.depositUSDC(1, halfDeposit);
+        harvestManager.depositUSDC(1, secondDeposit);
 
         // Alice claims remainder
         aliceBefore = usdc.balanceOf(alice);
@@ -235,6 +238,7 @@ contract AuditTest is Test {
         assertGt(secondClaim, 0, "Should be able to claim remaining after second deposit");
 
         // Total should approximately equal full amount
-        assertApproxEqRel(firstClaim + secondClaim, usdcOwed / 1e12, 0.01e18);
+        (,,,,,,,, uint256 owed,,,) = harvestManager.seasonHarvests(1);
+        assertApproxEqRel(firstClaim + secondClaim, owed / 1e12, 0.01e18);
     }
 }

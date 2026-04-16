@@ -8,8 +8,8 @@ optimizer_runs = 200
 via_ir = true
 
 [invariant]
-runs = 64
-depth = 50
+runs = 256
+depth = 128
 fail_on_revert = false
 
 [fmt]

@@ -23,4 +23,10 @@ contract ForkArbitrumTest is ForkBase {
     function _chainName() internal pure override returns (string memory) {
         return "arbitrum-one";
     }
+
+    // Chainlink L2 Sequencer Uptime Feed (Arbitrum One)
+    // https://docs.chain.link/data-feeds/l2-sequencer-feeds#available-networks
+    function _sequencerUptimeFeed() internal pure override returns (address) {
+        return 0xFdB631F5EE196F0ed6FAa767959853A9F217697D;
+    }
 }
