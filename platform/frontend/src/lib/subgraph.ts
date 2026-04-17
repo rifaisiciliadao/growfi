@@ -171,6 +171,118 @@ export function useCampaignSeasons(campaignId: string | undefined) {
   });
 }
 
+export interface UserPortfolio {
+  purchases: Array<{
+    id: string;
+    campaign: { id: string; pricePerToken: string; state: string };
+    paymentToken: string;
+    paymentAmount: string;
+    campaignTokensOut: string;
+    timestamp: string;
+  }>;
+  positions: Array<{
+    id: string;
+    positionId: string;
+    campaign: {
+      id: string;
+      stakingVault: string;
+      campaignToken: string;
+      pricePerToken: string;
+      state: string;
+      metadataURI: string | null;
+      metadataVersion: string;
+    };
+    amount: string;
+    startTime: string;
+    seasonId: string;
+    yieldClaimed: string;
+    active: boolean;
+  }>;
+  claims: Array<{
+    id: string;
+    campaign: { id: string };
+    season: { seasonId: string; usdcDeposited: string; usdcOwed: string };
+    redemptionType: string;
+    yieldBurned: string;
+    productAmount: string;
+    usdcAmount: string;
+    usdcClaimed: string;
+    fulfilled: boolean;
+  }>;
+}
+
+export function useUserPortfolio(user: string | undefined) {
+  return useQuery({
+    queryKey: ["subgraph", "portfolio", user?.toLowerCase()],
+    enabled: !!user,
+    queryFn: async (): Promise<UserPortfolio> => {
+      if (!user) return { purchases: [], positions: [], claims: [] };
+      const addr = user.toLowerCase();
+      const data = await gql<UserPortfolio>(
+        `
+        query UserPortfolio($user: Bytes!) {
+          purchases(
+            where: { buyer: $user }
+            orderBy: timestamp
+            orderDirection: desc
+            first: 100
+          ) {
+            id
+            campaign { id pricePerToken state }
+            paymentToken
+            paymentAmount
+            campaignTokensOut
+            timestamp
+          }
+          positions(
+            where: { user: $user, active: true }
+            orderBy: createdAt
+            orderDirection: desc
+            first: 100
+          ) {
+            id
+            positionId
+            campaign {
+              id
+              stakingVault
+              campaignToken
+              pricePerToken
+              state
+              metadataURI
+              metadataVersion
+            }
+            amount
+            startTime
+            seasonId
+            yieldClaimed
+            active
+          }
+          claims(
+            where: { user: $user }
+            orderBy: claimedAt
+            orderDirection: desc
+            first: 100
+          ) {
+            id
+            campaign { id }
+            season { seasonId usdcDeposited usdcOwed }
+            redemptionType
+            yieldBurned
+            productAmount
+            usdcAmount
+            usdcClaimed
+            fulfilled
+          }
+        }
+        `,
+        { user: addr },
+      );
+      return data;
+    },
+    refetchInterval: 20_000,
+  });
+}
+
 export interface SubgraphMeta {
   block: { number: number; hash: string };
   hasIndexingErrors: boolean;

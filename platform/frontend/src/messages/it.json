@@ -276,6 +276,41 @@
       "live": "Live"
     }
   },
+  "portfolio": {
+    "title": "Il Mio Portfolio",
+    "connectWallet": "Connetti il wallet per vedere posizioni, acquisti e richieste di raccolto.",
+    "loading": "Caricamento attività on-chain…",
+    "positionsTitle": "Posizioni Attive",
+    "purchasesTitle": "Acquisti",
+    "claimsTitle": "Richieste Raccolto",
+    "noPositions": "Nessuna posizione di staking attiva.",
+    "noPurchases": "Nessun acquisto su campagne.",
+    "noClaims": "Nessun riscatto di raccolto.",
+    "summary": {
+      "invested": "Totale investito",
+      "staked": "Totale in stake",
+      "yieldClaimed": "$YIELD incassato",
+      "usdcClaimable": "USDC disponibili"
+    },
+    "pos": {
+      "position": "Posizione",
+      "staked": "In stake",
+      "earnedNow": "Maturato ora",
+      "heldOutside": "Fuori dal vault"
+    },
+    "claim": {
+      "season": "Stagione #{id}",
+      "burned": "$YIELD bruciati",
+      "claimable": "USDC disponibili",
+      "productAmount": "Quantità prodotto"
+    },
+    "col": {
+      "campaign": "Campagna",
+      "paid": "Pagato con",
+      "received": "Ricevuto",
+      "date": "Data"
+    }
+  },
   "footer": {
     "tagline": "© {year} GrowFi. Finanza Rigenerativa per un Pianeta Vivente.",
     "docs": "Docs",

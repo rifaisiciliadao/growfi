@@ -276,6 +276,41 @@
       "live": "Live"
     }
   },
+  "portfolio": {
+    "title": "My Portfolio",
+    "connectWallet": "Connect your wallet to see your positions, purchases and harvest claims.",
+    "loading": "Loading on-chain activity…",
+    "positionsTitle": "Active Positions",
+    "purchasesTitle": "Purchases",
+    "claimsTitle": "Harvest Claims",
+    "noPositions": "You have no active staking positions yet.",
+    "noPurchases": "You haven't bought into any campaign yet.",
+    "noClaims": "No harvest redemptions yet.",
+    "summary": {
+      "invested": "Total invested",
+      "staked": "Total staked",
+      "yieldClaimed": "$YIELD claimed",
+      "usdcClaimable": "USDC claimable"
+    },
+    "pos": {
+      "position": "Position",
+      "staked": "Staked",
+      "earnedNow": "Earned now",
+      "heldOutside": "Held outside vault"
+    },
+    "claim": {
+      "season": "Season #{id}",
+      "burned": "$YIELD burned",
+      "claimable": "USDC claimable",
+      "productAmount": "Product amount"
+    },
+    "col": {
+      "campaign": "Campaign",
+      "paid": "Paid with",
+      "received": "Received",
+      "date": "Date"
+    }
+  },
   "footer": {
     "tagline": "© {year} GrowFi. Regenerative Finance for a Living Planet.",
     "docs": "Docs",

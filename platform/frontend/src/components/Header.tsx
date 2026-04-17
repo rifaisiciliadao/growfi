@@ -29,6 +29,12 @@ export function Header() {
           >
             {t("create")}
           </Link>
+          <Link
+            href="/portfolio"
+            className="text-sm font-medium tracking-wide text-on-surface-variant hover:text-on-surface transition-colors"
+          >
+            {t("portfolio")}
+          </Link>
         </div>
 
         <div className="flex items-center gap-2">
