@@ -10,6 +10,7 @@ import { useSubgraphCampaign } from "@/lib/subgraph";
 import { useCampaignMetadata } from "@/lib/metadata";
 import { BuyPanel } from "@/components/BuyPanel";
 import { StakingPanel } from "@/components/StakingPanel";
+import { HarvestPanel } from "@/components/HarvestPanel";
 
 const FALLBACK_HERO =
   "https://images.unsplash.com/photo-1550547660-d9450f859349?w=1600&q=80";
@@ -148,7 +149,13 @@ export default function CampaignDetail({
               seasonDuration={BigInt(sgCampaign.seasonDuration)}
             />
           )}
-          {activeTab === "harvest" && <HarvestPanel />}
+          {activeTab === "harvest" && hasOnChainData && sgCampaign && (
+            <HarvestPanel
+              campaignAddress={campaignAddress}
+              harvestManager={sgCampaign.harvestManager as Address}
+              yieldToken={sgCampaign.yieldToken as Address}
+            />
+          )}
           {activeTab === "info" && (
             <InfoPanel
               address={address}
@@ -240,85 +247,6 @@ function FundingProgressCard({
           {t("daysLeft", { days: daysLeft })}
         </span>
       </div>
-    </div>
-  );
-}
-
-function HarvestPanel() {
-  const t = useTranslations("detail.harvest");
-  return (
-    <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15">
-      <h2 className="text-2xl font-bold tracking-tight text-on-surface mb-2">
-        {t("title")}
-      </h2>
-      <p className="text-sm text-on-surface-variant mb-6">{t("subtitle")}</p>
-
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <button className="bg-primary-fixed/30 border-2 border-primary rounded-xl p-6 text-left hover:shadow-lg transition">
-          <div className="text-3xl mb-3">🫒</div>
-          <div className="font-semibold text-on-surface mb-1">
-            {t("product")}
-          </div>
-          <div className="text-sm text-on-surface-variant">
-            {t("productDesc")}
-          </div>
-          <div className="mt-3 text-xl font-bold text-primary">50 L</div>
-        </button>
-        <button className="bg-surface-container-low border-2 border-outline-variant/15 rounded-xl p-6 text-left hover:border-outline-variant transition">
-          <div className="text-3xl mb-3">💰</div>
-          <div className="font-semibold text-on-surface mb-1">{t("usdc")}</div>
-          <div className="text-sm text-on-surface-variant">
-            {t("usdcDesc")}
-          </div>
-          <div className="mt-3 text-xl font-bold text-on-surface">
-            €685.30
-          </div>
-        </button>
-      </div>
-
-      <div className="bg-surface-container-low rounded-xl p-5 mb-6 border border-outline-variant/15">
-        <div className="flex items-center justify-between text-sm mb-4">
-          <span className="font-semibold text-on-surface">
-            {t("redemptionStatus")}
-          </span>
-          <span className="text-primary font-semibold">
-            {t("step", { current: 1, total: 2 })}
-          </span>
-        </div>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center">
-              <svg
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M4.5 12.75l6 6 9-13.5"
-                />
-              </svg>
-            </div>
-            <span className="text-sm text-on-surface">
-              {t("declareIntent")}
-            </span>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="w-6 h-6 rounded-full border-2 border-outline-variant" />
-            <span className="text-sm text-on-surface-variant">
-              {t("confirmDelivery")}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <button className="w-full regen-gradient text-white rounded-xl h-14 font-bold text-base hover:shadow-xl hover:shadow-primary/20 transition-all">
-        {t("confirm")}
-      </button>
     </div>
   );
 }

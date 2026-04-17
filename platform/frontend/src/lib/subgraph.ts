@@ -108,6 +108,69 @@ export function useSubgraphCampaign(address: string | undefined) {
   });
 }
 
+export interface SubgraphSeason {
+  id: string;
+  seasonId: string;
+  startTime: string;
+  endTime: string | null;
+  active: boolean;
+  reported: boolean;
+  reportedAt: string | null;
+  totalHarvestValueUSD: string | null;
+  holderPool: string | null;
+  totalYieldSupply: string | null;
+  totalProductUnits: string | null;
+  merkleRoot: string | null;
+  claimStart: string | null;
+  claimEnd: string | null;
+  usdcDeadline: string | null;
+  usdcDeposited: string;
+  usdcOwed: string;
+}
+
+export function useCampaignSeasons(campaignId: string | undefined) {
+  return useQuery({
+    queryKey: ["subgraph", "seasons", campaignId?.toLowerCase()],
+    enabled: !!campaignId,
+    queryFn: async () => {
+      if (!campaignId) return [];
+      const data = await gql<{ seasons: SubgraphSeason[] }>(
+        `
+        query Seasons($campaign: String!) {
+          seasons(
+            where: { campaign: $campaign }
+            orderBy: seasonId
+            orderDirection: desc
+            first: 50
+          ) {
+            id
+            seasonId
+            startTime
+            endTime
+            active
+            reported
+            reportedAt
+            totalHarvestValueUSD
+            holderPool
+            totalYieldSupply
+            totalProductUnits
+            merkleRoot
+            claimStart
+            claimEnd
+            usdcDeadline
+            usdcDeposited
+            usdcOwed
+          }
+        }
+        `,
+        { campaign: campaignId.toLowerCase() },
+      );
+      return data.seasons;
+    },
+    refetchInterval: 15_000,
+  });
+}
+
 export interface SubgraphMeta {
   block: { number: number; hash: string };
   hasIndexingErrors: boolean;
