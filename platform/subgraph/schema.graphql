@@ -6,6 +6,11 @@ type Campaign @entity(immutable: false) {
   stakingVault: Bytes!
   harvestManager: Bytes!
 
+  # Off-chain metadata (JSON at DO Spaces / IPFS / etc.), set via CampaignRegistry.
+  # Null until the producer calls CampaignRegistry.setMetadata after createCampaign.
+  metadataURI: String
+  metadataVersion: BigInt!
+
   pricePerToken: BigInt!
   minCap: BigInt!
   maxCap: BigInt!

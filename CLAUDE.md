@@ -130,7 +130,7 @@ File constraints (5 MB, `image/{jpeg,png,webp,avif,gif}`) enforced in-route.
 
 Live on Goldsky — **team: turinglabs · project: growfi · chain: base-sepolia**. Factory wired in `subgraph.yaml` to `0x3fA41528a22645Bef478E9eBae83981C02e98f74` @ block `40322865`.
 
-- **Endpoint (prod tag)**: `https://api.goldsky.com/api/public/project_cmgzitcts001c5np28moc9lyy/subgraphs/growfi/prod/gn`
+- **Endpoint (prod tag)**: `https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/prod/gn`
 - **Endpoint (pinned version)**: replace `prod` with `1.0.0` (or whatever `package.json` version is current)
 - Frontend client: `platform/frontend/src/lib/subgraph.ts` — minimal fetch+React Query wrapper exposing `useSubgraphCampaigns`, `useSubgraphCampaign(id)`, `useSubgraphMeta()`.
 

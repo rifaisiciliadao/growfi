@@ -49,6 +49,7 @@ export function handleCampaignCreated(event: CampaignCreatedEvent): void {
   campaign.paused = false;
   campaign.createdAt = event.params.createdAt;
   campaign.createdAtBlock = event.block.number;
+  campaign.metadataVersion = BigInt.zero();
   campaign.save();
 
   // Register reverse lookup indices for the template handlers
