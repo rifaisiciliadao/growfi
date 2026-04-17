@@ -55,6 +55,7 @@ Invariant config: `runs = 256, depth = 128, fail_on_revert = false` → ~33k ran
 - `HarvestManager.remainingDepositGross(seasonId)` — gross USDC producer must still send to fully cover `usdcOwed`, already factoring the 98/2 fee split.
 - `StakingVault.seasonTotalYieldOwed(seasonId)` — canonical per-season yield snapshot (accrued minus forfeits).
 - `Campaign.getSellBackQueueDepth()` — total $CAMPAIGN currently queued for sell-back.
+- `CampaignFactory.minSeasonDuration()` — floor enforced by `createCampaign`. Settable by factory owner via `setMinSeasonDuration(uint256)`. Default 30 days on fresh deployments. Testnet relaxes to 3600 (1h) to allow fast integration smokes; mainnet keeps 30 days minimum.
 
 ## Dev commands
 
@@ -75,6 +76,28 @@ forge snapshot                                     # gas baseline
 - Custom errors preferred over string reverts on setters / validation paths.
 - Never use `_paymentToTokens` (removed) — it duplicated `_calculateTokensOut` with drift risk. Use the queue-return pattern instead.
 - New numerical invariants go into `Invariants.t.sol`, not individual test files, so they benefit from the full 33k-sequence fuzz.
+
+## Upgrade path
+
+The factory is the only upgradeable piece (per-campaign proxies are producer-administered, see Trust Model). Adding state to the factory requires:
+
+1. Append new storage fields AT THE END of the contract (never re-order existing ones).
+2. Add an `external reinitializer(N)` function named `initializeV{N}()` that seeds the new fields.
+3. Deploy the new impl; call `ProxyAdmin.upgradeAndCall(proxy, newImpl, abi.encodeCall(CampaignFactory.initializeV{N}, ()))`.
+
+Example reference: `script/UpgradeFactoryV2.s.sol` (adds `minSeasonDuration`, reads `ProxyAdmin` from the ERC-1967 admin slot, upgrades in one tx).
+
+## Scripts reference
+
+- `script/Deploy.s.sol` — mainnet/arbitrum full deploy (5 impls + factory impl + proxy).
+- `script/DeployTestnet.s.sol` — testnet variant that additionally deploys MockUSDC and seeds the deployer with 1M mUSDC.
+- `script/UpgradeFactoryV2.s.sol` — example factory upgrade path.
+- `script/SmokeTest.s.sol` — live-chain happy-path check (createCampaign + addAcceptedToken + buy, asserts mint math).
+- `script/SmokeTest1h.s.sol` — full lifecycle bootstrap with 1h season; stakes, ready for endSeason + harvest after time elapses.
+
+## Deployments
+
+See `CONTRACTS.md` for current Base Sepolia addresses (factory proxy, impls, ProxyAdmin, smoke campaigns, frontend env vars).
 
 ## Audit history
 
