@@ -151,16 +151,23 @@ File constraints (5 MB, `image/{jpeg,png,webp,avif,gif}`) enforced in-route.
 
 ### Subgraph (`platform/subgraph/`)
 
-Live on Goldsky — **team: turinglabs · project: growfi · chain: base-sepolia**. Factory wired in `subgraph.yaml` to `0x3fA41528a22645Bef478E9eBae83981C02e98f74` @ block `40322865`.
+Live on Goldsky — **team: turinglabs · project: growfi · chain: base-sepolia**. Current version: `growfi/1.1.0`, tagged as `prod`.
 
-- **Endpoint (prod tag)**: `https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/prod/gn`
-- **Endpoint (pinned version)**: replace `prod` with `1.0.0` (or whatever `package.json` version is current)
-- Frontend client: `platform/frontend/src/lib/subgraph.ts` — minimal fetch+React Query wrapper exposing `useSubgraphCampaigns`, `useSubgraphCampaign(id)`, `useSubgraphMeta()`.
+Indexed contracts (see `CONTRACTS.md` for authoritative deploy refs):
+- `CampaignFactory` @ `0x3fA41528a22645Bef478E9eBae83981C02e98f74` from block `40322865`
+- `CampaignRegistry` @ `0xb0Ba4660b2D136BF087FA9bf0aec946f0a87597e` from block `40331554`
 
-- `schema.graphql` — 11 entities: `Campaign`, `AcceptedToken`, `Purchase`, `SellBackOrder`, `Position`, `Season`, `Claim`, `YieldRateSnapshot`, `User`, `GlobalStats`, `ContractIndex`.
+Endpoints:
+- **Prod tag**: `https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/prod/gn`
+- **Pinned version**: replace `prod` with the semver (e.g. `1.1.0`). Useful during schema migrations — older frontends can stay on an older version while the new one is tested.
+
+Frontend client: `platform/frontend/src/lib/subgraph.ts` — minimal fetch+React Query wrapper exposing `useSubgraphCampaigns`, `useSubgraphCampaign(id)`, `useSubgraphMeta()`.
+
+Schema + handlers:
+- `schema.graphql` — 11 entities: `Campaign`, `AcceptedToken`, `Purchase`, `SellBackOrder`, `Position`, `Season`, `Claim`, `YieldRateSnapshot`, `User`, `GlobalStats`, `ContractIndex`. The `Campaign` entity carries `metadataURI` + `metadataVersion` populated by the `CampaignRegistry` handler.
 - **`ContractIndex`** maps StakingVault / HarvestManager addresses → owning `Campaign`. Populated in `src/factory.ts` when `CampaignCreated` fires, then read in `staking.ts` and `harvest.ts` to avoid expensive contract calls.
-- 22 event handlers across `factory.ts`, `campaign.ts`, `staking.ts`, `harvest.ts`. No handler for `Initialized`/`Paused`/`Unpaused`/`OwnershipTransferred` (OZ stdlib events). No handler for `ProtocolFeeTargeted`/`ProtocolFeeTransferred` (replaced the old `ProtocolFeeCollected` — holder pool is derived from `HarvestReported` directly).
-- **Dynamic templates**: `Campaign`, `StakingVault`, `HarvestManager` are all spawned via `Template.create()` inside the factory handler — this is why `startBlock` in `subgraph.yaml` must be the factory deploy block.
+- 23 event handlers across `factory.ts`, `campaign.ts`, `staking.ts`, `harvest.ts`, `registry.ts`. No handler for `Initialized`/`Paused`/`Unpaused`/`OwnershipTransferred` (OZ stdlib events). No handler for `ProtocolFeeTargeted`/`ProtocolFeeTransferred` (replaced the old `ProtocolFeeCollected` — holder pool is derived from `HarvestReported` directly).
+- **Dynamic templates**: `Campaign`, `StakingVault`, `HarvestManager` are all spawned via `Template.create()` inside the factory handler — this is why `startBlock` in `subgraph.yaml` must be the factory deploy block. `CampaignRegistry` is a static data source (single global contract).
 
 Deploy:
 ```bash
