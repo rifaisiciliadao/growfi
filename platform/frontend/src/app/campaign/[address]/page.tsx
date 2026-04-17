@@ -6,12 +6,17 @@ import { useTranslations } from "next-intl";
 import type { Address } from "viem";
 import { parseUnits } from "viem";
 import { useCampaignData } from "@/contracts/hooks";
+import { useSubgraphCampaign } from "@/lib/subgraph";
+import { useCampaignMetadata } from "@/lib/metadata";
 import { BuyPanel } from "@/components/BuyPanel";
+
+const FALLBACK_HERO =
+  "https://images.unsplash.com/photo-1550547660-d9450f859349?w=1600&q=80";
+
+const STATE_LABELS = ["funding", "active", "buyback", "ended"] as const;
 
 type Tab = "invest" | "stake" | "harvest" | "info";
 const TAB_KEYS: Tab[] = ["invest", "stake", "harvest", "info"];
-
-const STATES = ["funding", "active", "buyback", "ended"] as const;
 
 export default function CampaignDetail({
   params,
@@ -20,6 +25,7 @@ export default function CampaignDetail({
 }) {
   const { address } = use(params);
   const t = useTranslations("detail");
+  const tHome = useTranslations("home");
   const [activeTab, setActiveTab] = useState<Tab>("invest");
 
   const campaignAddress = address as Address;
@@ -35,34 +41,53 @@ export default function CampaignDetail({
   const pricePerToken = (campaignData?.[1]?.result as bigint) ?? parseUnits("0.144", 18);
   const stateIdx = (campaignData?.[6]?.result as number) ?? 0;
   const hasOnChainData = !!campaignData?.[0]?.result;
+  const stateKey = STATE_LABELS[stateIdx] ?? "funding";
+
+  // Off-chain metadata: subgraph → registry URI → fetch JSON.
+  const { data: sgCampaign } = useSubgraphCampaign(
+    isValidAddress ? campaignAddress : undefined,
+  );
+  const { data: metadata } = useCampaignMetadata(
+    sgCampaign?.metadataURI,
+    sgCampaign?.metadataVersion,
+  );
+
+  const displayName =
+    metadata?.name ||
+    (isValidAddress
+      ? `Campaign ${campaignAddress.slice(0, 6)}…${campaignAddress.slice(-4)}`
+      : "Campaign");
+  const displayLocation = metadata?.location ?? "";
+  const heroImage = metadata?.image || FALLBACK_HERO;
 
   return (
     <>
       <section
         className="relative w-full h-72 flex items-end px-8 lg:px-16 pb-12 bg-cover bg-center overflow-hidden"
-        style={{
-          backgroundImage:
-            "url('https://images.unsplash.com/photo-1445264755075-ed80e91f9404?w=1600&q=80')",
-        }}
+        style={{ backgroundImage: `url('${heroImage}')` }}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col gap-4">
           <nav className="flex text-white/70 text-xs font-semibold uppercase tracking-wider">
             <Link href="/">{t("breadcrumb")}</Link>
             <span className="mx-2">/</span>
-            <span className="text-white">Ferrara Olive Grove</span>
+            <span className="text-white">{displayName}</span>
           </nav>
           <div className="flex items-center justify-between flex-wrap gap-4">
             <div>
               <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight text-white leading-tight">
-                Ferrara Olive Grove
+                {displayName}
               </h1>
-              <p className="text-white/90 mt-2">
-                Ferrara Family Farm · Sicily
-              </p>
+              {displayLocation && (
+                <p className="text-white/90 mt-2">{displayLocation}</p>
+              )}
             </div>
             <span className="inline-flex items-center px-4 py-2 rounded-full bg-primary-fixed text-on-primary-fixed-variant text-xs font-semibold uppercase tracking-wider backdrop-blur-md">
-              Funding
+              {tHome(
+                stateKey === "buyback"
+                  ? "state.ended"
+                  : (`state.${stateKey}` as "state.funding" | "state.active" | "state.ended"),
+              )}
             </span>
           </div>
         </div>
@@ -117,7 +142,13 @@ export default function CampaignDetail({
 
           {activeTab === "stake" && <StakingPanel />}
           {activeTab === "harvest" && <HarvestPanel />}
-          {activeTab === "info" && <InfoPanel address={address} />}
+          {activeTab === "info" && (
+            <InfoPanel
+              address={address}
+              description={metadata?.description}
+              location={displayLocation}
+            />
+          )}
         </div>
 
         <div className="w-full lg:w-[35%] sticky top-36 flex flex-col gap-4">
@@ -353,7 +384,15 @@ function HarvestPanel() {
   );
 }
 
-function InfoPanel({ address }: { address: string }) {
+function InfoPanel({
+  address,
+  description,
+  location,
+}: {
+  address: string;
+  description?: string;
+  location?: string;
+}) {
   const t = useTranslations("detail.info");
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15">
@@ -361,7 +400,14 @@ function InfoPanel({ address }: { address: string }) {
         {t("title")}
       </h2>
       <div className="space-y-4 text-sm text-on-surface-variant leading-relaxed">
-        <p>{t("about")}</p>
+        {description ? (
+          <p className="whitespace-pre-line">{description}</p>
+        ) : (
+          <p>{t("about")}</p>
+        )}
+        {location && (
+          <p className="text-on-surface font-medium">📍 {location}</p>
+        )}
         <p>{t("tokens")}</p>
 
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/15">
