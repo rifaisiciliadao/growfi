@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { formatUnits } from "viem";
 import { CampaignCard, type CampaignState } from "@/components/CampaignCard";
-import { useCampaignsList } from "@/contracts/hooks";
+import { useSubgraphCampaigns } from "@/lib/subgraph";
 import { getAddresses } from "@/contracts";
 
 type FilterKey = "all" | "funding" | "active" | "ended";
@@ -103,24 +104,39 @@ export default function Home() {
   const factoryDeployed =
     factory !== "0x0000000000000000000000000000000000000000";
 
-  const { data: onChainCampaigns } = useCampaignsList();
-  const hasOnChainData =
-    factoryDeployed && onChainCampaigns && onChainCampaigns.length > 0;
+  const { data: onChainCampaigns } = useSubgraphCampaigns();
+  const hasOnChainData = factoryDeployed && (onChainCampaigns?.length ?? 0) > 0;
 
-  const campaigns = hasOnChainData
-    ? onChainCampaigns.map((addr) => ({
-        address: addr,
-        name: `Campaign ${addr.slice(0, 6)}`,
-        producer: "On-chain",
-        location: "—",
-        image:
-          "https://images.unsplash.com/photo-1445264755075-ed80e91f9404?w=800&q=80",
-        state: "funding" as CampaignState,
-        progress: 0,
-        yieldRate: 5,
-        deadline: "",
-      }))
-    : MOCK_CAMPAIGNS;
+  const campaigns = useMemo(() => {
+    if (!hasOnChainData || !onChainCampaigns) return MOCK_CAMPAIGNS;
+
+    const toState = (s: string): CampaignState =>
+      s === "Active" ? "active" : s === "Ended" ? "ended" : "funding";
+
+    const pricePerTokenUsd = (wei: string) => Number(formatUnits(BigInt(wei), 18));
+    const pctFilled = (supply: string, cap: string) => {
+      const c = BigInt(cap);
+      return c === 0n ? 0 : Number((BigInt(supply) * 100n) / c);
+    };
+    const daysToDeadline = (deadline: string) => {
+      const delta = Number(deadline) - Math.floor(Date.now() / 1000);
+      return delta > 0 ? Math.ceil(delta / 86400) : 0;
+    };
+
+    return onChainCampaigns.map((c) => ({
+      address: c.id,
+      name: `Campaign ${c.id.slice(0, 8)}…`,
+      producer: c.producer,
+      location: "—",
+      image:
+        "https://images.unsplash.com/photo-1445264755075-ed80e91f9404?w=800&q=80",
+      state: toState(c.state),
+      progress: pctFilled(c.currentSupply, c.maxCap),
+      yieldRate: Number(formatUnits(BigInt(c.currentYieldRate), 18)),
+      deadline: String(daysToDeadline(c.fundingDeadline)),
+      pricePerToken: pricePerTokenUsd(c.pricePerToken),
+    }));
+  }, [hasOnChainData, onChainCampaigns]);
 
   const filteredCampaigns =
     filter === "all" ? campaigns : campaigns.filter((c) => c.state === filter);
@@ -179,7 +195,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-primary-fixed/5 pointer-events-none" />
           {[
             {
-              value: String(hasOnChainData ? onChainCampaigns.length : 12),
+              value: String(onChainCampaigns?.length ?? 12),
               label: t("stats.campaigns"),
               color: "text-on-surface",
             },
