@@ -96,7 +96,7 @@ platform/
 ### Frontend (`platform/frontend/`)
 
 - **Stack**: Next.js 15, RainbowKit v2, wagmi v2, viem, Tailwind 4, next-intl.
-- **Chains**: Arbitrum Sepolia (default), Arbitrum One.
+- **Chains**: Base Sepolia (default, chain 84532), Base Mainnet. Live testnet deployment addresses in `CONTRACTS.md`.
 - **i18n**: EN / IT / ES / FR. Provider in `src/i18n/LocaleProvider.tsx` — browser auto-detect + `localStorage["growfi:locale"]` persistence. Messages in `src/messages/<locale>.json`.
 - **Pages**:
   - `/` — Discovery, falls back to mock data when factory address unset.
@@ -119,12 +119,12 @@ Env: `PORT`, `PINATA_JWT`, `PINATA_GATEWAY`. All file constraints (5 MB, image-o
 
 ### Subgraph (`platform/subgraph/`)
 
-Goldsky-ready — **team: turinglabs · project: growfi · chain: arbitrum-sepolia**.
+Goldsky-ready — **team: turinglabs · project: growfi · chain: base-sepolia**. Factory wired in `subgraph.yaml` to `0x3fA41528a22645Bef478E9eBae83981C02e98f74` @ block `40322865`.
 
 - `schema.graphql` — 11 entities: `Campaign`, `AcceptedToken`, `Purchase`, `SellBackOrder`, `Position`, `Season`, `Claim`, `YieldRateSnapshot`, `User`, `GlobalStats`, `ContractIndex`.
 - **`ContractIndex`** maps StakingVault / HarvestManager addresses → owning `Campaign`. Populated in `src/factory.ts` when `CampaignCreated` fires, then read in `staking.ts` and `harvest.ts` to avoid expensive contract calls.
-- 23 event handlers across `factory.ts`, `campaign.ts`, `staking.ts`, `harvest.ts`.
-- **Dynamic templates**: `Campaign`, `StakingVault`, `HarvestManager` are all spawned via `Template.create()` inside the factory handler — this is why `startBlock` in `subgraph.yaml` should be the factory deploy block, not 0.
+- 22 event handlers across `factory.ts`, `campaign.ts`, `staking.ts`, `harvest.ts`. No handler for `Initialized`/`Paused`/`Unpaused`/`OwnershipTransferred` (OZ stdlib events). No handler for `ProtocolFeeTargeted`/`ProtocolFeeTransferred` (replaced the old `ProtocolFeeCollected` — holder pool is derived from `HarvestReported` directly).
+- **Dynamic templates**: `Campaign`, `StakingVault`, `HarvestManager` are all spawned via `Template.create()` inside the factory handler — this is why `startBlock` in `subgraph.yaml` must be the factory deploy block.
 
 Deploy:
 ```bash
@@ -137,8 +137,9 @@ Full guide: `platform/subgraph/DEPLOY.md`.
 
 ### Platform gotchas
 
-- **Factory must be deployed first** — discovery + detail pages gracefully fall back to mock data when `NEXT_PUBLIC_FACTORY_ADDRESS` is `0x0...0`, but all write paths require the real factory.
+- **Factory is live** on Base Sepolia at `0x3fA41528a22645Bef478E9eBae83981C02e98f74`. Discovery + detail pages still fall back to mock cards when `useCampaignsList` returns an empty array (e.g. no campaigns created yet), but all write paths go to the real factory.
 - **WalletConnect project ID** is live and committed to `.env.local` (not secret, just a rate-limit identifier). Don't commit `PINATA_JWT`.
-- **Subgraph `startBlock`** — set to the factory deploy block after deployment. Leaving at 0 causes the indexer to scan the entire chain history.
-- **Chain name mismatch** — frontend uses chain id `421614`, subgraph uses network name `arbitrum-sepolia`. Keep both in sync if switching chains.
+- **Chain name ↔ id alignment**: frontend uses `NEXT_PUBLIC_CHAIN_ID=84532`, subgraph uses `network: base-sepolia`. Both point at the same chain — keep in sync if you ever target a different network.
+- **Subgraph `startBlock`** — already set to `40322865` (factory impl deploy block). Never set to 0 on mainnet/testnet; scanning from genesis wastes hours.
+- **After re-deploying contracts**, re-extract ABIs with `jq '.abi' out/<Contract>.sol/<Contract>.json > platform/{subgraph,frontend}/...` and re-run `npm run prepare` in the subgraph. Stale ABIs cause `Event signature mismatch` at indexing time.
 - **Permissionless `createCampaign`** means `onlyOwner` was removed; the require `params.producer == msg.sender` is what enforces proper attribution. Tests `vm.prank(producer)` before every factory call.
