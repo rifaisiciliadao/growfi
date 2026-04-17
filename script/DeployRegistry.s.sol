@@ -17,9 +17,7 @@ contract DeployRegistryScript is Script {
         require(factoryAddr != address(0), "FACTORY env var required");
 
         vm.startBroadcast();
-        CampaignRegistry registry = new CampaignRegistry(
-            CampaignFactory(factoryAddr)
-        );
+        CampaignRegistry registry = new CampaignRegistry(CampaignFactory(factoryAddr));
         vm.stopBroadcast();
 
         console.log("CampaignRegistry deployed at:", address(registry));

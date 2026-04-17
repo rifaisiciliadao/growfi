@@ -54,6 +54,13 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
     CampaignContracts[] public campaigns;
     mapping(address => bool) public isCampaign;
 
+    /// @notice Minimum `seasonDuration` accepted by `createCampaign`.
+    ///         Owner-settable so testnets can relax to minutes while mainnet enforces
+    ///         a months-long floor. Defaults to 30 days on fresh deployments; existing
+    ///         pre-V2 deployments set it via `initializeV2()` during the upgrade call.
+    /// @dev    Added in V2 — appended to preserve storage layout.
+    uint256 public minSeasonDuration;
+
     // --- Events ---
 
     event CampaignCreated(
@@ -74,6 +81,7 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
 
     event ProtocolFeeRecipientUpdated(address oldRecipient, address newRecipient);
     event ImplementationUpdated(bytes32 indexed kind, address oldImpl, address newImpl);
+    event MinSeasonDurationUpdated(uint256 oldValue, uint256 newValue);
 
     // --- Struct for createCampaign args (unchanged ABI) ---
 
@@ -116,7 +124,14 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
         protocolFeeRecipient = protocolFeeRecipient_;
         usdc = usdc_;
         sequencerUptimeFeed = sequencerUptimeFeed_;
+        minSeasonDuration = 30 days;
         _setImpls(impls);
+    }
+
+    /// @notice One-shot reinitializer for existing pre-V2 deployments being upgraded.
+    ///         Seeds `minSeasonDuration = 30 days` so the behavior matches pre-upgrade.
+    function initializeV2() external reinitializer(2) {
+        minSeasonDuration = 30 days;
     }
 
     // --- Campaign Creation ---
@@ -132,7 +147,7 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
         require(params.maxCap > 0, "Zero maxCap");
         require(params.minCap <= params.maxCap, "minCap > maxCap");
         require(params.fundingDeadline > block.timestamp, "Deadline in past");
-        require(params.seasonDuration >= 30 days, "Season too short");
+        require(params.seasonDuration >= minSeasonDuration, "Season too short");
 
         // 1. Campaign (no cross-contract deps at init).
         address campaignAddr = address(
@@ -288,6 +303,11 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
 
     function setSequencerUptimeFeed(address feed) external onlyOwner {
         sequencerUptimeFeed = feed;
+    }
+
+    function setMinSeasonDuration(uint256 value) external onlyOwner {
+        emit MinSeasonDurationUpdated(minSeasonDuration, value);
+        minSeasonDuration = value;
     }
 
     function getCampaignCount() external view returns (uint256) {

@@ -22,12 +22,7 @@ contract CampaignRegistry {
     /// @notice Monotonically increasing version per campaign.
     mapping(address => uint256) public version;
 
-    event MetadataSet(
-        address indexed campaign,
-        address indexed producer,
-        uint256 indexed version,
-        string uri
-    );
+    event MetadataSet(address indexed campaign, address indexed producer, uint256 indexed version, string uri);
 
     error NotCampaign();
     error NotProducer();
