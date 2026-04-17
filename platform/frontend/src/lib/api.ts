@@ -59,3 +59,39 @@ export async function uploadMetadata(input: {
 
   return res.json();
 }
+
+export interface ProducerProfileResult {
+  key: string;
+  url: string;
+  profile: {
+    name: string;
+    bio: string;
+    avatar: string | null;
+    cover: string | null;
+    website: string | null;
+    location: string | null;
+    updatedAt: number;
+  };
+}
+
+export async function uploadProducerProfile(input: {
+  name: string;
+  bio: string;
+  avatar?: string | null;
+  cover?: string | null;
+  website?: string | null;
+  location?: string | null;
+}): Promise<ProducerProfileResult> {
+  const res = await fetch(`${BACKEND_URL}/api/producer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Profile upload failed" }));
+    throw new Error(err.error || "Profile upload failed");
+  }
+
+  return res.json();
+}

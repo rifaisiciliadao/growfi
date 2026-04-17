@@ -283,6 +283,65 @@ export function useUserPortfolio(user: string | undefined) {
   });
 }
 
+export interface SubgraphProducer {
+  id: string;
+  profileURI: string | null;
+  version: string;
+  updatedAt: string | null;
+}
+
+export function useSubgraphProducer(address: string | undefined) {
+  return useQuery({
+    queryKey: ["subgraph", "producer", address?.toLowerCase()],
+    enabled: !!address,
+    queryFn: async () => {
+      if (!address) return null;
+      const data = await gql<{ producer: SubgraphProducer | null }>(
+        `
+        query Producer($id: ID!) {
+          producer(id: $id) {
+            id
+            profileURI
+            version
+            updatedAt
+          }
+        }
+        `,
+        { id: address.toLowerCase() },
+      );
+      return data.producer;
+    },
+    refetchInterval: 20_000,
+  });
+}
+
+export function useProducerCampaigns(producerAddress: string | undefined) {
+  return useQuery({
+    queryKey: ["subgraph", "producer-campaigns", producerAddress?.toLowerCase()],
+    enabled: !!producerAddress,
+    queryFn: async () => {
+      if (!producerAddress) return [];
+      const data = await gql<{ campaigns: SubgraphCampaign[] }>(
+        `
+        query ProducerCampaigns($producer: Bytes!) {
+          campaigns(
+            where: { producer: $producer }
+            orderBy: createdAt
+            orderDirection: desc
+            first: 100
+          ) {
+            ${CAMPAIGN_FIELDS}
+          }
+        }
+        `,
+        { producer: producerAddress.toLowerCase() },
+      );
+      return data.campaigns;
+    },
+    refetchInterval: 20_000,
+  });
+}
+
 export interface SubgraphMeta {
   block: { number: number; hash: string };
   hasIndexingErrors: boolean;

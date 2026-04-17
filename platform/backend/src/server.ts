@@ -137,6 +137,55 @@ app.post<{
   };
 });
 
+app.post<{
+  Body: {
+    name: string;
+    bio: string;
+    avatar?: string | null;
+    cover?: string | null;
+    website?: string | null;
+    location?: string | null;
+  };
+}>("/api/producer", async (req, reply) => {
+  if (!process.env.DO_SPACES_KEY || !process.env.DO_SPACES_SECRET) {
+    return reply.status(503).send({ error: "DO Spaces non configurato" });
+  }
+
+  const { name, bio, avatar, cover, website, location } = req.body;
+  if (!name) {
+    return reply.status(400).send({ error: "name obbligatorio" });
+  }
+
+  const profile = {
+    name,
+    bio: bio ?? "",
+    avatar: avatar ?? null,
+    cover: cover ?? null,
+    website: website ?? null,
+    location: location ?? null,
+    updatedAt: Date.now(),
+  };
+
+  const key = `producers/${nanoid(12)}.json`;
+
+  await s3.send(
+    new PutObjectCommand({
+      Bucket: SPACES_BUCKET,
+      Key: key,
+      Body: JSON.stringify(profile, null, 2),
+      ContentType: "application/json",
+      ACL: "public-read",
+      CacheControl: "public, max-age=60",
+    }),
+  );
+
+  return {
+    key,
+    url: `${SPACES_PUBLIC_BASE}/${key}`,
+    profile,
+  };
+});
+
 app.setErrorHandler((err, _req, reply) => {
   app.log.error(err);
   reply.status(err.statusCode || 500).send({

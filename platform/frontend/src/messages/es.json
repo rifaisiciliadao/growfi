@@ -273,7 +273,34 @@
       "producer": "El Productor",
       "verified": "Productor verificado",
       "viewReport": "Ver reporte dMRV →",
+      "viewProfile": "Ver perfil",
       "live": "Live"
+    }
+  },
+  "producer": {
+    "invalidAddress": "Dirección de productor no válida.",
+    "anonymous": "Productor anónimo",
+    "editProfile": "Editar perfil",
+    "createProfile": "Crear perfil",
+    "noProfileYet": "Este productor aún no ha publicado un perfil.",
+    "campaignsTitle": "Campañas",
+    "noCampaigns": "Este productor aún no tiene campañas.",
+    "form": {
+      "title": "Tu perfil de productor",
+      "name": "Nombre",
+      "namePlaceholder": "Nombre de la finca",
+      "bio": "Bio",
+      "bioPlaceholder": "Cuenta a los inversores sobre tu finca, prácticas, valores…",
+      "avatar": "Avatar",
+      "cover": "Portada",
+      "location": "Ubicación",
+      "locationPlaceholder": "Ragusa, Sicilia",
+      "website": "Sitio web",
+      "cancel": "Cancelar",
+      "save": "Guardar on-chain",
+      "uploading": "Subiendo imagen…",
+      "savingJson": "Guardando perfil…",
+      "confirmingTx": "Confirma en la wallet…"
     }
   },
   "portfolio": {

@@ -273,7 +273,34 @@
       "producer": "Le Producteur",
       "verified": "Producteur vérifié",
       "viewReport": "Voir le rapport dMRV →",
+      "viewProfile": "Voir le profil",
       "live": "Live"
+    }
+  },
+  "producer": {
+    "invalidAddress": "Adresse producteur invalide.",
+    "anonymous": "Producteur anonyme",
+    "editProfile": "Modifier le profil",
+    "createProfile": "Créer un profil",
+    "noProfileYet": "Ce producteur n'a pas encore publié de profil.",
+    "campaignsTitle": "Campagnes",
+    "noCampaigns": "Pas encore de campagnes pour ce producteur.",
+    "form": {
+      "title": "Ton profil producteur",
+      "name": "Nom",
+      "namePlaceholder": "Nom de la ferme",
+      "bio": "Bio",
+      "bioPlaceholder": "Raconte aux investisseurs ta ferme, tes pratiques, tes valeurs…",
+      "avatar": "Avatar",
+      "cover": "Couverture",
+      "location": "Localisation",
+      "locationPlaceholder": "Ragusa, Sicile",
+      "website": "Site web",
+      "cancel": "Annuler",
+      "save": "Enregistrer on-chain",
+      "uploading": "Upload image…",
+      "savingJson": "Enregistrement profil…",
+      "confirmingTx": "Confirme dans le wallet…"
     }
   },
   "portfolio": {

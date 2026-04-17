@@ -145,6 +145,13 @@ type User @entity(immutable: false) {
   firstSeenAt: BigInt!
 }
 
+type Producer @entity(immutable: false) {
+  id: Bytes!                              # producer address
+  profileURI: String
+  version: BigInt!
+  updatedAt: BigInt
+}
+
 type GlobalStats @entity(immutable: false) {
   id: Bytes!                              # always "global"
   campaignCount: Int!

@@ -52,6 +52,27 @@ dataSources:
         - event: MetadataSet(indexed address,indexed address,indexed uint256,string)
           handler: handleMetadataSet
 
+  - kind: ethereum/contract
+    name: ProducerRegistry
+    network: base-sepolia
+    source:
+      address: "0x702915469f66415C70B4203B40aB9a97203d979B"
+      abi: ProducerRegistry
+      startBlock: 40338465
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.9
+      language: wasm/assemblyscript
+      file: ./src/producer.ts
+      entities:
+        - Producer
+      abis:
+        - name: ProducerRegistry
+          file: ./abis/ProducerRegistry.json
+      eventHandlers:
+        - event: ProfileUpdated(indexed address,indexed uint256,string)
+          handler: handleProfileUpdated
+
 templates:
   - kind: ethereum/contract
     name: Campaign

@@ -273,7 +273,34 @@
       "producer": "The Producer",
       "verified": "Verified producer",
       "viewReport": "See dMRV report →",
+      "viewProfile": "View profile",
       "live": "Live"
+    }
+  },
+  "producer": {
+    "invalidAddress": "Invalid producer address.",
+    "anonymous": "Anonymous producer",
+    "editProfile": "Edit profile",
+    "createProfile": "Create profile",
+    "noProfileYet": "This producer hasn't published a profile yet.",
+    "campaignsTitle": "Campaigns",
+    "noCampaigns": "No campaigns from this producer yet.",
+    "form": {
+      "title": "Your producer profile",
+      "name": "Name",
+      "namePlaceholder": "Farm name",
+      "bio": "Bio",
+      "bioPlaceholder": "Tell investors about your farm, practices, values…",
+      "avatar": "Avatar",
+      "cover": "Cover",
+      "location": "Location",
+      "locationPlaceholder": "Ragusa, Sicily",
+      "website": "Website",
+      "cancel": "Cancel",
+      "save": "Save on-chain",
+      "uploading": "Uploading image…",
+      "savingJson": "Saving profile…",
+      "confirmingTx": "Confirm in wallet…"
     }
   },
   "portfolio": {

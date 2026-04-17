@@ -6,8 +6,8 @@ import { useTranslations } from "next-intl";
 import type { Address } from "viem";
 import { parseUnits } from "viem";
 import { useCampaignData } from "@/contracts/hooks";
-import { useSubgraphCampaign } from "@/lib/subgraph";
-import { useCampaignMetadata } from "@/lib/metadata";
+import { useSubgraphCampaign, useSubgraphProducer } from "@/lib/subgraph";
+import { useCampaignMetadata, useProducerProfile } from "@/lib/metadata";
 import { BuyPanel } from "@/components/BuyPanel";
 import { StakingPanel } from "@/components/StakingPanel";
 import { HarvestPanel } from "@/components/HarvestPanel";
@@ -168,7 +168,9 @@ export default function CampaignDetail({
         <div className="w-full lg:w-[35%] sticky top-36 flex flex-col gap-4">
           <StatsCard />
           <TokensAcceptedCard />
-          <ProducerCard />
+          <ProducerCard
+            producer={(sgCampaign?.producer as Address) ?? undefined}
+          />
         </div>
       </div>
     </>
@@ -410,40 +412,72 @@ function TokenRow({
   );
 }
 
-function ProducerCard() {
+function ProducerCard({ producer }: { producer?: Address }) {
   const t = useTranslations("detail.sidebar");
+  const { data: sgProducer } = useSubgraphProducer(producer);
+  const { data: profile } = useProducerProfile(
+    sgProducer?.profileURI,
+    sgProducer?.version,
+  );
+
+  const name = profile?.name;
+  const location = profile?.location;
+  const avatar = profile?.avatar;
+  const short = producer
+    ? `${producer.slice(0, 6)}…${producer.slice(-4)}`
+    : "";
+
+  const initials = (name ?? short).slice(0, 2).toUpperCase();
+
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15">
       <h3 className="text-sm font-semibold text-on-surface mb-4">
         {t("producer")}
       </h3>
       <div className="flex items-center gap-4 mb-4">
-        <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-bold shrink-0">
-          FF
-        </div>
-        <div>
+        {avatar ? (
+          <img
+            src={avatar}
+            alt={name ?? short}
+            className="w-12 h-12 rounded-full object-cover shrink-0"
+          />
+        ) : (
+          <div className="w-12 h-12 rounded-full bg-primary flex items-center justify-center text-white font-bold shrink-0">
+            {initials}
+          </div>
+        )}
+        <div className="min-w-0">
           <div className="flex items-center gap-1.5">
-            <span className="font-semibold text-on-surface">
-              Ferrara Family Farm
+            <span className="font-semibold text-on-surface truncate">
+              {name ?? short}
             </span>
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              className="text-primary"
-            >
-              <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
-            </svg>
+            {profile && (
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="text-primary shrink-0"
+              >
+                <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
+              </svg>
+            )}
           </div>
-          <div className="flex items-center gap-1 mt-0.5">
-            <span className="text-sm text-on-surface-variant">Sicily, Italy</span>
-          </div>
+          {location && (
+            <div className="text-sm text-on-surface-variant mt-0.5 truncate">
+              {location}
+            </div>
+          )}
         </div>
       </div>
-      <button className="w-full py-2 flex items-center justify-center gap-2 text-primary text-sm font-semibold hover:bg-surface-container-low rounded-lg transition">
-        {t("viewReport")}
-      </button>
+      {producer && (
+        <Link
+          href={`/producer/${producer}`}
+          className="w-full py-2 flex items-center justify-center gap-2 text-primary text-sm font-semibold hover:bg-surface-container-low rounded-lg transition"
+        >
+          {t("viewProfile")} →
+        </Link>
+      )}
     </div>
   );
 }

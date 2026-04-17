@@ -273,7 +273,34 @@
       "producer": "Il Produttore",
       "verified": "Produttore verificato",
       "viewReport": "Vedi report dMRV →",
+      "viewProfile": "Vedi profilo",
       "live": "Live"
+    }
+  },
+  "producer": {
+    "invalidAddress": "Indirizzo produttore non valido.",
+    "anonymous": "Produttore anonimo",
+    "editProfile": "Modifica profilo",
+    "createProfile": "Crea profilo",
+    "noProfileYet": "Questo produttore non ha ancora pubblicato un profilo.",
+    "campaignsTitle": "Campagne",
+    "noCampaigns": "Nessuna campagna di questo produttore.",
+    "form": {
+      "title": "Il tuo profilo produttore",
+      "name": "Nome",
+      "namePlaceholder": "Nome dell'azienda",
+      "bio": "Bio",
+      "bioPlaceholder": "Racconta agli investitori la tua azienda, le pratiche, i valori…",
+      "avatar": "Avatar",
+      "cover": "Copertina",
+      "location": "Localizzazione",
+      "locationPlaceholder": "Ragusa, Sicilia",
+      "website": "Sito web",
+      "cancel": "Annulla",
+      "save": "Salva on-chain",
+      "uploading": "Upload immagine…",
+      "savingJson": "Salvataggio profilo…",
+      "confirmingTx": "Conferma nel wallet…"
     }
   },
   "portfolio": {
