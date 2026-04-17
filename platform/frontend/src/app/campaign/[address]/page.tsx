@@ -9,6 +9,7 @@ import { useCampaignData } from "@/contracts/hooks";
 import { useSubgraphCampaign } from "@/lib/subgraph";
 import { useCampaignMetadata } from "@/lib/metadata";
 import { BuyPanel } from "@/components/BuyPanel";
+import { StakingPanel } from "@/components/StakingPanel";
 
 const FALLBACK_HERO =
   "https://images.unsplash.com/photo-1550547660-d9450f859349?w=1600&q=80";
@@ -140,7 +141,13 @@ export default function CampaignDetail({
             </>
           )}
 
-          {activeTab === "stake" && <StakingPanel />}
+          {activeTab === "stake" && hasOnChainData && sgCampaign && (
+            <StakingPanel
+              campaignToken={sgCampaign.campaignToken as Address}
+              stakingVault={sgCampaign.stakingVault as Address}
+              seasonDuration={BigInt(sgCampaign.seasonDuration)}
+            />
+          )}
           {activeTab === "harvest" && <HarvestPanel />}
           {activeTab === "info" && (
             <InfoPanel
@@ -232,74 +239,6 @@ function FundingProgressCard({
         <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
           {t("daysLeft", { days: daysLeft })}
         </span>
-      </div>
-    </div>
-  );
-}
-
-function StakingPanel() {
-  const t = useTranslations("detail.stake");
-  return (
-    <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15">
-      <h2 className="text-2xl font-bold tracking-tight text-on-surface mb-2">
-        {t("title")}
-      </h2>
-      <p className="text-sm text-on-surface-variant mb-6">{t("subtitle")}</p>
-
-      <div className="space-y-4">
-        <div className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/15">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <div className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-                {t("position", { id: 1 })}
-              </div>
-              <div className="text-2xl font-bold text-on-surface">
-                5,000 $CAMP
-              </div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-                {t("yieldAccrued")}
-              </div>
-              <div className="text-2xl font-bold text-primary">
-                142.38 $YIELD
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mb-4 pt-4 border-t border-outline-variant/15">
-            <div>
-              <div className="text-xs text-on-surface-variant">
-                {t("stakeDate")}
-              </div>
-              <div className="text-sm font-semibold text-on-surface">
-                Jan 15, 2026
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-on-surface-variant">
-                {t("unstakePenalty")}
-              </div>
-              <div className="text-sm font-semibold text-error">23%</div>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <button className="flex-1 bg-primary text-white rounded-full py-2.5 text-sm font-semibold hover:opacity-90 transition">
-              {t("claim")}
-            </button>
-            <button className="flex-1 bg-surface-container-high text-on-surface rounded-full py-2.5 text-sm font-semibold hover:bg-surface-container-highest transition">
-              {t("restake")}
-            </button>
-            <button className="flex-1 bg-transparent border border-outline-variant text-on-surface-variant rounded-full py-2.5 text-sm font-semibold hover:bg-surface-container-low transition">
-              {t("unstake")}
-            </button>
-          </div>
-        </div>
-
-        <button className="w-full border-2 border-dashed border-outline-variant rounded-xl p-6 text-sm font-semibold text-on-surface-variant hover:border-primary hover:bg-surface-container-low transition">
-          {t("newStake")}
-        </button>
       </div>
     </div>
   );

@@ -1,0 +1,424 @@
+"use client";
+
+import { useState, useEffect, useMemo } from "react";
+import { useTranslations } from "next-intl";
+import {
+  useAccount,
+  useReadContract,
+  useReadContracts,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+} from "wagmi";
+import { formatUnits, parseUnits, type Address } from "viem";
+import { abis } from "@/contracts";
+import { erc20Abi } from "@/contracts/erc20";
+
+interface Props {
+  campaignToken: Address;
+  stakingVault: Address;
+  seasonDuration: bigint; // in seconds
+}
+
+type Position = {
+  id: bigint;
+  amount: bigint;
+  startTime: bigint;
+  seasonId: bigint;
+  active: boolean;
+  earned: bigint;
+};
+
+const stakingAbi = abis.StakingVault as never;
+const tokenAbi = abis.CampaignToken as never;
+
+export function StakingPanel({
+  campaignToken,
+  stakingVault,
+  seasonDuration,
+}: Props) {
+  const t = useTranslations("detail.stake");
+  const { address: user, isConnected } = useAccount();
+
+  const [pendingHash, setPendingHash] = useState<`0x${string}` | undefined>();
+  const [pendingKind, setPendingKind] = useState<
+    "approve" | "stake" | "claim" | "unstake" | "restake" | null
+  >(null);
+  const [stakeAmount, setStakeAmount] = useState("");
+
+  const { writeContractAsync } = useWriteContract();
+  const receipt = useWaitForTransactionReceipt({ hash: pendingHash });
+
+  // 1) Load position IDs for the user
+  const { data: positionIds, refetch: refetchIds } = useReadContract({
+    address: stakingVault,
+    abi: stakingAbi,
+    functionName: "getPositions",
+    args: user ? [user] : undefined,
+    query: { enabled: !!user, refetchInterval: 10_000 },
+  }) as { data: bigint[] | undefined; refetch: () => void };
+
+  // 2) For each id, read position struct + earned
+  const positionContracts = useMemo(() => {
+    if (!positionIds) return [];
+    return positionIds.flatMap((id) => [
+      { address: stakingVault, abi: stakingAbi, functionName: "positions", args: [id] },
+      { address: stakingVault, abi: stakingAbi, functionName: "earned", args: [id] },
+    ]);
+  }, [positionIds, stakingVault]);
+
+  const { data: positionData, refetch: refetchPositions } = useReadContracts({
+    contracts: positionContracts as never,
+    query: { enabled: positionContracts.length > 0, refetchInterval: 10_000 },
+  });
+
+  const positions: Position[] = useMemo(() => {
+    if (!positionIds || !positionData) return [];
+    return positionIds
+      .map((id, i) => {
+        const posResult = positionData[i * 2]?.result as
+          | readonly [Address, bigint, bigint, bigint, bigint, boolean]
+          | undefined;
+        const earned = (positionData[i * 2 + 1]?.result as bigint) ?? 0n;
+        if (!posResult) return null;
+        return {
+          id,
+          amount: posResult[1],
+          startTime: posResult[2],
+          seasonId: posResult[4],
+          active: posResult[5],
+          earned,
+        };
+      })
+      .filter((p): p is Position => p !== null && p.active);
+  }, [positionIds, positionData]);
+
+  // 3) User token balance + allowance
+  const { data: balAllow, refetch: refetchBalAllow } = useReadContracts({
+    contracts: user
+      ? [
+          { address: campaignToken, abi: erc20Abi, functionName: "balanceOf", args: [user] },
+          {
+            address: campaignToken,
+            abi: erc20Abi,
+            functionName: "allowance",
+            args: [user, stakingVault],
+          },
+          { address: campaignToken, abi: erc20Abi, functionName: "symbol" },
+        ]
+      : [],
+    query: { enabled: !!user },
+  });
+
+  const balance = (balAllow?.[0]?.result as bigint) ?? 0n;
+  const allowance = (balAllow?.[1]?.result as bigint) ?? 0n;
+  const symbol = (balAllow?.[2]?.result as string) ?? "CAMP";
+
+  // 4) Current season for restake eligibility
+  const { data: currentSeasonId } = useReadContract({
+    address: stakingVault,
+    abi: stakingAbi,
+    functionName: "currentSeasonId",
+  }) as { data: bigint | undefined };
+
+  // Refresh all reads once tx confirms
+  useEffect(() => {
+    if (!receipt.isSuccess || !pendingHash) return;
+    refetchIds();
+    refetchPositions();
+    refetchBalAllow();
+    setPendingKind(null);
+    setPendingHash(undefined);
+    if (pendingKind === "stake") setStakeAmount("");
+  }, [
+    receipt.isSuccess,
+    pendingHash,
+    pendingKind,
+    refetchIds,
+    refetchPositions,
+    refetchBalAllow,
+  ]);
+
+  const stakeAmountWei = useMemo(() => {
+    if (!stakeAmount || Number(stakeAmount) <= 0) return 0n;
+    try {
+      return parseUnits(stakeAmount, 18);
+    } catch {
+      return 0n;
+    }
+  }, [stakeAmount]);
+
+  const needsApproval = stakeAmountWei > 0n && allowance < stakeAmountWei;
+  const canStake = isConnected && stakeAmountWei > 0n && stakeAmountWei <= balance;
+
+  const runTx = async (
+    kind: typeof pendingKind,
+    call: Promise<`0x${string}`>,
+  ) => {
+    try {
+      setPendingKind(kind);
+      const hash = await call;
+      setPendingHash(hash);
+    } catch (err) {
+      setPendingKind(null);
+      console.error(err);
+    }
+  };
+
+  const handleApprove = () =>
+    runTx(
+      "approve",
+      writeContractAsync({
+        address: campaignToken,
+        abi: erc20Abi,
+        functionName: "approve",
+        args: [stakingVault, stakeAmountWei],
+      }),
+    );
+
+  const handleStake = () =>
+    runTx(
+      "stake",
+      writeContractAsync({
+        address: stakingVault,
+        abi: stakingAbi,
+        functionName: "stake",
+        args: [stakeAmountWei],
+      }),
+    );
+
+  const handleClaim = (positionId: bigint) =>
+    runTx(
+      "claim",
+      writeContractAsync({
+        address: stakingVault,
+        abi: stakingAbi,
+        functionName: "claimYield",
+        args: [positionId],
+      }),
+    );
+
+  const handleUnstake = (positionId: bigint) =>
+    runTx(
+      "unstake",
+      writeContractAsync({
+        address: stakingVault,
+        abi: stakingAbi,
+        functionName: "unstake",
+        args: [positionId],
+      }),
+    );
+
+  const handleRestake = (positionId: bigint) =>
+    runTx(
+      "restake",
+      writeContractAsync({
+        address: stakingVault,
+        abi: stakingAbi,
+        functionName: "restake",
+        args: [positionId],
+      }),
+    );
+
+  return (
+    <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15">
+      <h2 className="text-2xl font-bold tracking-tight text-on-surface mb-2">
+        {t("title")}
+      </h2>
+      <p className="text-sm text-on-surface-variant mb-6">{t("subtitle")}</p>
+
+      {/* New stake form */}
+      <div className="bg-surface-container-low rounded-xl p-5 mb-6 border border-outline-variant/15">
+        <div className="flex justify-between items-center mb-2">
+          <label className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t("newStakeAmount")}
+          </label>
+          <button
+            onClick={() => setStakeAmount(formatUnits(balance, 18))}
+            className="text-xs text-on-surface-variant hover:text-primary transition-colors"
+          >
+            {t("availableBalance", {
+              amount: Number(formatUnits(balance, 18)).toFixed(2),
+              symbol,
+            })}
+          </button>
+        </div>
+        <div className="flex justify-between items-center mb-3">
+          <input
+            type="number"
+            value={stakeAmount}
+            onChange={(e) => setStakeAmount(e.target.value)}
+            placeholder="0.00"
+            className="bg-transparent border-none outline-none text-3xl font-bold text-on-surface w-full p-0 focus:ring-0"
+          />
+          <div className="bg-surface-container-highest rounded-full px-3 py-1 ml-2">
+            <span className="text-sm font-semibold text-on-surface">
+              ${symbol}
+            </span>
+          </div>
+        </div>
+        {needsApproval ? (
+          <button
+            onClick={handleApprove}
+            disabled={!canStake || pendingKind !== null}
+            className="w-full regen-gradient text-white rounded-xl h-12 font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {pendingKind === "approve"
+              ? t("approving")
+              : t("approveToStake", { symbol })}
+          </button>
+        ) : (
+          <button
+            onClick={handleStake}
+            disabled={!canStake || pendingKind !== null}
+            className="w-full regen-gradient text-white rounded-xl h-12 font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {pendingKind === "stake"
+              ? t("staking")
+              : !isConnected
+                ? t("connectFirst")
+                : stakeAmountWei > balance
+                  ? t("insufficientBalance")
+                  : t("newStake")}
+          </button>
+        )}
+      </div>
+
+      {/* Existing positions */}
+      {positions.length === 0 ? (
+        <p className="text-sm text-on-surface-variant text-center py-8">
+          {t("noPositions")}
+        </p>
+      ) : (
+        <div className="space-y-3">
+          {positions.map((pos) => (
+            <PositionCard
+              key={String(pos.id)}
+              pos={pos}
+              symbol={symbol}
+              seasonDuration={seasonDuration}
+              currentSeasonId={currentSeasonId}
+              pendingKind={pendingKind}
+              onClaim={() => handleClaim(pos.id)}
+              onUnstake={() => handleUnstake(pos.id)}
+              onRestake={() => handleRestake(pos.id)}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PositionCard({
+  pos,
+  symbol,
+  seasonDuration,
+  currentSeasonId,
+  pendingKind,
+  onClaim,
+  onUnstake,
+  onRestake,
+}: {
+  pos: Position;
+  symbol: string;
+  seasonDuration: bigint;
+  currentSeasonId: bigint | undefined;
+  pendingKind: string | null;
+  onClaim: () => void;
+  onUnstake: () => void;
+  onRestake: () => void;
+}) {
+  const t = useTranslations("detail.stake");
+
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  const elapsed = now - pos.startTime;
+  const penaltyPct =
+    seasonDuration > 0n && elapsed < seasonDuration
+      ? Math.max(0, 100 - Number((elapsed * 100n) / seasonDuration))
+      : 0;
+
+  const stakeDate = new Date(Number(pos.startTime) * 1000).toLocaleDateString();
+  const isStalePosition =
+    currentSeasonId !== undefined && pos.seasonId !== currentSeasonId;
+
+  const locked = pendingKind !== null;
+
+  return (
+    <div className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/15">
+      <div className="flex justify-between items-start mb-4">
+        <div>
+          <div className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            {t("position", { id: String(pos.id) })}
+          </div>
+          <div className="text-2xl font-bold text-on-surface">
+            {Number(formatUnits(pos.amount, 18)).toLocaleString()} ${symbol}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            {t("yieldAccrued")}
+          </div>
+          <div className="text-2xl font-bold text-primary">
+            {Number(formatUnits(pos.earned, 18)).toFixed(4)} $YIELD
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-4 mb-4 pt-4 border-t border-outline-variant/15 text-sm">
+        <div>
+          <div className="text-xs text-on-surface-variant">
+            {t("stakeDate")}
+          </div>
+          <div className="font-semibold text-on-surface">{stakeDate}</div>
+        </div>
+        <div>
+          <div className="text-xs text-on-surface-variant">
+            {t("unstakePenalty")}
+          </div>
+          <div className={`font-semibold ${penaltyPct > 0 ? "text-error" : "text-primary"}`}>
+            {penaltyPct}%
+          </div>
+        </div>
+        <div>
+          <div className="text-xs text-on-surface-variant">
+            {t("positionSeason")}
+          </div>
+          <div className="font-semibold text-on-surface">
+            #{String(pos.seasonId)}
+            {isStalePosition && (
+              <span className="ml-1 text-xs text-on-surface-variant">
+                ({t("oldSeason")})
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={onClaim}
+          disabled={locked || pos.earned === 0n}
+          className="flex-1 bg-primary text-white rounded-full py-2.5 text-sm font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {pendingKind === "claim" ? t("claiming") : t("claim")}
+        </button>
+        {isStalePosition && (
+          <button
+            onClick={onRestake}
+            disabled={locked}
+            className="flex-1 bg-surface-container-high text-on-surface rounded-full py-2.5 text-sm font-semibold hover:bg-surface-container-highest transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {pendingKind === "restake" ? t("restaking") : t("restake")}
+          </button>
+        )}
+        <button
+          onClick={onUnstake}
+          disabled={locked}
+          className="flex-1 bg-transparent border border-outline-variant text-on-surface-variant rounded-full py-2.5 text-sm font-semibold hover:bg-surface-container-low transition disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {pendingKind === "unstake" ? t("unstaking") : t("unstake")}
+        </button>
+      </div>
+    </div>
+  );
+}
