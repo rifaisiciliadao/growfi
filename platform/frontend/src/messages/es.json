@@ -251,7 +251,12 @@
       "totalEntitled": "Asignado: ${amount} · retirados: ${claimed}",
       "claimUSDC": "Retirar USDC",
       "claiming": "Retirando…",
-      "productRedemptionSoon": "Canje de producto físico (Merkle proof) próximamente."
+      "productRedemptionSoon": "Canje de producto físico (Merkle proof) próximamente.",
+      "checkingProductEligibility": "Comprobando tu asignación…",
+      "notEligibleForProduct": "No eres elegible para canjear producto esta temporada (debajo del mínimo o fuera del snapshot).",
+      "productEntitlement": "Tu asignación de producto",
+      "redeemProduct": "Canjear producto",
+      "productRedeemNote": "Canjear quema todo tu $YIELD de la temporada. Recibirás el producto tras la coordinación off-chain del envío."
     },
     "info": {
       "title": "Información de la Campaña",

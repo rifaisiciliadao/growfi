@@ -251,7 +251,12 @@
       "totalEntitled": "Dû : ${amount} · retiré : ${claimed}",
       "claimUSDC": "Retirer USDC",
       "claiming": "Retrait…",
-      "productRedemptionSoon": "Rédemption produit physique (Merkle proof) bientôt disponible."
+      "productRedemptionSoon": "Rédemption produit physique (Merkle proof) bientôt disponible.",
+      "checkingProductEligibility": "Vérification de ton allocation…",
+      "notEligibleForProduct": "Tu n'es pas éligible au produit pour cette saison (sous le minimum ou hors du snapshot).",
+      "productEntitlement": "Ton allocation produit",
+      "redeemProduct": "Racheter produit",
+      "productRedeemNote": "La rédemption brûle ton solde $YIELD de la saison. Tu recevras le produit après la coordination off-chain de l'expédition."
     },
     "info": {
       "title": "Infos de la Campagne",

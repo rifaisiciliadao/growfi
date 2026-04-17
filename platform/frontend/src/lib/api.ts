@@ -74,6 +74,54 @@ export interface ProducerProfileResult {
   };
 }
 
+export interface MerkleProof {
+  user: string;
+  productAmount: string; // 18-dec
+  proof: `0x${string}`[];
+}
+
+export async function fetchMerkleProof(
+  campaign: string,
+  seasonId: string | number | bigint,
+  user: string,
+): Promise<MerkleProof | null> {
+  const res = await fetch(
+    `${BACKEND_URL}/api/merkle/${campaign.toLowerCase()}/${seasonId}/${user.toLowerCase()}`,
+  );
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Merkle fetch failed: ${res.status}`);
+  return res.json();
+}
+
+export interface MerkleGenerateResult {
+  root: `0x${string}`;
+  url: string;
+  count: number;
+}
+
+export async function generateMerkleTree(input: {
+  campaign: string;
+  seasonId: string | number | bigint;
+  totalProductUnits: string;
+  holders: Array<{ user: string; yieldAmount: string }>;
+  minProductClaim?: string;
+}): Promise<MerkleGenerateResult> {
+  const body = {
+    ...input,
+    seasonId: String(input.seasonId),
+  };
+  const res = await fetch(`${BACKEND_URL}/api/merkle/generate`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Merkle gen failed" }));
+    throw new Error(err.error || "Merkle gen failed");
+  }
+  return res.json();
+}
+
 export async function uploadProducerProfile(input: {
   name: string;
   bio: string;

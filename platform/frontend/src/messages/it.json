@@ -251,7 +251,12 @@
       "totalEntitled": "Spettanza: ${amount} · già riscossi: ${claimed}",
       "claimUSDC": "Preleva USDC",
       "claiming": "Prelievo in corso…",
-      "productRedemptionSoon": "Riscatto prodotto fisico (Merkle proof) in arrivo."
+      "productRedemptionSoon": "Riscatto prodotto fisico (Merkle proof) in arrivo.",
+      "checkingProductEligibility": "Controllo la tua allocazione…",
+      "notEligibleForProduct": "Non sei idoneo al riscatto prodotto per questa stagione (sotto il minimo o fuori dallo snapshot).",
+      "productEntitlement": "La tua allocazione di prodotto",
+      "redeemProduct": "Riscatta prodotto",
+      "productRedeemNote": "Il riscatto brucia tutto il tuo $YIELD per questa stagione. Riceverai il prodotto dopo la coordinazione off-chain della spedizione."
     },
     "info": {
       "title": "Informazioni Campagna",

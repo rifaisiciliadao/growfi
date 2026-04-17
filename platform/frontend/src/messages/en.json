@@ -251,7 +251,12 @@
       "totalEntitled": "Entitled: ${amount} · claimed: ${claimed}",
       "claimUSDC": "Claim USDC",
       "claiming": "Claiming…",
-      "productRedemptionSoon": "Physical product redemption (Merkle proof) coming soon."
+      "productRedemptionSoon": "Physical product redemption (Merkle proof) coming soon.",
+      "checkingProductEligibility": "Checking your product allocation…",
+      "notEligibleForProduct": "Not eligible for product redemption this season (below min claim, or not in the snapshot).",
+      "productEntitlement": "Your product allocation",
+      "redeemProduct": "Redeem product",
+      "productRedeemNote": "Redeeming burns your full $YIELD balance for this season. You'll receive the product after off-chain shipping coordination."
     },
     "info": {
       "title": "Campaign Info",

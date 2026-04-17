@@ -13,6 +13,8 @@ import { formatUnits, parseUnits, type Address } from "viem";
 import { abis } from "@/contracts";
 import { erc20Abi } from "@/contracts/erc20";
 import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
+import { fetchMerkleProof } from "@/lib/api";
+import { useQuery } from "@tanstack/react-query";
 
 interface Props {
   campaignAddress: Address;
@@ -115,6 +117,7 @@ export function HarvestPanel({
               userYieldBalance={yieldBalance}
               isConnected={isConnected}
               pendingKind={pendingKind}
+              campaignAddress={campaignAddress}
               onRedeemUSDC={(yieldAmount) =>
                 runTx(
                   "redeem",
@@ -137,6 +140,17 @@ export function HarvestPanel({
                   }),
                 )
               }
+              onRedeemProduct={(yieldAmount, proof) =>
+                runTx(
+                  "redeem",
+                  writeContractAsync({
+                    address: harvestManager,
+                    abi: harvestAbi,
+                    functionName: "redeemProduct",
+                    args: [BigInt(season.seasonId), yieldAmount, proof],
+                  }),
+                )
+              }
             />
           ))}
         </div>
@@ -148,21 +162,25 @@ export function HarvestPanel({
 function SeasonCard({
   season,
   harvestManager,
+  campaignAddress,
   user,
   userYieldBalance,
   isConnected,
   pendingKind,
   onRedeemUSDC,
   onClaimUSDC,
+  onRedeemProduct,
 }: {
   season: SubgraphSeason;
   harvestManager: Address;
+  campaignAddress: Address;
   user: Address | undefined;
   userYieldBalance: bigint;
   isConnected: boolean;
   pendingKind: string | null;
   onRedeemUSDC: (yieldAmount: bigint) => void;
   onClaimUSDC: () => void;
+  onRedeemProduct: (yieldAmount: bigint, proof: `0x${string}`[]) => void;
 }) {
   const t = useTranslations("detail.harvest");
   const [redeemAmount, setRedeemAmount] = useState("");
@@ -345,12 +363,90 @@ function SeasonCard({
         </div>
       )}
 
-      {/* Product redemption — placeholder (requires merkle proof backend) */}
-      {!hasClaimed && season.merkleRoot && (
-        <div className="mt-3 pt-3 border-t border-outline-variant/15 text-xs text-on-surface-variant">
-          🫒 {t("productRedemptionSoon")}
-        </div>
+      {/* Product redemption (requires merkle proof) */}
+      {!hasClaimed && claimOpen && season.merkleRoot && user && (
+        <ProductRedemption
+          campaignAddress={campaignAddress}
+          seasonId={season.seasonId}
+          user={user}
+          userYieldBalance={userYieldBalance}
+          pendingKind={pendingKind}
+          onRedeem={onRedeemProduct}
+        />
       )}
+    </div>
+  );
+}
+
+function ProductRedemption({
+  campaignAddress,
+  seasonId,
+  user,
+  userYieldBalance,
+  pendingKind,
+  onRedeem,
+}: {
+  campaignAddress: Address;
+  seasonId: string;
+  user: Address;
+  userYieldBalance: bigint;
+  pendingKind: string | null;
+  onRedeem: (yieldAmount: bigint, proof: `0x${string}`[]) => void;
+}) {
+  const t = useTranslations("detail.harvest");
+
+  const { data: proofData, isLoading } = useQuery({
+    queryKey: ["merkle-proof", campaignAddress, seasonId, user?.toLowerCase()],
+    enabled: !!user,
+    queryFn: () => fetchMerkleProof(campaignAddress, seasonId, user),
+    retry: 1,
+    staleTime: Infinity,
+  });
+
+  if (isLoading) {
+    return (
+      <div className="mt-3 pt-3 border-t border-outline-variant/15 text-xs text-on-surface-variant">
+        {t("checkingProductEligibility")}
+      </div>
+    );
+  }
+
+  if (!proofData) {
+    return (
+      <div className="mt-3 pt-3 border-t border-outline-variant/15 text-xs text-on-surface-variant">
+        🫒 {t("notEligibleForProduct")}
+      </div>
+    );
+  }
+
+  const productAmount = BigInt(proofData.productAmount);
+
+  return (
+    <div className="mt-3 pt-3 border-t border-outline-variant/15">
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <div className="text-xs text-on-surface-variant">
+            {t("productEntitlement")}
+          </div>
+          <div className="text-lg font-bold text-primary">
+            🫒{" "}
+            {Number(formatUnits(productAmount, 18)).toLocaleString(undefined, {
+              maximumFractionDigits: 2,
+            })}{" "}
+            {t("units")}
+          </div>
+        </div>
+        <button
+          onClick={() => onRedeem(userYieldBalance, proofData.proof)}
+          disabled={userYieldBalance === 0n || pendingKind !== null}
+          className="bg-primary text-white rounded-full px-5 py-2 text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {pendingKind === "redeem" ? t("redeeming") : t("redeemProduct")}
+        </button>
+      </div>
+      <p className="text-xs text-on-surface-variant">
+        {t("productRedeemNote")}
+      </p>
     </div>
   );
 }
