@@ -84,13 +84,17 @@ contract HarvestManager is Initializable, ReentrancyGuard, PausableUpgradeable {
         address indexed user, uint256 indexed seasonId, uint256 yieldBurned, uint256 productAmount, bytes32 merkleLeaf
     );
 
-    event USDCRedeemed(address indexed user, uint256 indexed seasonId, uint256 yieldBurned, uint256 usdcAmount);
+    /// @notice Holder committed $YIELD to a USDC claim — no USDC has moved yet.
+    ///         Fired by `redeemUSDC`. The actual transfer is a separate
+    ///         `USDCRedeemed` event emitted later by `claimUSDC`.
+    event USDCCommitted(address indexed user, uint256 indexed seasonId, uint256 yieldBurned, uint256 usdcAmount);
 
     event USDCDeposited(
         uint256 indexed seasonId, address indexed producer_, uint256 amount, uint256 totalDeposited, uint256 totalOwed
     );
 
-    event USDCClaimed(address indexed user, uint256 indexed seasonId, uint256 amount);
+    /// @notice USDC actually transferred to the holder — fired by `claimUSDC`.
+    event USDCRedeemed(address indexed user, uint256 indexed seasonId, uint256 amount);
 
     /// @notice Theoretical protocol fee, snapshotted at report time (18-dec USD).
     event ProtocolFeeTargeted(uint256 indexed seasonId, uint256 amountUSD18, address recipient);
@@ -272,7 +276,7 @@ contract HarvestManager is Initializable, ReentrancyGuard, PausableUpgradeable {
 
         harvest.usdcOwed += usdcAmount;
 
-        emit USDCRedeemed(msg.sender, seasonId, yieldAmount, usdcAmount);
+        emit USDCCommitted(msg.sender, seasonId, yieldAmount, usdcAmount);
     }
 
     /// @notice Claim deposited USDC after producer has deposited. Can be called multiple times as producer deposits more.
@@ -302,7 +306,7 @@ contract HarvestManager is Initializable, ReentrancyGuard, PausableUpgradeable {
         claim.usdcClaimed += usdcToTransfer * 1e12;
         usdc.safeTransfer(msg.sender, usdcToTransfer);
 
-        emit USDCClaimed(msg.sender, seasonId, usdcToTransfer);
+        emit USDCRedeemed(msg.sender, seasonId, usdcToTransfer);
     }
 
     // --- Producer USDC Deposit ---

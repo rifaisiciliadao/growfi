@@ -45,6 +45,7 @@ export function handleCampaignCreated(event: CampaignCreatedEvent): void {
   campaign.currentYieldRate = BigInt.fromI32(5).times(
     BigInt.fromI32(10).pow(18),
   ); // 5x
+  campaign.currentSeasonId = BigInt.zero();
   campaign.state = "Funding";
   campaign.paused = false;
   campaign.createdAt = event.params.createdAt;

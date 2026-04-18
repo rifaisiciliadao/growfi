@@ -22,6 +22,7 @@ type Campaign @entity(immutable: false) {
   totalStaked: BigInt!
   totalRaised: BigInt!
   currentYieldRate: BigInt!
+  currentSeasonId: BigInt!
   state: String!                          # "Funding" | "Active" | "Buyback" | "Ended"
   paused: Boolean!
 

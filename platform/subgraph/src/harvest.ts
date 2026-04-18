@@ -2,9 +2,9 @@ import { BigInt, Bytes } from "@graphprotocol/graph-ts";
 import {
   HarvestReported as HarvestReportedEvent,
   ProductRedeemed as ProductRedeemedEvent,
-  USDCRedeemed as USDCRedeemedEvent,
+  USDCCommitted as USDCCommittedEvent,
   USDCDeposited as USDCDepositedEvent,
-  USDCClaimed as USDCClaimedEvent,
+  USDCRedeemed as USDCRedeemedEvent,
 } from "../generated/templates/HarvestManager/HarvestManager";
 import { Season, Claim, Campaign, ContractIndex } from "../generated/schema";
 
@@ -75,7 +75,10 @@ export function handleProductRedeemed(event: ProductRedeemedEvent): void {
   claim.save();
 }
 
-export function handleUSDCRedeemed(event: USDCRedeemedEvent): void {
+/// Fired by HarvestManager.redeemUSDC — holder COMMITS their $YIELD to a
+/// USDC claim. No USDC has moved yet; the actual transfer is the later
+/// `USDCRedeemed` event from claimUSDC.
+export function handleUSDCCommitted(event: USDCCommittedEvent): void {
   const campaign = campaignFromManager(event.address);
   if (campaign == null) return;
 
@@ -118,14 +121,22 @@ export function handleUSDCDeposited(event: USDCDepositedEvent): void {
   }
 }
 
-export function handleUSDCClaimed(event: USDCClaimedEvent): void {
+/// Fired by HarvestManager.claimUSDC — USDC actually transferred to the
+/// holder. Flips `fulfilled` once `usdcClaimed >= usdcAmount - dust`.
+export function handleUSDCRedeemed(event: USDCRedeemedEvent): void {
   const campaign = campaignFromManager(event.address);
   if (campaign == null) return;
 
   const id = claimId(campaign.id, event.params.seasonId, event.params.user);
   const claim = Claim.load(id);
   if (claim != null) {
-    claim.usdcClaimed = claim.usdcClaimed.plus(event.params.amount);
+    // amount is 6-dec USDC; claim.usdcClaimed/usdcAmount are 18-dec internal scale.
+    claim.usdcClaimed = claim.usdcClaimed.plus(
+      event.params.amount.times(BigInt.fromI32(10).pow(12)),
+    );
+    if (claim.usdcClaimed.ge(claim.usdcAmount)) {
+      claim.fulfilled = true;
+    }
     claim.save();
   }
 }

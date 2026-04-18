@@ -40,7 +40,10 @@ export function handleStaked(event: StakedEvent): void {
   pos.user = event.params.user;
   pos.amount = event.params.amount;
   pos.startTime = event.block.timestamp;
-  pos.seasonId = BigInt.zero();
+  // On-chain, stake() sets pos.seasonId = currentSeasonId at that block.
+  // We mirror that by reading campaign.currentSeasonId (kept in sync by
+  // handleSeasonStarted / handleSeasonEnded).
+  pos.seasonId = campaign.currentSeasonId;
   pos.yieldClaimed = BigInt.zero();
   pos.active = true;
   pos.createdAt = event.block.timestamp;
@@ -76,6 +79,12 @@ export function handleRestaked(event: RestakedEvent): void {
   if (pos != null) {
     pos.seasonId = event.params.newSeasonId;
     pos.startTime = event.block.timestamp;
+    // Reset yieldClaimed so snapshots of the NEW season don't carry
+    // over earnings from the previous one. The previous season's
+    // yield was minted at restake time and is tracked via YieldMinted
+    // events but grouped by position, so we accept the trade-off of
+    // not attributing those events to a specific season.
+    pos.yieldClaimed = BigInt.zero();
     pos.save();
   }
 }
@@ -113,6 +122,9 @@ export function handleYieldRateUpdated(event: YieldRateUpdatedEvent): void {
 export function handleSeasonStarted(event: SeasonStartedEvent): void {
   const campaign = campaignFromVault(event.address);
   if (campaign == null) return;
+
+  campaign.currentSeasonId = event.params.seasonId;
+  campaign.save();
 
   const season = new Season(seasonEntityId(campaign.id, event.params.seasonId));
   season.campaign = campaign.id;

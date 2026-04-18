@@ -173,9 +173,9 @@ templates:
           handler: handleHarvestReported
         - event: ProductRedeemed(indexed address,indexed uint256,uint256,uint256,bytes32)
           handler: handleProductRedeemed
-        - event: USDCRedeemed(indexed address,indexed uint256,uint256,uint256)
-          handler: handleUSDCRedeemed
+        - event: USDCCommitted(indexed address,indexed uint256,uint256,uint256)
+          handler: handleUSDCCommitted
         - event: USDCDeposited(indexed uint256,indexed address,uint256,uint256,uint256)
           handler: handleUSDCDeposited
-        - event: USDCClaimed(indexed address,indexed uint256,uint256)
-          handler: handleUSDCClaimed
+        - event: USDCRedeemed(indexed address,indexed uint256,uint256)
+          handler: handleUSDCRedeemed
