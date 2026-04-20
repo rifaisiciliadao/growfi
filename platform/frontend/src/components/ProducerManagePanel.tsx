@@ -3,7 +3,6 @@
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import { useReadContract, useReadContracts, useWriteContract } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import { formatUnits, parseUnits, zeroAddress, type Address } from "viem";
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
 import {
@@ -11,12 +10,12 @@ import {
   PRICING_MODE_ENUM,
   resolveTokenAddress,
 } from "@/contracts/tokens";
-import { config } from "@/app/providers";
 import { erc20Abi } from "@/contracts/erc20";
 import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
 import { fetchSnapshot, generateMerkleTree } from "@/lib/api";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
+import { waitForTx } from "@/lib/waitForTx";
 
 const campaignAbi = abis.Campaign as never;
 
@@ -237,7 +236,7 @@ function AcceptedTokensManager({
         args: [token],
       });
       setPending({ kind: "remove", token, phase: "chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("remove reverted");
       await refetchAccepted();
       notify.success(tx("removeTokenConfirmed"), hash);
@@ -279,7 +278,7 @@ function AcceptedTokensManager({
         args: [tokenAddress, pricingMode, fixedRate, oracleFeed],
       });
       setPending({ kind: "add", phase: "chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("add reverted");
       setAddRate("");
       await refetchAccepted();
@@ -458,21 +457,37 @@ function LifecycleSection({
     }) as { data: bigint | undefined; refetch: () => void };
 
   const currentSeasonId = currentSeasonIdRaw ?? 0n;
-  const currentSeason = seasons.find(
-    (s) => BigInt(s.seasonId) === currentSeasonId,
-  );
-  const hasActiveSeason = !!currentSeason?.active;
+
+  // Live on-chain read of the current season struct: the subgraph lags by a
+  // few seconds after endSeason, so relying on `seasons[...]` from props would
+  // keep the "End Season" button visible until Goldsky indexes the event.
+  // The contract read is instant; we refetch it after every lifecycle tx.
+  const { data: currentSeasonOnChain, refetch: refetchCurrentSeason } =
+    useReadContract({
+      address: stakingVault,
+      abi: abis.StakingVault as never,
+      functionName: "seasons",
+      args: currentSeasonId > 0n ? [currentSeasonId] : undefined,
+      query: { enabled: currentSeasonId > 0n, refetchInterval: 15_000 },
+    }) as {
+      data:
+        | readonly [bigint, bigint, bigint, boolean, ...unknown[]]
+        | undefined;
+      refetch: () => void;
+    };
+  // seasons() layout: (seasonId, startTime, endTime, active, ...)
+  const hasActiveSeason = !!currentSeasonOnChain?.[3];
+  const onChainStartTs = currentSeasonOnChain?.[1]
+    ? Number(currentSeasonOnChain[1])
+    : 0;
 
   // Suggest ending the season once its on-chain duration has elapsed, so
   // the producer knows it's time to report harvest.
-  const seasonStartTs = currentSeason?.startTime
-    ? Number(currentSeason.startTime)
-    : 0;
   const nowTs = Math.floor(Date.now() / 1000);
   const seasonElapsed =
     hasActiveSeason &&
-    seasonStartTs > 0 &&
-    BigInt(nowTs - seasonStartTs) >= seasonDuration;
+    onChainStartTs > 0 &&
+    BigInt(nowTs - onChainStartTs) >= seasonDuration;
 
   const [pendingAction, setPendingAction] = useState<
     | null
@@ -489,10 +504,11 @@ function LifecycleSection({
     try {
       const hash = await writeContractAsync(args);
       setPendingAction({ action, phase: "chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("Transaction reverted");
       onChange();
       refetchSeasonId();
+      refetchCurrentSeason();
       notify.success(tx(`${action}Confirmed`), hash);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -759,7 +775,7 @@ function ReportHarvestCard({
       });
 
       setStage({ kind: "report-chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") {
         throw new Error("reportHarvest reverted");
       }
@@ -972,7 +988,7 @@ function ObligationCard({
         args: [harvestManager, parsedAmount],
       });
       setStage({ kind: "approving-chain" });
-      const ar = await waitForTransactionReceipt(config, { hash: approveHash });
+      const ar = await waitForTx(approveHash);
       if (ar.status !== "success") throw new Error("Approve reverted");
       notify.success(tx("approvalConfirmed"), approveHash);
 
@@ -985,9 +1001,7 @@ function ObligationCard({
         args: [BigInt(season.seasonId), parsedAmount],
       });
       setStage({ kind: "depositing-chain" });
-      const dr = await waitForTransactionReceipt(config, {
-        hash: depositHash,
-      });
+      const dr = await waitForTx(depositHash);
       if (dr.status !== "success") throw new Error("Deposit reverted");
 
       await refetchRemaining();
@@ -1019,11 +1033,28 @@ function ObligationCard({
 
   // Reported-but-no-commits: producer has nothing to deposit yet, but we
   // still want to surface the season on the dashboard so they know the
-  // report went through.
+  // report went through — and surface the numbers they just reported so
+  // they can double-check the tx did what they intended (total value, total
+  // product units, Merkle root, claim window).
   if (noCommitmentsYet) {
+    const reportedValueUsd = season.totalHarvestValueUSD
+      ? Number(formatUnits(BigInt(season.totalHarvestValueUSD), 18))
+      : null;
+    const reportedProductUnits = season.totalProductUnits
+      ? Number(formatUnits(BigInt(season.totalProductUnits), 18))
+      : null;
+    const claimStart = season.claimStart ? Number(season.claimStart) : null;
+    const claimEnd = season.claimEnd ? Number(season.claimEnd) : null;
+    const depositDeadline = season.usdcDeadline
+      ? Number(season.usdcDeadline)
+      : null;
+    const fmtDate = (ts: number | null) =>
+      ts ? new Date(ts * 1000).toLocaleString() : "—";
+    const shortRoot = (r: string | null) =>
+      r ? `${r.slice(0, 10)}…${r.slice(-8)}` : "—";
     return (
       <div className="bg-surface-container-low rounded-xl p-5 border border-outline-variant/15">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between mb-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
               {t("seasonLabel", { id: season.seasonId })}
@@ -1039,6 +1070,69 @@ function ObligationCard({
             {t("reportedBadge")}
           </span>
         </div>
+
+        {(reportedValueUsd !== null ||
+          reportedProductUnits !== null ||
+          claimStart !== null ||
+          depositDeadline !== null) && (
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs border-t border-outline-variant/15 pt-4">
+            {reportedValueUsd !== null && (
+              <>
+                <dt className="text-on-surface-variant">
+                  {t("reported.totalValue")}
+                </dt>
+                <dd className="text-right font-semibold text-on-surface">
+                  $
+                  {reportedValueUsd.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })}
+                </dd>
+              </>
+            )}
+            {reportedProductUnits !== null && (
+              <>
+                <dt className="text-on-surface-variant">
+                  {t("reported.totalUnits")}
+                </dt>
+                <dd className="text-right font-semibold text-on-surface">
+                  {reportedProductUnits.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  })}
+                </dd>
+              </>
+            )}
+            {claimStart !== null && claimEnd !== null && (
+              <>
+                <dt className="text-on-surface-variant">
+                  {t("reported.claimWindow")}
+                </dt>
+                <dd className="text-right font-semibold text-on-surface">
+                  {fmtDate(claimStart)} → {fmtDate(claimEnd)}
+                </dd>
+              </>
+            )}
+            {depositDeadline !== null && (
+              <>
+                <dt className="text-on-surface-variant">
+                  {t("reported.depositDeadline")}
+                </dt>
+                <dd className="text-right font-semibold text-on-surface">
+                  {fmtDate(depositDeadline)}
+                </dd>
+              </>
+            )}
+            {season.merkleRoot && (
+              <>
+                <dt className="text-on-surface-variant">
+                  {t("reported.merkleRoot")}
+                </dt>
+                <dd className="text-right font-mono text-[10px] text-on-surface">
+                  {shortRoot(season.merkleRoot)}
+                </dd>
+              </>
+            )}
+          </dl>
+        )}
       </div>
     );
   }

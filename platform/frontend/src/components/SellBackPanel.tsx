@@ -8,13 +8,12 @@ import {
   useReadContracts,
   useWriteContract,
 } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import { formatUnits, parseUnits, type Address } from "viem";
 import { abis } from "@/contracts";
-import { config } from "@/app/providers";
 import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
+import { waitForTx } from "@/lib/waitForTx";
 
 interface Props {
   campaignAddress: Address;
@@ -132,7 +131,7 @@ export function SellBackPanel({
         args: [campaignAddress, parsedAmount],
       });
       setPending({ kind: "approve", phase: "chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("Approve reverted");
       await refetch();
       notify.success(tx("approvalConfirmed"), hash);
@@ -155,7 +154,7 @@ export function SellBackPanel({
         args: [parsedAmount],
       });
       setPending({ kind: "sellBack", phase: "chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("sellBack reverted");
       setAmount("");
       await refetch();
@@ -178,7 +177,7 @@ export function SellBackPanel({
         functionName: "cancelSellBack",
       });
       setPending({ kind: "cancel", phase: "chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("cancelSellBack reverted");
       await refetch();
       notify.success(tx("cancelSellBackConfirmed"), hash);

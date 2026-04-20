@@ -8,13 +8,12 @@ import {
   useReadContracts,
   useWriteContract,
 } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import { formatUnits, parseUnits, type Address } from "viem";
 import { abis } from "@/contracts";
-import { config } from "@/app/providers";
 import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
+import { waitForTx } from "@/lib/waitForTx";
 
 interface Props {
   campaignToken: Address;
@@ -206,7 +205,7 @@ export function StakingPanel({
     try {
       const hash = await writeContractAsync(args);
       setPending({ kind, phase: "chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("Transaction reverted on-chain");
       refetchIds();
       refetchPositions();

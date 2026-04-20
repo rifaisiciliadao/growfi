@@ -8,13 +8,12 @@ import {
   useReadContracts,
   useWriteContract,
 } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import { formatUnits, type Address } from "viem";
 import { abis } from "@/contracts";
-import { config } from "@/app/providers";
 import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
+import { waitForTx } from "@/lib/waitForTx";
 
 interface Props {
   campaignAddress: Address;
@@ -125,7 +124,7 @@ export function RefundPanel({
         args: [token],
       });
       setPending({ token, phase: "chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("Refund reverted");
       await refetchRefundable();
       await refetchBalance();
@@ -315,7 +314,7 @@ export function TriggerBuybackCta({
         functionName: "triggerBuyback",
       });
       setPending("chain");
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("triggerBuyback reverted");
       onTriggered?.();
       notify.success(tx("triggerBuybackConfirmed"), hash);

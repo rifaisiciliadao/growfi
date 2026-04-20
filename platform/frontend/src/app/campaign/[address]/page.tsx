@@ -8,13 +8,11 @@ import {
   useReadContracts,
   useWriteContract,
 } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { formatUnits } from "viem";
 import { useCampaignData } from "@/contracts/hooks";
 import { abis, getAddresses } from "@/contracts";
-import { config } from "@/app/providers";
 import { erc20Abi } from "@/contracts/erc20";
 import { useSubgraphCampaign, useSubgraphProducer } from "@/lib/subgraph";
 import { useTxNotify } from "@/lib/useTxNotify";
@@ -28,6 +26,7 @@ import { RefundPanel, TriggerBuybackCta } from "@/components/RefundPanel";
 import { SellBackPanel } from "@/components/SellBackPanel";
 import { ActivateCtaBanner } from "@/components/ActivateCtaBanner";
 import { Spinner } from "@/components/Spinner";
+import { waitForTx } from "@/lib/waitForTx";
 
 const STATE_LABELS = ["funding", "active", "buyback", "ended"] as const;
 
@@ -369,7 +368,7 @@ function LinkMetadataBanner({
         args: [campaignAddress, meta.url],
       });
       setStage({ kind: "confirming" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("setMetadata reverted");
       notify.success(tx("setMetadataConfirmed"), hash);
 

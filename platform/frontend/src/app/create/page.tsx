@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAccount, useWriteContract } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import { parseUnits, decodeEventLog, zeroAddress, type Address } from "viem";
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
 import {
@@ -11,8 +10,8 @@ import {
   PRICING_MODE_ENUM,
   resolveTokenAddress,
 } from "@/contracts/tokens";
-import { config } from "@/app/providers";
 import { uploadImage, uploadMetadata } from "@/lib/api";
+import { waitForTx } from "@/lib/waitForTx";
 
 type FormData = {
   name: string;
@@ -203,9 +202,7 @@ export default function CreateCampaign() {
         ],
       });
       setStatus({ kind: "creating-chain" });
-      const createReceipt = await waitForTransactionReceipt(config, {
-        hash: createHash,
-      });
+      const createReceipt = await waitForTx(createHash);
       if (createReceipt.status !== "success") {
         throw new Error("createCampaign reverted on-chain");
       }
@@ -243,9 +240,7 @@ export default function CreateCampaign() {
           args: [newCampaign, metadata.url],
         });
         setStatus({ kind: "registering-chain", campaign: newCampaign });
-        const r = await waitForTransactionReceipt(config, {
-          hash: registryHash,
-        });
+        const r = await waitForTx(registryHash);
         if (r.status !== "success") {
           throw new Error("setMetadata reverted on-chain");
         }
@@ -298,7 +293,7 @@ export default function CreateCampaign() {
             index: i,
             total,
           });
-          const r = await waitForTransactionReceipt(config, { hash });
+          const r = await waitForTx(hash);
           if (r.status === "success") {
             whitelistedCount += 1;
           } else {

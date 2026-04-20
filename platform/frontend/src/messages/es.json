@@ -462,6 +462,13 @@
       },
       "usdcObligationsTitle": "Temporadas reportadas",
       "noObligations": "Aún no hay temporadas reportadas. Inicia una temporada, ciérrala y reporta la cosecha para verla aquí.",
+      "reported": {
+        "totalValue": "Valor total cosecha",
+        "totalUnits": "Unidades de producto",
+        "claimWindow": "Ventana de reclamo",
+        "depositDeadline": "Fecha límite tu depósito",
+        "merkleRoot": "Merkle root"
+      },
       "reportedBadge": "Reportada",
       "reportedNoCommits": "Cosecha reportada · sin canjes todavía",
       "reportedNoCommitsHint": "La temporada está reportada y los stakers pueden canjear $YIELD. Nada que depositar hasta que alguien comprometa.",

@@ -462,6 +462,13 @@
       },
       "usdcObligationsTitle": "Saisons déclarées",
       "noObligations": "Aucune saison déclarée. Démarre une saison, clos-la et déclare la récolte pour la voir ici.",
+      "reported": {
+        "totalValue": "Valeur totale récolte",
+        "totalUnits": "Unités de produit",
+        "claimWindow": "Fenêtre de rédemption",
+        "depositDeadline": "Date limite ton dépôt",
+        "merkleRoot": "Merkle root"
+      },
       "reportedBadge": "Déclarée",
       "reportedNoCommits": "Récolte déclarée · pas encore de rédemptions",
       "reportedNoCommitsHint": "La saison est déclarée et les stakers peuvent rédemptionner $YIELD. Rien à déposer tant que personne ne commit.",

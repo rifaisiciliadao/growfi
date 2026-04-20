@@ -8,15 +8,14 @@ import {
   useReadContracts,
   useWriteContract,
 } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import { formatUnits, parseUnits, type Address } from "viem";
 import { abis } from "@/contracts";
-import { config } from "@/app/providers";
 import { erc20Abi } from "@/contracts/erc20";
 import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
 import { fetchMerkleProof } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useTxNotify } from "@/lib/useTxNotify";
+import { waitForTx } from "@/lib/waitForTx";
 
 interface Props {
   campaignAddress: Address;
@@ -75,7 +74,7 @@ export function HarvestPanel({
     try {
       const hash = await writeContractAsync(args);
       setPending({ kind, phase: "chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("Transaction reverted on-chain");
       void refetchSeasons();
       void refetchBalance();

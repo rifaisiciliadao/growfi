@@ -465,6 +465,13 @@
       "reportedBadge": "Reported",
       "reportedNoCommits": "Harvest reported · no holder claims yet",
       "reportedNoCommitsHint": "The season is reported and holders can redeem $YIELD. Nothing for you to deposit until someone commits.",
+      "reported": {
+        "totalValue": "Total harvest value",
+        "totalUnits": "Product units",
+        "claimWindow": "Claim window",
+        "depositDeadline": "Your deposit deadline",
+        "merkleRoot": "Merkle root"
+      },
       "shortfallBanner": "Deposit window closed with {amount} USDC still owed. Holders will receive pro-rata of what was deposited.",
       "seasonLabel": "Season #{id}",
       "obligationOwed": "${amount} USDC still owed",

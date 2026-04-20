@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useWriteContract } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import type { Address } from "viem";
 import { abis } from "@/contracts";
-import { config } from "@/app/providers";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
+import { waitForTx } from "@/lib/waitForTx";
 
 /**
  * Urgent CTA for the producer once their campaign has crossed minCap but
@@ -65,7 +64,7 @@ export function ActivateCtaBanner({
         functionName: "activateCampaign",
       });
       setPending("chain");
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("activateCampaign reverted");
       onActivated?.();
       notify.success(tx("activateConfirmed"), hash);

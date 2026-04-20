@@ -465,6 +465,13 @@
       "reportedBadge": "Rendicontata",
       "reportedNoCommits": "Raccolto rendicontato · nessun riscatto ancora",
       "reportedNoCommitsHint": "La stagione è rendicontata e gli staker possono riscattare $YIELD. Niente da depositare finché qualcuno non committa.",
+      "reported": {
+        "totalValue": "Valore raccolto totale",
+        "totalUnits": "Unità di prodotto",
+        "claimWindow": "Finestra riscatti",
+        "depositDeadline": "Scadenza tuo deposito",
+        "merkleRoot": "Merkle root"
+      },
       "shortfallBanner": "Finestra di deposito chiusa con {amount} USDC ancora dovuti. Gli staker riceveranno pro-rata di quanto depositato.",
       "seasonLabel": "Stagione #{id}",
       "obligationOwed": "${amount} USDC ancora dovuti",

@@ -8,13 +8,12 @@ import {
   useReadContracts,
   useWriteContract,
 } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import { parseUnits, formatUnits, type Address } from "viem";
 import { abis, getAddresses } from "@/contracts";
-import { config } from "@/app/providers";
 import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
+import { waitForTx } from "@/lib/waitForTx";
 
 type AcceptedTokenInfo = {
   address: Address;
@@ -259,8 +258,6 @@ export function BuyPanel({
     if (!selected) return;
     try {
       setStatus({ kind: "approving-sig" });
-      // Approve only what's actually needed (after clamp), so we don't
-      // request a larger allowance than the buy will consume.
       const approvalAmount = isClamped ? effectivePayment : parsedAmount;
       const hash = await writeContractAsync({
         address: selected.address,
@@ -269,7 +266,7 @@ export function BuyPanel({
         args: [campaignAddress, approvalAmount],
       });
       setStatus({ kind: "approving-chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("Approval reverted");
       await refetchBalanceAllowance();
       notify.success(tx("approvalConfirmed"), hash);
@@ -291,7 +288,7 @@ export function BuyPanel({
         args: [user, MOCK_USDC_MINT_AMOUNT],
       });
       setStatus({ kind: "minting-chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("Mint reverted");
       await refetchBalanceAllowance();
       notify.success(tx("mintConfirmed"), hash);
@@ -310,12 +307,10 @@ export function BuyPanel({
         address: campaignAddress,
         abi: campaignAbi,
         functionName: "buy",
-        // Send effectivePayment (matches the clamped tokensOut) so the
-        // user isn't prompted to approve more than the contract will pull.
         args: [selected.address, requiredPayment],
       });
       setStatus({ kind: "buying-chain" });
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") {
         throw new Error("Purchase reverted on-chain");
       }

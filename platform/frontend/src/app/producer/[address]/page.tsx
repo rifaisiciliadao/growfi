@@ -4,7 +4,6 @@ import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAccount, useWriteContract } from "wagmi";
-import { waitForTransactionReceipt } from "@wagmi/core";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { useTxNotify } from "@/lib/useTxNotify";
@@ -20,9 +19,9 @@ import {
 } from "@/lib/metadata";
 import { uploadImage, uploadProducerProfile } from "@/lib/api";
 import { abis, getAddresses } from "@/contracts";
-import { config } from "@/app/providers";
 import { Spinner } from "@/components/Spinner";
 import { ProducerAggregateDashboard } from "@/components/ProducerAggregateDashboard";
+import { waitForTx } from "@/lib/waitForTx";
 
 export default function ProducerPage({
   params,
@@ -314,7 +313,7 @@ function ProfileForm({
         args: [profile.url],
       });
       setBusy("chain");
-      const r = await waitForTransactionReceipt(config, { hash });
+      const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("setProfile reverted");
       // Now wait for subgraph to index the new version
       setBusy("indexing");
