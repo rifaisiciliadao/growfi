@@ -13,6 +13,13 @@ export interface KnownToken {
   oracleFeed: Record<number, Address | null>;
   /** True = selectable in the UI right now. Others render disabled with "Coming soon". */
   enabled: boolean;
+  /**
+   * Token is a 1:1 USD stablecoin. When true, the /create form hides the
+   * "Prezzo (per 1 $CAMP)" input for this token and derives `fixedRate`
+   * directly from `pricePerToken` — so the producer only enters the USD
+   * price once instead of re-typing it per stablecoin.
+   */
+  stableUsd?: boolean;
 }
 
 /**
@@ -44,6 +51,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
     defaultMode: "fixed",
     oracleFeed: { 84532: null, 8453: null },
     enabled: true,
+    stableUsd: true,
   },
   {
     symbol: "USDC",
@@ -60,6 +68,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
       8453: "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B",
     },
     enabled: false,
+    stableUsd: true,
   },
   {
     symbol: "USDT",
@@ -72,6 +81,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
     defaultMode: "fixed",
     oracleFeed: { 84532: null, 8453: null },
     enabled: false,
+    stableUsd: true,
   },
   {
     symbol: "DAI",
@@ -84,6 +94,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
     defaultMode: "fixed",
     oracleFeed: { 84532: null, 8453: null },
     enabled: false,
+    stableUsd: true,
   },
   {
     symbol: "WETH",

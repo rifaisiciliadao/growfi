@@ -256,9 +256,17 @@ export default function CreateCampaign() {
 
         const tokenAddress = resolveTokenAddress(known, CHAIN_ID);
         const pricingMode = PRICING_MODE_ENUM[known.defaultMode];
+        // For 1:1-USD stablecoins we skip the per-token humanRate input and
+        // derive the rate straight from pricePerToken — same number, just
+        // re-scaled to the stablecoin's decimals (e.g. 0.144 USD → 144_000
+        // for 6-dec USDC, → 144e15 for 18-dec DAI).
+        const rateSource =
+          known.defaultMode === "fixed" && known.stableUsd
+            ? form.pricePerToken
+            : entry.humanRate || "0";
         const fixedRate =
           known.defaultMode === "fixed"
-            ? parseUnits(entry.humanRate || "0", known.decimals)
+            ? parseUnits(rateSource, known.decimals)
             : 0n;
         const oracleFeed =
           known.defaultMode === "oracle"
@@ -627,6 +635,7 @@ export default function CreateCampaign() {
                   ),
                 );
                 const isOracle = known?.defaultMode === "oracle";
+                const isStableUsd = known?.stableUsd === true;
 
                 return (
                   <div
@@ -689,7 +698,18 @@ export default function CreateCampaign() {
                           })}
                         </select>
                       </Field>
-                      {!isOracle ? (
+                      {isStableUsd ? (
+                        <Field label={t("step3.fixedRate")}>
+                          <div className="input bg-surface-container flex items-center justify-between text-sm text-on-surface-variant">
+                            <span className="font-mono text-on-surface">
+                              {form.pricePerToken || "0"} {token.symbol}
+                            </span>
+                            <span className="text-xs">
+                              {t("step3.stablecoinAutoSync")}
+                            </span>
+                          </div>
+                        </Field>
+                      ) : !isOracle ? (
                         <Field
                           label={t("step3.fixedRate")}
                           hint={t("step3.fixedRateHint", {

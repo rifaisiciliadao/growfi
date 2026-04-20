@@ -405,11 +405,6 @@ function AcceptedTokensManager({
         </div>
       )}
 
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-error rounded-lg p-3 text-xs break-words">
-          {error}
-        </div>
-      )}
     </div>
   );
 }
@@ -481,6 +476,28 @@ function LifecycleSection({
     ? Number(currentSeasonOnChain[1])
     : 0;
 
+  // Live reads of supply + caps: activateCampaign reverts with
+  // MinCapNotReached when currentSupply < minCap, so the producer needs to
+  // see the real gap before clicking (the on-chain check is the truth; the
+  // subgraph would be stale right after a buy).
+  const { data: capsData, refetch: refetchCaps } = useReadContracts({
+    contracts: [
+      { address: campaignAddress, abi: campaignAbi, functionName: "currentSupply" },
+      { address: campaignAddress, abi: campaignAbi, functionName: "minCap" },
+      { address: campaignAddress, abi: campaignAbi, functionName: "maxCap" },
+    ] as never,
+    query: { refetchInterval: 15_000 },
+  });
+  type MaybeCapResult = { result?: unknown };
+  const capResults = (capsData ?? []) as readonly MaybeCapResult[];
+  const currentSupply =
+    (capResults[0]?.result as bigint | undefined) ?? 0n;
+  const minCap = (capResults[1]?.result as bigint | undefined) ?? 0n;
+  const maxCap = (capResults[2]?.result as bigint | undefined) ?? 0n;
+  const minCapReached = minCap > 0n && currentSupply >= minCap;
+  const capProgress =
+    minCap > 0n ? Number((currentSupply * 100n) / minCap) : 0;
+
   // Suggest ending the season once its on-chain duration has elapsed, so
   // the producer knows it's time to report harvest.
   const nowTs = Math.floor(Date.now() / 1000);
@@ -493,13 +510,11 @@ function LifecycleSection({
     | null
     | { action: "activate" | "startSeason" | "endSeason" | "endCampaign"; phase: "sig" | "chain" }
   >(null);
-  const [error, setError] = useState<string | null>(null);
 
   const runAction = async (
     action: "activate" | "startSeason" | "endSeason" | "endCampaign",
     args: Parameters<typeof writeContractAsync>[0],
   ) => {
-    setError(null);
     setPendingAction({ action, phase: "sig" });
     try {
       const hash = await writeContractAsync(args);
@@ -509,10 +524,11 @@ function LifecycleSection({
       onChange();
       refetchSeasonId();
       refetchCurrentSeason();
+      refetchCaps();
       notify.success(tx(`${action}Confirmed`), hash);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (!/user (rejected|denied)/i.test(msg)) setError(msg);
+      // Toast (via useTxNotify) surfaces the user-friendly message; raw
+      // viem revert dumps inline are unreadable ("+Qrw") and we drop them.
       notify.error(tx(`${action}Failed`), err);
       console.error(err);
     } finally {
@@ -535,6 +551,10 @@ function LifecycleSection({
     sigLabel: string;
     chainLabel: string;
     show: boolean;
+    /** False = render the button disabled with `blockedHint` explaining why. */
+    canRun: boolean;
+    /** Shown when `canRun === false` — tells the producer what to do next. */
+    blockedHint?: string;
     args: Parameters<typeof writeContractAsync>[0];
     variant: "primary" | "outline" | "danger";
     hint?: string;
@@ -545,6 +565,17 @@ function LifecycleSection({
       sigLabel: t("actions.activateSig"),
       chainLabel: t("actions.activateChain"),
       show: currentState === 0,
+      canRun: minCapReached,
+      blockedHint: t("actions.activateBlocked", {
+        progress: Math.min(capProgress, 100),
+        current: Number(formatUnits(currentSupply, 18)).toLocaleString(
+          undefined,
+          { maximumFractionDigits: 0 },
+        ),
+        min: Number(formatUnits(minCap, 18)).toLocaleString(undefined, {
+          maximumFractionDigits: 0,
+        }),
+      }),
       variant: "primary",
       hint: t("actions.activateHint"),
       args: {
@@ -559,6 +590,7 @@ function LifecycleSection({
       sigLabel: t("actions.startSeasonSig"),
       chainLabel: t("actions.startSeasonChain"),
       show: currentState === 1 && !hasActiveSeason,
+      canRun: true,
       variant: "primary",
       hint: t("actions.startSeasonHint"),
       args: {
@@ -574,6 +606,7 @@ function LifecycleSection({
       sigLabel: t("actions.endSeasonSig"),
       chainLabel: t("actions.endSeasonChain"),
       show: currentState === 1 && hasActiveSeason,
+      canRun: true,
       variant: seasonElapsed ? "primary" : "outline",
       hint: seasonElapsed
         ? t("actions.endSeasonHintReady")
@@ -590,6 +623,7 @@ function LifecycleSection({
       sigLabel: t("actions.endCampaignSig"),
       chainLabel: t("actions.endCampaignChain"),
       show: currentState === 1,
+      canRun: true,
       variant: "danger",
       hint: t("actions.endCampaignHint"),
       args: {
@@ -651,31 +685,28 @@ function LifecycleSection({
                 ? a.sigLabel
                 : a.chainLabel
               : a.label;
+            const disabled = anyBusy || !a.canRun;
+            const hintText =
+              !a.canRun && a.blockedHint ? a.blockedHint : a.hint;
             return (
               <div key={a.action} className="flex flex-col gap-1">
                 <button
                   onClick={() => runAction(a.action, a.args)}
-                  disabled={anyBusy}
+                  disabled={disabled}
                   className={`h-11 rounded-full font-semibold text-sm hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 px-4 ${variantClass(a.variant)}`}
                 >
                   {isBusy && <Spinner size={14} />}
                   {label}
                 </button>
-                {a.hint && (
+                {hintText && (
                   <p className="text-[11px] text-on-surface-variant px-1">
-                    {a.hint}
+                    {hintText}
                   </p>
                 )}
               </div>
             );
           })}
       </div>
-
-      {error && (
-        <div className="mt-3 bg-red-50 border border-red-200 text-error rounded-lg p-3 text-xs break-words">
-          {error}
-        </div>
-      )}
     </div>
   );
 }
@@ -885,11 +916,6 @@ function ReportHarvestCard({
         {stageLabel}
       </button>
 
-      {stage.kind === "error" && (
-        <div className="mt-3 bg-red-50 border border-red-200 text-error rounded-lg p-3 text-xs break-words">
-          {stage.message}
-        </div>
-      )}
       {stage.kind === "success" && (
         <div className="mt-3 bg-primary-fixed/30 text-primary border border-primary/30 rounded-lg p-3 text-xs">
           {t("report.confirmed")}{" "}
@@ -1270,11 +1296,6 @@ function ObligationCard({
             {stageLabel}
           </button>
 
-          {stage.kind === "error" && (
-            <div className="mt-3 bg-red-50 border border-red-200 text-error rounded-lg p-3 text-xs break-words">
-              {stage.message}
-            </div>
-          )}
           {stage.kind === "success" && (
             <div className="mt-3 bg-primary-fixed/30 text-primary border border-primary/30 rounded-lg p-3 text-xs">
               {t("depositConfirmed")}{" "}
