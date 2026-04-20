@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { formatUnits } from "viem";
 import { useProducerAggregate } from "@/lib/subgraph";
+import { RefreshButton } from "./RefreshButton";
 
 /**
  * Producer-only cross-campaign summary, rendered at the top of the
@@ -27,7 +28,7 @@ export function ProducerAggregateDashboard({
   producerAddress: string;
 }) {
   const t = useTranslations("producer.dashboard");
-  const { data, isLoading } = useProducerAggregate(producerAddress);
+  const { data, isLoading, refetch } = useProducerAggregate(producerAddress);
 
   const stats = useMemo(() => {
     if (!data) {
@@ -115,9 +116,12 @@ export function ProducerAggregateDashboard({
 
   return (
     <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-6 mb-8">
-      <h2 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-        {t("title")}
-      </h2>
+      <div className="flex items-center justify-between mb-4 gap-3">
+        <h2 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider">
+          {t("title")}
+        </h2>
+        <RefreshButton onClick={() => refetch()} label={t("refresh")} />
+      </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
         <Stat

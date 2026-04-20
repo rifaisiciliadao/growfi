@@ -138,3 +138,33 @@ export function CampaignCard({
     </Link>
   );
 }
+
+/**
+ * Skeleton placeholder with the same footprint as CampaignCard, rendered
+ * while the subgraph query is in flight. Keeps the page from jumping when
+ * the data finally arrives.
+ */
+export function CampaignCardSkeleton() {
+  return (
+    <div className="bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/15">
+      <div className="h-48 bg-surface-container-low animate-pulse" />
+      <div className="p-6 space-y-4">
+        <div className="h-4 w-3/4 bg-surface-container-low rounded animate-pulse" />
+        <div className="h-3 w-1/2 bg-surface-container-low rounded animate-pulse" />
+        <div className="space-y-2 pt-2">
+          <div className="flex justify-between text-xs">
+            <div className="h-3 w-16 bg-surface-container-low rounded animate-pulse" />
+            <div className="h-3 w-10 bg-surface-container-low rounded animate-pulse" />
+          </div>
+          <div className="h-1 bg-surface-container-high rounded-full overflow-hidden">
+            <div className="h-full w-1/3 bg-surface-container-low animate-pulse" />
+          </div>
+        </div>
+        <div className="flex justify-between items-center pt-4 border-t border-outline-variant/15">
+          <div className="h-3 w-20 bg-surface-container-low rounded animate-pulse" />
+          <div className="h-4 w-12 bg-surface-container-low rounded animate-pulse" />
+        </div>
+      </div>
+    </div>
+  );
+}

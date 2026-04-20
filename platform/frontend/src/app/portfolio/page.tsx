@@ -8,13 +8,14 @@ import { useMemo } from "react";
 import { useUserPortfolio, type UserPortfolio } from "@/lib/subgraph";
 import { useCampaignMetadata } from "@/lib/metadata";
 import { erc20Abi } from "@/contracts/erc20";
+import { RefreshButton } from "@/components/RefreshButton";
 
 export default function Portfolio() {
   const t = useTranslations("portfolio");
   const tHome = useTranslations("home");
   const { address: user, isConnected } = useAccount();
 
-  const { data: portfolio, isLoading } = useUserPortfolio(user);
+  const { data: portfolio, isLoading, refetch } = useUserPortfolio(user);
 
   if (!isConnected) {
     return (
@@ -27,9 +28,16 @@ export default function Portfolio() {
 
   return (
     <div className="max-w-7xl mx-auto px-8 pt-28 pb-20">
-      <h1 className="text-4xl font-bold tracking-tight text-on-surface mb-2">
-        {t("title")}
-      </h1>
+      <div className="flex items-start justify-between gap-4 mb-2">
+        <h1 className="text-4xl font-bold tracking-tight text-on-surface">
+          {t("title")}
+        </h1>
+        <RefreshButton
+          onClick={() => refetch()}
+          label={t("refresh")}
+          className="mt-2"
+        />
+      </div>
       <p className="text-on-surface-variant mb-10 font-mono text-sm">
         {user}
       </p>

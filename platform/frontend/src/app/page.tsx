@@ -4,7 +4,11 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { formatUnits } from "viem";
-import { CampaignCard, type CampaignState } from "@/components/CampaignCard";
+import {
+  CampaignCard,
+  CampaignCardSkeleton,
+  type CampaignState,
+} from "@/components/CampaignCard";
 import { useSubgraphCampaigns, useGlobalStats } from "@/lib/subgraph";
 import { getAddresses } from "@/contracts";
 
@@ -194,8 +198,10 @@ export default function Home() {
         </div>
 
         {isLoading ? (
-          <div className="text-center py-16 text-on-surface-variant">
-            {t("loading")}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <CampaignCardSkeleton key={i} />
+            ))}
           </div>
         ) : filteredCampaigns.length === 0 ? (
           <div className="bg-surface-container-lowest rounded-2xl border border-dashed border-outline-variant/40 py-16 px-8 text-center">

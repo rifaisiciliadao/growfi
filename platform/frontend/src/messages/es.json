@@ -513,6 +513,7 @@
     "noCampaigns": "Este productor aún no tiene campañas.",
     "dashboard": {
       "title": "Dashboard del productor",
+      "refresh": "Actualizar",
       "campaigns": "Campañas",
       "activeOf": "{active} activas",
       "totalRaised": "Total recaudado",
@@ -547,6 +548,7 @@
   },
   "portfolio": {
     "title": "Mi Portfolio",
+    "refresh": "Actualizar",
     "connectWallet": "Conecta tu wallet para ver tus posiciones, compras y canjes de cosecha.",
     "loading": "Cargando actividad on-chain…",
     "positionsTitle": "Posiciones Activas",

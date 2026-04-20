@@ -513,6 +513,7 @@
     "noCampaigns": "No campaigns from this producer yet.",
     "dashboard": {
       "title": "Producer dashboard",
+      "refresh": "Refresh",
       "campaigns": "Campaigns",
       "activeOf": "{active} active",
       "totalRaised": "Total raised",
@@ -549,6 +550,7 @@
     "title": "My Portfolio",
     "connectWallet": "Connect your wallet to see your positions, purchases and harvest claims.",
     "loading": "Loading on-chain activity…",
+    "refresh": "Refresh",
     "positionsTitle": "Active Positions",
     "purchasesTitle": "Purchases",
     "claimsTitle": "Harvest Claims",
