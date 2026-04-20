@@ -1015,13 +1015,13 @@ export default function CreateCampaign() {
               </p>
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="font-semibold text-on-surface">€ 0</span>
+                  <span className="font-semibold text-on-surface">$ 0</span>
                   <span className="text-on-surface-variant">
                     {form.maxCapTrees
-                      ? `${t("preview.target")}: €${(
+                      ? `${t("preview.target")}: $${(
                           maxCap * Number(form.pricePerToken || 0)
                         ).toLocaleString()}`
-                      : `${t("preview.target")}: € —`}
+                      : `${t("preview.target")}: $ —`}
                   </span>
                 </div>
                 <div className="h-1.5 w-full bg-surface-container-high rounded-full" />

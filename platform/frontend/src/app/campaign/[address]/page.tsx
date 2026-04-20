@@ -548,7 +548,7 @@ function FundingProgressCard({
       <div className="flex justify-between items-end mb-4">
         <div>
           <span className="text-3xl font-bold tracking-tight text-on-surface">
-            €{raisedNum.toLocaleString()}
+            ${raisedNum.toLocaleString()}
           </span>
           <span className="text-base text-on-surface-variant ml-2">
             {t("raised")}
@@ -556,7 +556,7 @@ function FundingProgressCard({
         </div>
         <div className="text-right">
           <span className="text-sm text-on-surface-variant">
-            {t("target", { amount: `€${targetNum.toLocaleString()}` })}
+            {t("target", { amount: `$${targetNum.toLocaleString()}` })}
           </span>
         </div>
       </div>
@@ -579,7 +579,7 @@ function FundingProgressCard({
               backgroundColor: softCapReached ? "#006b2c" : "#3e4a3d",
               opacity: 0.7,
             }}
-            title={`min cap €${minCapNum.toLocaleString()}`}
+            title={`min cap $${minCapNum.toLocaleString()}`}
           />
         )}
       </div>
@@ -597,7 +597,7 @@ function FundingProgressCard({
           >
             {softCapReached ? "✓ " : ""}
             {t("minCapMarker", {
-              amount: `€${minCapNum.toLocaleString()}`,
+              amount: `$${minCapNum.toLocaleString()}`,
             })}
           </span>
         </div>
@@ -700,7 +700,7 @@ function StatsCard({
       <div className="grid grid-cols-2 gap-4 mb-4">
         <Stat
           label={t("tokenPrice")}
-          value={priceUsd > 0 ? `€${priceUsd.toFixed(3)}` : "—"}
+          value={priceUsd > 0 ? `$${priceUsd.toFixed(3)}` : "—"}
         />
         <Stat
           label={t("maxSupply")}

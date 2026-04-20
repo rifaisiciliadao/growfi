@@ -71,7 +71,7 @@ const mockUsdcMintAbi = [
 const campaignAbi = abis.Campaign as never;
 
 const MOCK_USDC_DECIMALS = 6;
-const MOCK_USDC_MINT_AMOUNT = 1000n * 10n ** BigInt(MOCK_USDC_DECIMALS); // 1,000 mUSDC
+const MOCK_USDC_MINT_AMOUNT = 10_000n * 10n ** BigInt(MOCK_USDC_DECIMALS); // 10,000 mUSDC
 
 export function BuyPanel({
   campaignAddress,
@@ -455,7 +455,7 @@ export function BuyPanel({
                         ) : (
                           <span>+</span>
                         )}
-                        {t("mint", { amount: "1,000" })}
+                        {t("mint", { amount: "10,000" })}
                       </button>
                     )}
                   <button

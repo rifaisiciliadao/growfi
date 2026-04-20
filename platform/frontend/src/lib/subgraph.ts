@@ -137,6 +137,86 @@ export function useSubgraphCampaign(address: string | undefined) {
   });
 }
 
+/**
+ * Aggregated investor list for a campaign. Subgraph returns every Purchase
+ * event, we fold them per-buyer client-side to surface a compact list
+ * suitable for the /campaign/[address] invest tab.
+ */
+export interface CampaignInvestor {
+  buyer: string;
+  totalTokens: bigint;
+  totalPayment: bigint;
+  purchaseCount: number;
+  firstPurchaseTs: number;
+  lastPurchaseTs: number;
+}
+
+interface RawPurchase {
+  buyer: string;
+  paymentAmount: string;
+  campaignTokensOut: string;
+  timestamp: string;
+}
+
+export function useCampaignInvestors(address: string | undefined) {
+  return useQuery({
+    queryKey: ["subgraph", "investors", address?.toLowerCase()],
+    enabled: !!address,
+    queryFn: async (): Promise<CampaignInvestor[]> => {
+      if (!address) return [];
+      // Campaign entity field is stored as Bytes (hex); queries work against
+      // the lowercase address.
+      const data = await gql<{ purchases: RawPurchase[] }>(
+        `
+        query Investors($campaign: String!) {
+          purchases(
+            where: { campaign: $campaign }
+            first: 1000
+            orderBy: timestamp
+            orderDirection: asc
+          ) {
+            buyer
+            paymentAmount
+            campaignTokensOut
+            timestamp
+          }
+        }
+        `,
+        { campaign: address.toLowerCase() },
+      );
+      const byBuyer = new Map<string, CampaignInvestor>();
+      for (const p of data.purchases) {
+        const key = p.buyer.toLowerCase();
+        const existing = byBuyer.get(key);
+        const ts = Number(p.timestamp);
+        if (existing) {
+          existing.totalTokens += BigInt(p.campaignTokensOut);
+          existing.totalPayment += BigInt(p.paymentAmount);
+          existing.purchaseCount += 1;
+          existing.lastPurchaseTs = Math.max(existing.lastPurchaseTs, ts);
+        } else {
+          byBuyer.set(key, {
+            buyer: p.buyer,
+            totalTokens: BigInt(p.campaignTokensOut),
+            totalPayment: BigInt(p.paymentAmount),
+            purchaseCount: 1,
+            firstPurchaseTs: ts,
+            lastPurchaseTs: ts,
+          });
+        }
+      }
+      return Array.from(byBuyer.values()).sort((a, b) =>
+        a.totalTokens === b.totalTokens
+          ? 0
+          : b.totalTokens > a.totalTokens
+            ? 1
+            : -1,
+      );
+    },
+    refetchInterval: 20_000,
+  });
+}
+
 export interface SubgraphSeason {
   id: string;
   seasonId: string;

@@ -131,7 +131,7 @@ export function ProducerAggregateDashboard({
         />
         <Stat
           label={t("totalRaised")}
-          value={`€${Number(
+          value={`$${Number(
             formatUnits(stats.totalRaisedUsd, 18),
           ).toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
         />

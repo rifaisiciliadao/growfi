@@ -208,7 +208,7 @@
       "youPay": "Pagas",
       "balance": "Saldo: {amount} {token}",
       "mint": "Mintar {amount} mUSDC",
-      "mintHint": "Grifo testnet — minta 1.000 mUSDC a tu wallet",
+      "mintHint": "Grifo testnet — minta 10.000 mUSDC a tu wallet",
       "youReceive": "Recibes",
       "priceInfo": "1 ${symbol} = ${price}",
       "cta": "Comprar ${symbol}",

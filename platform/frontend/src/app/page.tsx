@@ -137,7 +137,7 @@ export default function Home() {
               color: "text-on-surface",
             },
             {
-              value: `€${Math.round(totalRaisedUsd).toLocaleString()}`,
+              value: `$${Math.round(totalRaisedUsd).toLocaleString()}`,
               label: t("stats.raised"),
               color: "text-on-surface",
             },
