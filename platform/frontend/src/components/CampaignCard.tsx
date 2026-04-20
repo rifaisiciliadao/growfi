@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useCampaignMetadata } from "@/lib/metadata";
+import { CampaignImage } from "./CampaignImage";
 
 export type CampaignState = "funding" | "active" | "ended";
 
@@ -67,7 +68,7 @@ export function CampaignCard({
   const { data: metadata } = useCampaignMetadata(metadataURI, metadataVersion);
 
   const resolvedName = metadata?.name || name;
-  const resolvedImage = metadata?.image || image;
+  const resolvedImage = metadata?.image || image || null;
   const resolvedLocation = metadata?.location;
 
   return (
@@ -77,11 +78,11 @@ export function CampaignCard({
           {isEnded && (
             <div className="absolute inset-0 bg-surface-variant/40 z-10 mix-blend-multiply" />
           )}
-          <img
-            src={resolvedImage}
-            alt={resolvedName}
-            className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ${isEnded ? "grayscale" : ""}`}
-          />
+          <div
+            className={`w-full h-full group-hover:scale-105 transition-transform duration-500 ${isEnded ? "grayscale" : ""}`}
+          >
+            <CampaignImage src={resolvedImage} alt={resolvedName} />
+          </div>
           <div
             className={`absolute top-4 left-4 ${cfg.bg} ${cfg.text} px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase shadow-sm backdrop-blur-md ${isEnded ? "z-20" : ""}`}
           >

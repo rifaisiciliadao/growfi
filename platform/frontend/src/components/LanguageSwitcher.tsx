@@ -24,7 +24,7 @@ export function LanguageSwitcher() {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-2 px-3 py-2 rounded-full hover:bg-surface-container-low transition-colors text-sm font-medium text-on-surface-variant hover:text-on-surface"
+        className="h-10 flex items-center gap-2 px-4 rounded-full bg-white border border-outline-variant/30 hover:bg-surface-container-low transition-colors text-sm font-semibold text-on-surface"
         aria-label="Select language"
       >
         <span className="text-lg leading-none">{current.flag}</span>

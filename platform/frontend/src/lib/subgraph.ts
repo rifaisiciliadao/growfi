@@ -41,6 +41,8 @@ export interface SubgraphCampaign {
   createdAt: string;
   createdAtBlock: string;
   activatedAt: string | null;
+  metadataURI: string | null;
+  metadataVersion: string;
 }
 
 const CAMPAIGN_FIELDS = `
@@ -83,6 +85,33 @@ export function useSubgraphCampaigns() {
       return data.campaigns;
     },
     refetchInterval: 15_000,
+  });
+}
+
+export interface SubgraphGlobalStats {
+  campaignCount: number;
+  userCount: number;
+  totalRaised: string;
+  totalStakers: number;
+}
+
+export function useGlobalStats() {
+  return useQuery({
+    queryKey: ["subgraph", "globalStats"],
+    queryFn: async () => {
+      const data = await gql<{ globalStats: SubgraphGlobalStats | null }>(`
+        query GlobalStats {
+          globalStats(id: "0x676c6f62616c") {
+            campaignCount
+            userCount
+            totalRaised
+            totalStakers
+          }
+        }
+      `);
+      return data.globalStats;
+    },
+    refetchInterval: 30_000,
   });
 }
 
@@ -290,6 +319,44 @@ export interface SubgraphProducer {
   updatedAt: string | null;
 }
 
+/**
+ * Polls the subgraph every 3s for a producer until its `version` strictly
+ * exceeds `sinceVersion`. If there was no previous profile at all, pass
+ * undefined and any non-null response counts as "indexed".
+ *
+ * Used by the /producer edit form to keep the "saving" UI up until the
+ * subgraph reflects the new profile — otherwise the form closes and the
+ * page briefly shows stale data (or "anonymous producer") before the new
+ * version arrives.
+ */
+export function useProducerIndexed(
+  address: string | undefined,
+  sinceVersion: string | undefined,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: [
+      "subgraph",
+      "producer-indexed",
+      address?.toLowerCase(),
+      sinceVersion ?? "none",
+    ],
+    enabled: !!address && enabled,
+    refetchInterval: enabled ? 3000 : false,
+    queryFn: async () => {
+      if (!address) return null;
+      const data = await gql<{ producer: { version: string } | null }>(
+        `query Poll($id: ID!) { producer(id: $id) { version } }`,
+        { id: address.toLowerCase() },
+      );
+      if (!data.producer) return null;
+      const current = BigInt(data.producer.version);
+      const since = sinceVersion ? BigInt(sinceVersion) : 0n;
+      return current > since ? data.producer : null;
+    },
+  });
+}
+
 export function useSubgraphProducer(address: string | undefined) {
   return useQuery({
     queryKey: ["subgraph", "producer", address?.toLowerCase()],
@@ -312,6 +379,76 @@ export function useSubgraphProducer(address: string | undefined) {
       return data.producer;
     },
     refetchInterval: 20_000,
+  });
+}
+
+/**
+ * Aggregate read for the producer dashboard: every campaign they own + the
+ * seasons under each, in one round-trip. Used to compute:
+ *   - total USDC still owed to holders across all campaigns
+ *   - seasons waiting for a harvest report
+ *   - total raised / number of campaigns / active seasons
+ */
+export interface ProducerAggregate {
+  campaigns: Array<{
+    id: string;
+    state: string;
+    totalRaised: string;
+    currentSupply: string;
+    maxCap: string;
+    seasons: Array<{
+      seasonId: string;
+      active: boolean;
+      reported: boolean;
+      usdcOwed: string;
+      usdcDeposited: string;
+      usdcDeadline: string | null;
+      endTime: string | null;
+    }>;
+  }>;
+}
+
+export function useProducerAggregate(producerAddress: string | undefined) {
+  return useQuery({
+    queryKey: [
+      "subgraph",
+      "producer-aggregate",
+      producerAddress?.toLowerCase(),
+    ],
+    enabled: !!producerAddress,
+    queryFn: async (): Promise<ProducerAggregate> => {
+      if (!producerAddress) return { campaigns: [] };
+      const data = await gql<ProducerAggregate>(
+        `
+        query ProducerAggregate($producer: Bytes!) {
+          campaigns(
+            where: { producer: $producer }
+            orderBy: createdAt
+            orderDirection: desc
+            first: 100
+          ) {
+            id
+            state
+            totalRaised
+            currentSupply
+            maxCap
+            seasons(first: 50, orderBy: seasonId, orderDirection: desc) {
+              seasonId
+              active
+              reported
+              usdcOwed
+              usdcDeposited
+              usdcDeadline
+              endTime
+            }
+          }
+        }
+        `,
+        { producer: producerAddress.toLowerCase() },
+      );
+      return data;
+    },
+    refetchInterval: 30_000,
   });
 }
 

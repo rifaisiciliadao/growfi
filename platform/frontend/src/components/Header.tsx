@@ -39,11 +39,82 @@ export function Header() {
 
         <div className="flex items-center gap-2">
           <LanguageSwitcher />
-          <ConnectButton
-            label={t("connectWallet")}
-            accountStatus="address"
-            showBalance={false}
-          />
+          <ConnectButton.Custom>
+            {({
+              account,
+              chain,
+              openAccountModal,
+              openChainModal,
+              openConnectModal,
+              mounted,
+            }) => {
+              const ready = mounted;
+              const connected = ready && account && chain;
+              const pillBase =
+                "h-10 px-4 rounded-full text-sm font-semibold bg-white border border-outline-variant/30 text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-2";
+
+              return (
+                <div className="flex items-center gap-2" aria-hidden={!ready}>
+                  {!connected ? (
+                    <button
+                      onClick={openConnectModal}
+                      type="button"
+                      className={pillBase}
+                    >
+                      {t("connectWallet")}
+                    </button>
+                  ) : chain.unsupported ? (
+                    <button
+                      onClick={openChainModal}
+                      type="button"
+                      className="h-10 px-4 rounded-full text-sm font-semibold bg-error text-on-error flex items-center gap-2"
+                    >
+                      Wrong network
+                    </button>
+                  ) : (
+                    <>
+                      <Link
+                        href={`/producer/${account.address}`}
+                        className={pillBase}
+                        title={t("profile")}
+                      >
+                        <svg
+                          width="16"
+                          height="16"
+                          viewBox="0 0 24 24"
+                          fill="currentColor"
+                        >
+                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                        </svg>
+                        <span className="hidden sm:inline">{t("profile")}</span>
+                      </Link>
+                      <button
+                        onClick={openChainModal}
+                        type="button"
+                        className={pillBase}
+                      >
+                        {chain.hasIcon && chain.iconUrl && (
+                          <img
+                            src={chain.iconUrl}
+                            alt={chain.name ?? "chain"}
+                            className="w-4 h-4 rounded-full"
+                          />
+                        )}
+                        {chain.name}
+                      </button>
+                      <button
+                        onClick={openAccountModal}
+                        type="button"
+                        className={pillBase}
+                      >
+                        {account.displayName}
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            }}
+          </ConnectButton.Custom>
         </div>
       </div>
     </nav>

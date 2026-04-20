@@ -3,22 +3,36 @@
 import { useState, use } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import {
+  useAccount,
+  useReadContracts,
+  useWriteContract,
+} from "wagmi";
+import { waitForTransactionReceipt } from "@wagmi/core";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
-import { parseUnits } from "viem";
+import { formatUnits } from "viem";
 import { useCampaignData } from "@/contracts/hooks";
+import { abis, getAddresses } from "@/contracts";
+import { config } from "@/app/providers";
+import { erc20Abi } from "@/contracts/erc20";
 import { useSubgraphCampaign, useSubgraphProducer } from "@/lib/subgraph";
 import { useCampaignMetadata, useProducerProfile } from "@/lib/metadata";
+import { uploadImage, uploadMetadata } from "@/lib/api";
 import { BuyPanel } from "@/components/BuyPanel";
 import { StakingPanel } from "@/components/StakingPanel";
 import { HarvestPanel } from "@/components/HarvestPanel";
-
-const FALLBACK_HERO =
-  "https://images.unsplash.com/photo-1550547660-d9450f859349?w=1600&q=80";
+import { ProducerManagePanel } from "@/components/ProducerManagePanel";
+import { RefundPanel, TriggerBuybackCta } from "@/components/RefundPanel";
+import { SellBackPanel } from "@/components/SellBackPanel";
+import { ActivateCtaBanner } from "@/components/ActivateCtaBanner";
+import { Spinner } from "@/components/Spinner";
 
 const STATE_LABELS = ["funding", "active", "buyback", "ended"] as const;
 
-type Tab = "invest" | "stake" | "harvest" | "info";
+type Tab = "invest" | "stake" | "harvest" | "info" | "manage";
 const TAB_KEYS: Tab[] = ["invest", "stake", "harvest", "info"];
+// Manage tab is appended dynamically when the connected wallet is the producer.
 
 export default function CampaignDetail({
   params,
@@ -40,9 +54,11 @@ export default function CampaignDetail({
 
   // campaignData order: producer, pricePerToken, minCap, maxCap, currentSupply,
   // fundingDeadline, state, campaignToken, stakingVault, harvestManager
-  const pricePerToken = (campaignData?.[1]?.result as bigint) ?? parseUnits("0.144", 18);
-  const stateIdx = (campaignData?.[6]?.result as number) ?? 0;
-  const hasOnChainData = !!campaignData?.[0]?.result;
+  type MaybeResult = { result?: unknown };
+  const cd = campaignData as readonly MaybeResult[] | undefined;
+  const pricePerToken = (cd?.[1]?.result as bigint | undefined) ?? 0n;
+  const stateIdx = (cd?.[6]?.result as number | undefined) ?? 0;
+  const hasOnChainData = !!cd?.[0]?.result;
   const stateKey = STATE_LABELS[stateIdx] ?? "funding";
 
   // Off-chain metadata: subgraph → registry URI → fetch JSON.
@@ -54,19 +70,37 @@ export default function CampaignDetail({
     sgCampaign?.metadataVersion,
   );
 
+  // Producer-only recovery: show the "Link metadata" banner when the
+  // CampaignRegistry has no URI for this campaign. Happens when the create
+  // flow's setMetadata step was rejected or missed before we made it mandatory.
+  const { address: connected } = useAccount();
+  const producerAddress = cd?.[0]?.result as Address | undefined;
+  const isProducerViewing =
+    !!connected &&
+    !!producerAddress &&
+    connected.toLowerCase() === producerAddress.toLowerCase();
+  const metadataMissing =
+    !!sgCampaign && (!sgCampaign.metadataURI || sgCampaign.metadataURI === "");
+
   const displayName =
     metadata?.name ||
     (isValidAddress
       ? `Campaign ${campaignAddress.slice(0, 6)}…${campaignAddress.slice(-4)}`
       : "Campaign");
   const displayLocation = metadata?.location ?? "";
-  const heroImage = metadata?.image || FALLBACK_HERO;
+  const heroImage = metadata?.image || null;
+  const heroStyle = heroImage
+    ? { backgroundImage: `url('${heroImage}')` }
+    : {
+        backgroundImage:
+          "linear-gradient(135deg, #bde4b7 0%, #7bc17a 50%, #2d6a2e 100%)",
+      };
 
   return (
     <>
       <section
         className="relative w-full h-72 flex items-end px-8 lg:px-16 pb-12 bg-cover bg-center overflow-hidden"
-        style={{ backgroundImage: `url('${heroImage}')` }}
+        style={heroStyle}
       >
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
         <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col gap-4">
@@ -97,7 +131,10 @@ export default function CampaignDetail({
 
       <div className="sticky top-16 z-40 bg-surface/90 backdrop-blur-md border-b border-outline-variant/15">
         <div className="max-w-7xl mx-auto px-8 lg:px-16 flex gap-8">
-          {TAB_KEYS.map((key) => (
+          {[
+            ...TAB_KEYS,
+            ...(isProducerViewing ? (["manage"] as Tab[]) : []),
+          ].map((key) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
@@ -105,7 +142,7 @@ export default function CampaignDetail({
                 activeTab === key
                   ? "text-primary border-primary"
                   : "text-on-surface-variant border-transparent hover:text-on-surface"
-              }`}
+              } ${key === "manage" ? "text-primary" : ""}`}
             >
               {t(`tabs.${key}`)}
             </button>
@@ -113,31 +150,93 @@ export default function CampaignDetail({
         </div>
       </div>
 
+      {isProducerViewing && hasOnChainData && (
+        <div className="max-w-7xl mx-auto px-8 lg:px-16 pt-6">
+          <ActivateCtaBanner
+            campaignAddress={campaignAddress}
+            currentState={stateIdx}
+            currentSupply={(cd?.[4]?.result as bigint | undefined) ?? 0n}
+            minCap={(cd?.[2]?.result as bigint | undefined) ?? 0n}
+            isProducerViewing={isProducerViewing}
+          />
+        </div>
+      )}
+
+      {isProducerViewing && metadataMissing && (
+        <div className="max-w-7xl mx-auto px-8 lg:px-16 pt-6">
+          <LinkMetadataBanner
+            campaignAddress={campaignAddress}
+            currentName={displayName}
+          />
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-8 lg:px-16 py-12 flex flex-col lg:flex-row gap-12 items-start">
         <div className="w-full lg:w-[65%] flex flex-col gap-6">
           {activeTab === "invest" && (
             <>
               <FundingProgressCard
-                currentSupply={(campaignData?.[4]?.result as bigint) ?? 0n}
-                maxCap={(campaignData?.[3]?.result as bigint) ?? 0n}
-                minCap={(campaignData?.[2]?.result as bigint) ?? 0n}
+                currentSupply={(cd?.[4]?.result as bigint | undefined) ?? 0n}
+                maxCap={(cd?.[3]?.result as bigint | undefined) ?? 0n}
+                minCap={(cd?.[2]?.result as bigint | undefined) ?? 0n}
                 pricePerToken={pricePerToken}
                 fundingDeadline={
-                  (campaignData?.[5]?.result as bigint) ?? 0n
+                  (cd?.[5]?.result as bigint | undefined) ?? 0n
                 }
                 hasOnChainData={hasOnChainData}
               />
 
-              {hasOnChainData ? (
-                <BuyPanel
+              {hasOnChainData && (
+                <TriggerBuybackCta
                   campaignAddress={campaignAddress}
-                  pricePerToken={pricePerToken}
                   currentState={stateIdx}
+                  currentSupply={
+                    (cd?.[4]?.result as bigint | undefined) ?? 0n
+                  }
+                  minCap={(cd?.[2]?.result as bigint | undefined) ?? 0n}
+                  fundingDeadline={
+                    (cd?.[5]?.result as bigint | undefined) ?? 0n
+                  }
                 />
-              ) : (
+              )}
+
+              {!hasOnChainData ? (
                 <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15 text-center text-sm text-on-surface-variant">
                   {t("buy.demoNotice")}
                 </div>
+              ) : stateIdx === 2 ? (
+                <RefundPanel
+                  campaignAddress={campaignAddress}
+                  campaignToken={
+                    (cd?.[7]?.result as Address | undefined) ??
+                    "0x0000000000000000000000000000000000000000"
+                  }
+                  currentState={stateIdx}
+                />
+              ) : (
+                <>
+                  <BuyPanel
+                    campaignAddress={campaignAddress}
+                    campaignToken={
+                      (cd?.[7]?.result as Address | undefined) ??
+                      "0x0000000000000000000000000000000000000000"
+                    }
+                    pricePerToken={pricePerToken}
+                    currentSupply={
+                      (cd?.[4]?.result as bigint | undefined) ?? 0n
+                    }
+                    maxCap={(cd?.[3]?.result as bigint | undefined) ?? 0n}
+                    currentState={stateIdx}
+                  />
+                  <SellBackPanel
+                    campaignAddress={campaignAddress}
+                    campaignToken={
+                      (cd?.[7]?.result as Address | undefined) ??
+                      "0x0000000000000000000000000000000000000000"
+                    }
+                    currentState={stateIdx}
+                  />
+                </>
               )}
             </>
           )}
@@ -146,6 +245,7 @@ export default function CampaignDetail({
             <StakingPanel
               campaignToken={sgCampaign.campaignToken as Address}
               stakingVault={sgCampaign.stakingVault as Address}
+              yieldToken={sgCampaign.yieldToken as Address}
               seasonDuration={BigInt(sgCampaign.seasonDuration)}
             />
           )}
@@ -161,19 +261,236 @@ export default function CampaignDetail({
               address={address}
               description={metadata?.description}
               location={displayLocation}
+              createdAtBlock={sgCampaign?.createdAtBlock}
             />
           )}
+          {activeTab === "manage" &&
+            isProducerViewing &&
+            hasOnChainData &&
+            sgCampaign && (
+              <ProducerManagePanel
+                campaignAddress={campaignAddress}
+                harvestManager={sgCampaign.harvestManager as Address}
+                stakingVault={sgCampaign.stakingVault as Address}
+                currentState={stateIdx}
+                minProductClaim={BigInt(sgCampaign.minProductClaim)}
+                seasonDuration={BigInt(sgCampaign.seasonDuration)}
+              />
+            )}
         </div>
 
         <div className="w-full lg:w-[35%] sticky top-36 flex flex-col gap-4">
-          <StatsCard />
-          <TokensAcceptedCard />
+          <StatsCard
+            pricePerToken={pricePerToken}
+            maxCap={(cd?.[3]?.result as bigint | undefined) ?? 0n}
+            currentSupply={(cd?.[4]?.result as bigint | undefined) ?? 0n}
+            currentYieldRate={
+              sgCampaign ? BigInt(sgCampaign.currentYieldRate) : 0n
+            }
+          />
+          <TokensAcceptedCard
+            campaignAddress={isValidAddress ? campaignAddress : undefined}
+          />
           <ProducerCard
             producer={(sgCampaign?.producer as Address) ?? undefined}
           />
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * Recovery UI: producer forgot to (or failed to) sign `setMetadata` during
+ * the create flow, so the CampaignRegistry has no URI → card + hero show
+ * the raw address. Here the producer re-uploads the image + metadata JSON
+ * and signs setMetadata; on confirmation we invalidate the subgraph query
+ * so the page re-renders with the new name/image.
+ */
+function LinkMetadataBanner({
+  campaignAddress,
+  currentName,
+}: {
+  campaignAddress: Address;
+  currentName: string;
+}) {
+  const t = useTranslations("detail.linkMetadata");
+  const { registry } = getAddresses();
+  const queryClient = useQueryClient();
+  const { writeContractAsync } = useWriteContract();
+
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [stage, setStage] = useState<
+    | { kind: "idle" }
+    | { kind: "uploading" }
+    | { kind: "signing" }
+    | { kind: "confirming" }
+    | { kind: "indexing" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  const handleImage = (file: File) => {
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async () => {
+    if (!name.trim()) {
+      setStage({ kind: "error", message: t("nameRequired") });
+      return;
+    }
+    try {
+      setStage({ kind: "uploading" });
+      let imageUrl: string | undefined;
+      if (imageFile) {
+        const up = await uploadImage(imageFile);
+        imageUrl = up.url;
+      }
+      const meta = await uploadMetadata({
+        name: name.trim(),
+        description: description.trim(),
+        location: location.trim(),
+        productType: "",
+        imageUrl,
+      });
+
+      setStage({ kind: "signing" });
+      const hash = await writeContractAsync({
+        address: registry,
+        abi: abis.CampaignRegistry as never,
+        functionName: "setMetadata",
+        args: [campaignAddress, meta.url],
+      });
+      setStage({ kind: "confirming" });
+      const r = await waitForTransactionReceipt(config, { hash });
+      if (r.status !== "success") throw new Error("setMetadata reverted");
+
+      // Poll subgraph until it picks up the new metadataURI, then close.
+      setStage({ kind: "indexing" });
+      const start = Date.now();
+      while (Date.now() - start < 60_000) {
+        await queryClient.invalidateQueries({
+          queryKey: ["subgraph", "campaign", campaignAddress.toLowerCase()],
+        });
+        await new Promise((r) => setTimeout(r, 3_000));
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/user (rejected|denied)/i.test(msg)) {
+        setStage({ kind: "idle" });
+      } else {
+        setStage({ kind: "error", message: msg });
+      }
+    }
+  };
+
+  const busy =
+    stage.kind === "uploading" ||
+    stage.kind === "signing" ||
+    stage.kind === "confirming" ||
+    stage.kind === "indexing";
+
+  const statusText =
+    stage.kind === "uploading"
+      ? t("uploading")
+      : stage.kind === "signing"
+        ? t("signing")
+        : stage.kind === "confirming"
+          ? t("confirming")
+          : stage.kind === "indexing"
+            ? t("indexing")
+            : t("submit");
+
+  return (
+    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+      <div className="flex items-start gap-3 mb-4">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="currentColor"
+          className="text-amber-600 shrink-0 mt-0.5"
+        >
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+        </svg>
+        <div>
+          <h3 className="font-bold text-amber-900 mb-1">{t("title")}</h3>
+          <p className="text-sm text-amber-800">
+            {t("body", { name: currentName })}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <input
+          type="text"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("namePlaceholder")}
+          disabled={busy}
+          className="px-3 py-2 rounded-lg border border-amber-300 bg-white text-sm focus:outline-none focus:border-amber-500 disabled:opacity-50"
+        />
+        <input
+          type="text"
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+          placeholder={t("locationPlaceholder")}
+          disabled={busy}
+          className="px-3 py-2 rounded-lg border border-amber-300 bg-white text-sm focus:outline-none focus:border-amber-500 disabled:opacity-50"
+        />
+      </div>
+
+      <textarea
+        rows={3}
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+        placeholder={t("descriptionPlaceholder")}
+        disabled={busy}
+        className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-sm focus:outline-none focus:border-amber-500 disabled:opacity-50 mb-4"
+      />
+
+      <label className="block mb-4">
+        <span className="block text-xs font-semibold text-amber-900 mb-1 uppercase tracking-wider">
+          {t("image")}
+        </span>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) handleImage(f);
+          }}
+          disabled={busy}
+          className="text-sm"
+        />
+        {imagePreview && (
+          <img
+            src={imagePreview}
+            alt=""
+            className="mt-2 h-24 rounded-lg object-cover border border-amber-200"
+          />
+        )}
+      </label>
+
+      {stage.kind === "error" && (
+        <div className="mb-3 text-sm text-error break-words">
+          {stage.message}
+        </div>
+      )}
+
+      <button
+        onClick={handleSubmit}
+        disabled={busy || !name.trim()}
+        className="regen-gradient text-white px-6 py-2.5 rounded-full font-semibold text-sm hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+      >
+        {busy && <Spinner size={16} />}
+        {statusText}
+      </button>
+    </div>
   );
 }
 
@@ -194,22 +511,26 @@ function FundingProgressCard({
 }) {
   const t = useTranslations("detail.funding");
 
-  // Mock fallback values
-  const DEMO = { raised: 190_800, target: 284_400, pct: 67, daysLeft: 23 };
-
-  let raisedNum = DEMO.raised;
-  let targetNum = DEMO.target;
-  let pct = DEMO.pct;
-  let daysLeft = DEMO.daysLeft;
+  let raisedNum = 0;
+  let targetNum = 0;
+  let minCapNum = 0;
+  let pct = 0;
+  let minCapPct = 0;
+  let daysLeft = 0;
+  let softCapReached = false;
 
   if (hasOnChainData && maxCap > 0n) {
     // tokens × pricePerToken / 1e18 = USD (both 18 dec)
     const raisedUsd =
       (currentSupply * pricePerToken) / 10n ** 18n / 10n ** 18n;
     const targetUsd = (maxCap * pricePerToken) / 10n ** 18n / 10n ** 18n;
+    const minCapUsd = (minCap * pricePerToken) / 10n ** 18n / 10n ** 18n;
     raisedNum = Number(raisedUsd);
     targetNum = Number(targetUsd);
+    minCapNum = Number(minCapUsd);
     pct = maxCap > 0n ? Number((currentSupply * 100n) / maxCap) : 0;
+    minCapPct = maxCap > 0n ? Number((minCap * 100n) / maxCap) : 0;
+    softCapReached = currentSupply >= minCap;
     const now = Math.floor(Date.now() / 1000);
     const delta = Number(fundingDeadline) - now;
     daysLeft = delta > 0 ? Math.ceil(delta / 86400) : 0;
@@ -235,12 +556,48 @@ function FundingProgressCard({
           </span>
         </div>
       </div>
-      <div className="w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
+      {/*
+        Two-layer progress bar: background track + filled primary + a
+        vertical tick marking the min cap (soft cap). Investors immediately
+        see how close the campaign is to being viable — below the tick the
+        campaign can still fail and refund; above it auto-activates.
+      */}
+      <div className="relative w-full h-2 bg-surface-container-high rounded-full overflow-hidden">
         <div
           className="h-full bg-primary rounded-full transition-all duration-700"
           style={{ width: `${Math.min(pct, 100)}%` }}
         />
+        {minCapNum > 0 && minCapPct < 100 && (
+          <div
+            className="absolute top-[-3px] bottom-[-3px] w-0.5"
+            style={{
+              left: `${minCapPct}%`,
+              backgroundColor: softCapReached ? "#006b2c" : "#3e4a3d",
+              opacity: 0.7,
+            }}
+            title={`min cap €${minCapNum.toLocaleString()}`}
+          />
+        )}
       </div>
+      {minCapNum > 0 && (
+        <div
+          className="relative mt-1 h-3 text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant"
+          aria-hidden="true"
+        >
+          <span
+            className="absolute -translate-x-1/2 whitespace-nowrap"
+            style={{
+              left: `${Math.max(4, Math.min(96, minCapPct))}%`,
+              color: softCapReached ? "#006b2c" : undefined,
+            }}
+          >
+            {softCapReached ? "✓ " : ""}
+            {t("minCapMarker", {
+              amount: `€${minCapNum.toLocaleString()}`,
+            })}
+          </span>
+        </div>
+      )}
       <div className="mt-4 flex justify-between items-center">
         <span className="text-xs font-semibold uppercase tracking-wider text-primary">
           {t("completed", { pct })}
@@ -257,10 +614,12 @@ function InfoPanel({
   address,
   description,
   location,
+  createdAtBlock,
 }: {
   address: string;
   description?: string;
   location?: string;
+  createdAtBlock?: string;
 }) {
   const t = useTranslations("detail.info");
   return (
@@ -288,39 +647,65 @@ function InfoPanel({
               {address}
             </div>
           </div>
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-              {t("block")}
+          {createdAtBlock && (
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+                {t("block")}
+              </div>
+              <div className="text-sm text-on-surface">
+                {Number(createdAtBlock).toLocaleString()}
+              </div>
             </div>
-            <div className="text-sm text-on-surface">18,245,632</div>
-          </div>
-        </div>
-
-        <div className="pt-4">
-          <a
-            href="#"
-            className="inline-flex items-center gap-2 text-primary font-semibold hover:underline"
-          >
-            {t("dmrv")}
-          </a>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function StatsCard() {
+function StatsCard({
+  pricePerToken,
+  maxCap,
+  currentSupply,
+  currentYieldRate,
+}: {
+  pricePerToken: bigint;
+  maxCap: bigint;
+  currentSupply: bigint;
+  currentYieldRate: bigint;
+}) {
   const t = useTranslations("detail.sidebar");
+
+  const priceUsd = Number(formatUnits(pricePerToken, 18));
+  const maxCapNum = Number(formatUnits(maxCap, 18));
+  const soldNum = Number(formatUnits(currentSupply, 18));
+  const yieldRate =
+    Math.round(Number(formatUnits(currentYieldRate, 18)) * 10) / 10;
+
+  const fmtNum = (n: number) => {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+    if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+    return n.toFixed(0);
+  };
+
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15">
       <h3 className="text-sm font-semibold text-on-surface mb-4">
         {t("stats")}
       </h3>
       <div className="grid grid-cols-2 gap-4 mb-4">
-        <Stat label={t("tokenPrice")} value="€0.144" />
-        <Stat label={t("maxSupply")} value="2M $CAMP" />
-        <Stat label={t("tokensSold")} value="1.32M" />
-        <Stat label={t("investors")} value="234" />
+        <Stat
+          label={t("tokenPrice")}
+          value={priceUsd > 0 ? `€${priceUsd.toFixed(3)}` : "—"}
+        />
+        <Stat
+          label={t("maxSupply")}
+          value={maxCapNum > 0 ? `${fmtNum(maxCapNum)} $CAMP` : "—"}
+        />
+        <Stat
+          label={t("tokensSold")}
+          value={soldNum > 0 ? fmtNum(soldNum) : "0"}
+        />
       </div>
 
       <div className="pt-4 border-t border-outline-variant/15">
@@ -328,13 +713,17 @@ function StatsCard() {
           <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
             {t("yieldRate")}
           </span>
-          <span className="text-2xl font-bold text-primary">3.8x</span>
+          <span className="text-2xl font-bold text-primary">
+            {yieldRate > 0 ? `${yieldRate}x` : "—"}
+          </span>
         </div>
 
         <div className="relative h-2 bg-surface-container-high rounded-full overflow-hidden mb-2">
           <div
             className="absolute inset-y-0 left-0 regen-gradient rounded-full"
-            style={{ width: `${((3.8 - 1) / 4) * 100}%` }}
+            style={{
+              width: `${Math.max(0, Math.min(100, ((yieldRate - 1) / 4) * 100))}%`,
+            }}
           />
         </div>
         <div className="flex justify-between text-xs text-on-surface-variant">
@@ -359,33 +748,83 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function TokensAcceptedCard() {
+function TokensAcceptedCard({
+  campaignAddress,
+}: {
+  campaignAddress: Address | undefined;
+}) {
   const t = useTranslations("detail.sidebar");
+  const campaignAbi = abis.Campaign as never;
+
+  const { data: acceptedTokens } = useReadContracts({
+    contracts: campaignAddress
+      ? [
+          {
+            address: campaignAddress,
+            abi: campaignAbi,
+            functionName: "getAcceptedTokens",
+          },
+        ]
+      : [],
+    query: { enabled: !!campaignAddress },
+  });
+
+  const tokens = (acceptedTokens?.[0]?.result as Address[] | undefined) ?? [];
+
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15">
       <h3 className="text-sm font-semibold text-on-surface mb-4">
         {t("acceptedTokens")}
       </h3>
-      <div className="space-y-3">
-        <TokenRow symbol="USDC" mode="Fixed" rate="$0.144" />
-        <TokenRow symbol="WETH" mode="Oracle" rate="$3,245.00" live />
-      </div>
+      {tokens.length === 0 ? (
+        <div className="text-xs text-on-surface-variant py-2">
+          {t("noTokens")}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {tokens.map((addr) => (
+            <TokenRow
+              key={addr}
+              tokenAddress={addr}
+              campaignAddress={campaignAddress!}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
 function TokenRow({
-  symbol,
-  mode,
-  rate,
-  live,
+  tokenAddress,
+  campaignAddress,
 }: {
-  symbol: string;
-  mode: string;
-  rate: string;
-  live?: boolean;
+  tokenAddress: Address;
+  campaignAddress: Address;
 }) {
   const t = useTranslations("detail.sidebar");
+  const campaignAbi = abis.Campaign as never;
+
+  const { data } = useReadContracts({
+    contracts: [
+      { address: tokenAddress, abi: erc20Abi, functionName: "symbol" },
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "tokenConfigs",
+        args: [tokenAddress],
+      },
+    ],
+  });
+
+  const symbol = (data?.[0]?.result as string | undefined) ?? "—";
+  // tokenConfigs returns TokenConfig struct: (pricingMode, paymentDecimals, fixedRate, oracleFeed, active)
+  const cfg = data?.[1]?.result as
+    | readonly [number, number, bigint, Address, boolean]
+    | undefined;
+  const isOracle = cfg ? cfg[0] === 1 : false;
+  const live = isOracle;
+
   return (
     <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">
       <div className="flex items-center gap-3">
@@ -396,18 +835,17 @@ function TokenRow({
         </div>
         <div>
           <div className="text-sm font-semibold text-on-surface">{symbol}</div>
-          <div className="text-xs text-on-surface-variant">{mode}</div>
+          <div className="text-xs text-on-surface-variant">
+            {isOracle ? "Oracle" : "Fixed"}
+          </div>
         </div>
       </div>
-      <div className="text-right">
-        <div className="text-sm font-semibold text-on-surface">{rate}</div>
-        {live && (
-          <div className="text-xs text-primary font-semibold flex items-center gap-1 justify-end">
-            <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-            {t("live")}
-          </div>
-        )}
-      </div>
+      {live && (
+        <div className="text-xs text-primary font-semibold flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          {t("live")}
+        </div>
+      )}
     </div>
   );
 }

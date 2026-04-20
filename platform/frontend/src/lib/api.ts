@@ -99,6 +99,33 @@ export interface MerkleGenerateResult {
   count: number;
 }
 
+export interface SnapshotResult {
+  campaign: string;
+  seasonId: string;
+  stakingVault: string;
+  yieldToken: string;
+  /** Sum of all holders' yieldAmount (18-dec string). */
+  totalYield: string;
+  /** Expected season-scoped total from StakingVault.seasonTotalYieldOwed; null if not exposed. */
+  seasonTotalYieldOwed: string | null;
+  holders: Array<{ user: string; yieldAmount: string }>;
+  notes: string[];
+}
+
+export async function fetchSnapshot(
+  campaign: string,
+  seasonId: string | number | bigint,
+): Promise<SnapshotResult> {
+  const res = await fetch(
+    `${BACKEND_URL}/api/snapshot/${campaign}/${String(seasonId)}`,
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Snapshot failed" }));
+    throw new Error(err.error || `Snapshot failed: ${res.status}`);
+  }
+  return res.json();
+}
+
 export async function generateMerkleTree(input: {
   campaign: string;
   seasonId: string | number | bigint;

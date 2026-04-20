@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { useAccount, useWriteContract } from "wagmi";
+import { waitForTransactionReceipt } from "@wagmi/core";
+import { parseUnits, decodeEventLog, zeroAddress, type Address } from "viem";
+import { abis, getAddresses, CHAIN_ID } from "@/contracts";
 import {
-  useAccount,
-  useWriteContract,
-  useWaitForTransactionReceipt,
-} from "wagmi";
-import { parseUnits, decodeEventLog, type Address } from "viem";
-import { abis, getAddresses } from "@/contracts";
+  KNOWN_TOKENS,
+  PRICING_MODE_ENUM,
+  resolveTokenAddress,
+} from "@/contracts/tokens";
+import { config } from "@/app/providers";
 import { uploadImage, uploadMetadata } from "@/lib/api";
 
 type FormData = {
@@ -25,10 +28,17 @@ type FormData = {
   seasonDuration: string;
   minProductClaim: string;
   tokenSymbol: string;
+  yieldName: string;
+  yieldSymbol: string;
   acceptedTokens: Array<{
+    /** KNOWN_TOKENS.symbol — the UI only offers tokens from the curated list. */
     symbol: string;
-    mode: "fixed" | "oracle";
-    rate: string;
+    /**
+     * Human-friendly rate the producer enters:
+     *  - fixed mode: how many payment-token units per 1 campaign token (e.g. "0.144" USDC).
+     *  - oracle mode: unused (pulled from Chainlink feed); we keep it for UI consistency.
+     */
+    humanRate: string;
   }>;
 };
 
@@ -59,15 +69,45 @@ export default function CreateCampaign() {
     seasonDuration: "365",
     minProductClaim: "5",
     tokenSymbol: "OLIVE",
-    acceptedTokens: [{ symbol: "USDC", mode: "fixed", rate: "0.144" }],
+    yieldName: "Olive Oil",
+    yieldSymbol: "OIL",
+    acceptedTokens: [{ symbol: "mUSDC", humanRate: "0.144" }],
   });
 
+  /**
+   * Campaign creation is a multi-tx flow. Rather than chain useEffects on
+   * receipt hashes (race-prone), we run the whole thing sequentially in a
+   * single async handler and tick through the status enum at each stage.
+   * Phases ending in -sig wait for the wallet popup; -chain wait for the
+   * receipt. Each writeContract revert or wallet rejection surfaces here.
+   */
   const [status, setStatus] = useState<
     | { kind: "idle" }
-    | { kind: "uploading"; message: string }
-    | { kind: "creating"; message: string }
-    | { kind: "registering"; message: string; campaign: Address }
-    | { kind: "success"; campaign: Address; createTx: string; registryTx?: string }
+    | { kind: "uploading-image" }
+    | { kind: "uploading-metadata" }
+    | { kind: "creating-sig" }
+    | { kind: "creating-chain" }
+    | { kind: "registering-sig"; campaign: Address }
+    | { kind: "registering-chain"; campaign: Address }
+    | {
+        kind: "whitelisting-sig";
+        campaign: Address;
+        index: number;
+        total: number;
+      }
+    | {
+        kind: "whitelisting-chain";
+        campaign: Address;
+        index: number;
+        total: number;
+      }
+    | {
+        kind: "success";
+        campaign: Address;
+        createTx: `0x${string}`;
+        registryTx?: `0x${string}`;
+        whitelistedCount: number;
+      }
     | { kind: "error"; error: string }
   >({ kind: "idle" });
 
@@ -79,12 +119,6 @@ export default function CreateCampaign() {
     registry !== "0x0000000000000000000000000000000000000000";
 
   const { writeContractAsync } = useWriteContract();
-  const [createTxHash, setCreateTxHash] = useState<`0x${string}` | undefined>();
-  const [registryTxHash, setRegistryTxHash] = useState<`0x${string}` | undefined>();
-  const [pendingMetadataUrl, setPendingMetadataUrl] = useState<string | null>(null);
-
-  const createReceipt = useWaitForTransactionReceipt({ hash: createTxHash });
-  const registryReceipt = useWaitForTransactionReceipt({ hash: registryTxHash });
 
   const update = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
@@ -100,6 +134,16 @@ export default function CreateCampaign() {
     const preview = URL.createObjectURL(file);
     setForm((f) => ({ ...f, imageFile: file, imagePreview: preview }));
   };
+
+  const deployBusy =
+    status.kind === "uploading-image" ||
+    status.kind === "uploading-metadata" ||
+    status.kind === "creating-sig" ||
+    status.kind === "creating-chain" ||
+    status.kind === "registering-sig" ||
+    status.kind === "registering-chain" ||
+    status.kind === "whitelisting-sig" ||
+    status.kind === "whitelisting-chain";
 
   const handleDeploy = async () => {
     if (!isConnected) {
@@ -120,10 +164,11 @@ export default function CreateCampaign() {
     }
 
     try {
-      setStatus({ kind: "uploading", message: t("status.uploadingImage") });
+      // ── 1. Upload image + metadata JSON to DO Spaces ──────────────────
+      setStatus({ kind: "uploading-image" });
       const image = await uploadImage(form.imageFile);
 
-      setStatus({ kind: "uploading", message: t("status.uploadingMetadata") });
+      setStatus({ kind: "uploading-metadata" });
       const metadata = await uploadMetadata({
         name: form.name,
         description: form.description,
@@ -131,14 +176,13 @@ export default function CreateCampaign() {
         productType: form.productType,
         imageUrl: image.url,
       });
-      setPendingMetadataUrl(metadata.url);
 
-      setStatus({ kind: "creating", message: t("status.confirmTx") });
+      // ── 2. createCampaign: wallet sign → on-chain confirmation ────────
+      setStatus({ kind: "creating-sig" });
       const deadline = Math.floor(
         new Date(form.fundingDeadline).getTime() / 1000,
       );
-
-      const hash = await writeContractAsync({
+      const createHash = await writeContractAsync({
         address: factory,
         abi: abis.CampaignFactory as never,
         functionName: "createCampaign",
@@ -147,8 +191,8 @@ export default function CreateCampaign() {
             producer: connectedAddress!,
             tokenName: form.name,
             tokenSymbol: form.tokenSymbol,
-            yieldName: `${form.name} Yield`,
-            yieldSymbol: `y${form.tokenSymbol}`,
+            yieldName: form.yieldName,
+            yieldSymbol: form.yieldSymbol,
             pricePerToken: parseUnits(form.pricePerToken, 18),
             minCap: BigInt(minCap) * 10n ** 18n,
             maxCap: BigInt(maxCap) * 10n ** 18n,
@@ -158,118 +202,133 @@ export default function CreateCampaign() {
           },
         ],
       });
-
-      setCreateTxHash(hash);
-      setStatus({ kind: "creating", message: t("status.waitingTx") });
-    } catch (err) {
-      setStatus({
-        kind: "error",
-        error: err instanceof Error ? err.message : String(err),
+      setStatus({ kind: "creating-chain" });
+      const createReceipt = await waitForTransactionReceipt(config, {
+        hash: createHash,
       });
-    }
-  };
-
-  // Step 2: createCampaign confirmed → extract new campaign address from logs
-  //         → call registry.setMetadata to link the off-chain JSON URL.
-  useEffect(() => {
-    if (
-      status.kind !== "creating" ||
-      !createReceipt.isSuccess ||
-      !createReceipt.data ||
-      !createTxHash
-    ) {
-      return;
-    }
-
-    const factoryAbi = abis.CampaignFactory as readonly unknown[];
-    let newCampaign: Address | undefined;
-    for (const log of createReceipt.data.logs) {
-      try {
-        const decoded = decodeEventLog({
-          abi: factoryAbi,
-          data: log.data,
-          topics: log.topics,
-        });
-        if (decoded.eventName === "CampaignCreated") {
-          const args = decoded.args as { campaign: Address };
-          newCampaign = args.campaign;
-          break;
-        }
-      } catch {
-        // not a factory event, skip
+      if (createReceipt.status !== "success") {
+        throw new Error("createCampaign reverted on-chain");
       }
-    }
 
-    if (!newCampaign) {
-      setStatus({
-        kind: "error",
-        error: "Campaign address not found in tx logs",
-      });
-      return;
-    }
+      // Decode the CampaignCreated event to get the new campaign address
+      const factoryAbi = abis.CampaignFactory as readonly unknown[];
+      let newCampaign: Address | undefined;
+      for (const log of createReceipt.logs) {
+        try {
+          const decoded = decodeEventLog({
+            abi: factoryAbi,
+            data: log.data,
+            topics: log.topics,
+          });
+          if (decoded.eventName === "CampaignCreated") {
+            newCampaign = (decoded.args as { campaign: Address }).campaign;
+            break;
+          }
+        } catch {
+          // not a factory event
+        }
+      }
+      if (!newCampaign) {
+        throw new Error("Campaign address not found in tx logs");
+      }
 
-    // If registry isn't deployed, we still consider the deploy a success —
-    // metadata link just won't be queryable via subgraph yet.
-    if (!registryDeployed || !pendingMetadataUrl) {
+      // ── 3. setMetadata on the CampaignRegistry (mandatory now) ────────
+      let registryHash: `0x${string}` | undefined;
+      if (registryDeployed) {
+        setStatus({ kind: "registering-sig", campaign: newCampaign });
+        registryHash = await writeContractAsync({
+          address: registry,
+          abi: abis.CampaignRegistry as never,
+          functionName: "setMetadata",
+          args: [newCampaign, metadata.url],
+        });
+        setStatus({ kind: "registering-chain", campaign: newCampaign });
+        const r = await waitForTransactionReceipt(config, {
+          hash: registryHash,
+        });
+        if (r.status !== "success") {
+          throw new Error("setMetadata reverted on-chain");
+        }
+      }
+
+      // ── 4. addAcceptedToken for each token the producer selected ──────
+      const total = form.acceptedTokens.length;
+      let whitelistedCount = 0;
+      for (let i = 0; i < total; i++) {
+        const entry = form.acceptedTokens[i];
+        const known = KNOWN_TOKENS.find((k) => k.symbol === entry.symbol);
+        if (!known) continue;
+
+        const tokenAddress = resolveTokenAddress(known, CHAIN_ID);
+        const pricingMode = PRICING_MODE_ENUM[known.defaultMode];
+        const fixedRate =
+          known.defaultMode === "fixed"
+            ? parseUnits(entry.humanRate || "0", known.decimals)
+            : 0n;
+        const oracleFeed =
+          known.defaultMode === "oracle"
+            ? (known.oracleFeed[CHAIN_ID] ?? zeroAddress)
+            : zeroAddress;
+
+        if (known.defaultMode === "fixed" && fixedRate === 0n) {
+          console.warn(`Invalid rate for ${known.symbol}, skipping`);
+          continue;
+        }
+        if (known.defaultMode === "oracle" && oracleFeed === zeroAddress) {
+          console.warn(`Missing Chainlink feed for ${known.symbol}, skipping`);
+          continue;
+        }
+
+        setStatus({
+          kind: "whitelisting-sig",
+          campaign: newCampaign,
+          index: i,
+          total,
+        });
+        try {
+          const hash = await writeContractAsync({
+            address: newCampaign,
+            abi: abis.Campaign as never,
+            functionName: "addAcceptedToken",
+            args: [tokenAddress, pricingMode, fixedRate, oracleFeed],
+          });
+          setStatus({
+            kind: "whitelisting-chain",
+            campaign: newCampaign,
+            index: i,
+            total,
+          });
+          const r = await waitForTransactionReceipt(config, { hash });
+          if (r.status === "success") {
+            whitelistedCount += 1;
+          } else {
+            console.warn(`addAcceptedToken reverted for ${known.symbol}`);
+          }
+        } catch (err) {
+          console.warn(
+            `addAcceptedToken failed for ${known.symbol}:`,
+            err instanceof Error ? err.message : err,
+          );
+        }
+      }
+
+      // ── 5. Done ───────────────────────────────────────────────────────
       setStatus({
         kind: "success",
         campaign: newCampaign,
-        createTx: createTxHash,
+        createTx: createHash,
+        registryTx: registryHash,
+        whitelistedCount,
       });
-      return;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/user (rejected|denied)/i.test(msg)) {
+        setStatus({ kind: "idle" });
+      } else {
+        setStatus({ kind: "error", error: msg });
+      }
     }
-
-    setStatus({
-      kind: "registering",
-      message: t("status.linkingMetadata"),
-      campaign: newCampaign,
-    });
-
-    writeContractAsync({
-      address: registry,
-      abi: abis.CampaignRegistry as never,
-      functionName: "setMetadata",
-      args: [newCampaign, pendingMetadataUrl],
-    })
-      .then((h) => setRegistryTxHash(h))
-      .catch((err) => {
-        // Metadata linking is best-effort — don't fail the whole flow.
-        setStatus({
-          kind: "success",
-          campaign: newCampaign!,
-          createTx: createTxHash,
-        });
-        console.warn("setMetadata failed:", err);
-      });
-  }, [
-    status.kind,
-    createReceipt.isSuccess,
-    createReceipt.data,
-    createTxHash,
-    pendingMetadataUrl,
-    registryDeployed,
-    registry,
-    writeContractAsync,
-    t,
-  ]);
-
-  // Step 3: registry.setMetadata confirmed → final success
-  useEffect(() => {
-    if (
-      status.kind !== "registering" ||
-      !registryReceipt.isSuccess ||
-      !registryTxHash ||
-      !createTxHash
-    ) {
-      return;
-    }
-    setStatus({
-      kind: "success",
-      campaign: status.campaign,
-      createTx: createTxHash,
-      registryTx: registryTxHash,
-    });
-  }, [status, registryReceipt.isSuccess, registryTxHash, createTxHash]);
+  };
 
   return (
     <div className="max-w-[1440px] mx-auto px-8 pt-28 pb-24 flex flex-col lg:flex-row gap-16">
@@ -344,6 +403,42 @@ export default function CreateCampaign() {
                   maxLength={8}
                 />
               </Field>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Field
+                  label={t("step1.yieldName")}
+                  hint={t("step1.yieldNameHint")}
+                >
+                  <input
+                    type="text"
+                    value={form.yieldName}
+                    onChange={(e) => update("yieldName", e.target.value)}
+                    placeholder={t("step1.yieldNamePlaceholder")}
+                    className="input"
+                  />
+                </Field>
+
+                <Field
+                  label={t("step1.yieldSymbol")}
+                  hint={t("step1.yieldSymbolHint", {
+                    stake: form.tokenSymbol || "CAMP",
+                    yield: form.yieldSymbol || "YIELD",
+                  })}
+                >
+                  <input
+                    type="text"
+                    value={form.yieldSymbol}
+                    onChange={(e) =>
+                      update(
+                        "yieldSymbol",
+                        e.target.value.toUpperCase().slice(0, 8),
+                      )
+                    }
+                    className="input uppercase"
+                    maxLength={8}
+                  />
+                </Field>
+              </div>
 
               <Field label={t("step1.description")}>
                 <textarea
@@ -529,93 +624,136 @@ export default function CreateCampaign() {
             </div>
 
             <div className="space-y-4">
-              {form.acceptedTokens.map((token, i) => (
-                <div
-                  key={i}
-                  className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-6"
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center font-bold text-sm">
-                        {token.symbol.slice(0, 2)}
-                      </div>
-                      <div>
-                        <div className="font-semibold text-on-surface">
-                          {token.symbol}
-                        </div>
-                        <div className="text-xs text-on-surface-variant">
-                          {token.mode === "fixed"
-                            ? t("step3.fixed")
-                            : t("step3.oracle")}
-                        </div>
-                      </div>
-                    </div>
-                    {form.acceptedTokens.length > 1 && (
-                      <button
-                        onClick={() =>
-                          update(
-                            "acceptedTokens",
-                            form.acceptedTokens.filter((_, idx) => idx !== i),
-                          )
-                        }
-                        className="text-error text-sm hover:underline"
-                      >
-                        {t("step3.remove")}
-                      </button>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Field label={t("step3.mode")}>
-                      <select
-                        value={token.mode}
-                        onChange={(e) => {
-                          const copy = [...form.acceptedTokens];
-                          copy[i] = {
-                            ...copy[i],
-                            mode: e.target.value as "fixed" | "oracle",
-                          };
-                          update("acceptedTokens", copy);
-                        }}
-                        className="input"
-                      >
-                        <option value="fixed">{t("step3.fixed")}</option>
-                        <option value="oracle">{t("step3.oracle")}</option>
-                      </select>
-                    </Field>
-                    <Field
-                      label={
-                        token.mode === "fixed"
-                          ? t("step3.fixedRate")
-                          : t("step3.oracleFeed")
-                      }
-                    >
-                      <input
-                        type="text"
-                        value={token.rate}
-                        onChange={(e) => {
-                          const copy = [...form.acceptedTokens];
-                          copy[i] = { ...copy[i], rate: e.target.value };
-                          update("acceptedTokens", copy);
-                        }}
-                        className="input"
-                        placeholder={token.mode === "fixed" ? "0.144" : "0x..."}
-                      />
-                    </Field>
-                  </div>
-                </div>
-              ))}
+              {form.acceptedTokens.map((token, i) => {
+                const known = KNOWN_TOKENS.find((k) => k.symbol === token.symbol);
+                const selectedSymbols = new Set(
+                  form.acceptedTokens.map((tk, idx) =>
+                    idx === i ? null : tk.symbol,
+                  ),
+                );
+                const isOracle = known?.defaultMode === "oracle";
 
-              <button
-                onClick={() =>
-                  update("acceptedTokens", [
-                    ...form.acceptedTokens,
-                    { symbol: "WETH", mode: "oracle", rate: "" },
-                  ])
-                }
-                className="w-full border-2 border-dashed border-outline-variant rounded-2xl p-4 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low hover:border-primary transition"
-              >
-                {t("step3.addToken")}
-              </button>
+                return (
+                  <div
+                    key={i}
+                    className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-6"
+                  >
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center font-bold text-sm">
+                          {token.symbol.slice(0, 2)}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-on-surface">
+                            {known?.name ?? token.symbol}
+                          </div>
+                          <div className="text-xs text-on-surface-variant">
+                            {isOracle ? t("step3.oracle") : t("step3.fixed")}
+                          </div>
+                        </div>
+                      </div>
+                      {form.acceptedTokens.length > 1 && (
+                        <button
+                          onClick={() =>
+                            update(
+                              "acceptedTokens",
+                              form.acceptedTokens.filter((_, idx) => idx !== i),
+                            )
+                          }
+                          className="text-error text-sm hover:underline"
+                        >
+                          {t("step3.remove")}
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <Field label={t("step3.token")}>
+                        <select
+                          value={token.symbol}
+                          onChange={(e) => {
+                            const copy = [...form.acceptedTokens];
+                            copy[i] = { ...copy[i], symbol: e.target.value };
+                            update("acceptedTokens", copy);
+                          }}
+                          className="input"
+                        >
+                          {KNOWN_TOKENS.map((k) => {
+                            const alreadyUsed = selectedSymbols.has(k.symbol);
+                            const disabled = !k.enabled || alreadyUsed;
+                            return (
+                              <option
+                                key={k.symbol}
+                                value={k.symbol}
+                                disabled={disabled}
+                              >
+                                {k.symbol} — {k.name}
+                                {!k.enabled ? ` (${t("step3.comingSoon")})` : ""}
+                              </option>
+                            );
+                          })}
+                        </select>
+                      </Field>
+                      {!isOracle ? (
+                        <Field
+                          label={t("step3.fixedRate")}
+                          hint={t("step3.fixedRateHint", {
+                            symbol: token.symbol,
+                          })}
+                        >
+                          <input
+                            type="number"
+                            step="0.000001"
+                            value={token.humanRate}
+                            onChange={(e) => {
+                              const copy = [...form.acceptedTokens];
+                              copy[i] = {
+                                ...copy[i],
+                                humanRate: e.target.value,
+                              };
+                              update("acceptedTokens", copy);
+                            }}
+                            className="input"
+                            placeholder="0.144"
+                          />
+                        </Field>
+                      ) : (
+                        <Field label={t("step3.oracleFeed")}>
+                          <div className="input bg-surface-container flex items-center text-xs font-mono text-on-surface-variant">
+                            {known?.oracleFeed[CHAIN_ID] ??
+                              t("step3.noFeedOnChain")}
+                          </div>
+                        </Field>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {(() => {
+                const used = new Set(form.acceptedTokens.map((t) => t.symbol));
+                const nextAvailable = KNOWN_TOKENS.find(
+                  (k) => k.enabled && !used.has(k.symbol),
+                );
+                if (!nextAvailable) return null;
+                return (
+                  <button
+                    onClick={() =>
+                      update("acceptedTokens", [
+                        ...form.acceptedTokens,
+                        { symbol: nextAvailable.symbol, humanRate: "" },
+                      ])
+                    }
+                    className="w-full border-2 border-dashed border-outline-variant rounded-2xl p-4 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low hover:border-primary transition"
+                  >
+                    {t("step3.addToken")}
+                  </button>
+                );
+              })()}
+
+              <p className="text-xs text-on-surface-variant px-2">
+                {t("step3.signatureNotice")}
+              </p>
             </div>
           </>
         )}
@@ -700,14 +838,43 @@ export default function CreateCampaign() {
                 </p>
               </div>
 
-              {status.kind === "uploading" && (
-                <StatusBox kind="info">{status.message}</StatusBox>
+              {status.kind === "uploading-image" && (
+                <StatusBox kind="info">
+                  {t("status.uploadingImage")}
+                </StatusBox>
               )}
-              {status.kind === "creating" && (
-                <StatusBox kind="info">{status.message}</StatusBox>
+              {status.kind === "uploading-metadata" && (
+                <StatusBox kind="info">
+                  {t("status.uploadingMetadata")}
+                </StatusBox>
               )}
-              {status.kind === "registering" && (
-                <StatusBox kind="info">{status.message}</StatusBox>
+              {status.kind === "creating-sig" && (
+                <StatusBox kind="info">{t("status.confirmTx")}</StatusBox>
+              )}
+              {status.kind === "creating-chain" && (
+                <StatusBox kind="info">{t("status.waitingTx")}</StatusBox>
+              )}
+              {status.kind === "registering-sig" && (
+                <StatusBox kind="info">{t("status.signMetadata")}</StatusBox>
+              )}
+              {status.kind === "registering-chain" && (
+                <StatusBox kind="info">
+                  {t("status.linkingMetadata")}
+                </StatusBox>
+              )}
+              {(status.kind === "whitelisting-sig" ||
+                status.kind === "whitelisting-chain") && (
+                <StatusBox kind="info">
+                  {status.kind === "whitelisting-sig"
+                    ? t("status.whitelistingSig", {
+                        index: status.index + 1,
+                        total: status.total,
+                      })
+                    : t("status.whitelisting", {
+                        index: status.index + 1,
+                        total: status.total,
+                      })}
+                </StatusBox>
               )}
               {status.kind === "success" && (
                 <StatusBox kind="success">
@@ -776,19 +943,12 @@ export default function CreateCampaign() {
           ) : (
             <button
               onClick={handleDeploy}
-              disabled={
-                status.kind === "uploading" ||
-                status.kind === "creating" ||
-                status.kind === "registering" ||
-                !isConnected
-              }
+              disabled={deployBusy || !isConnected}
               className="regen-gradient text-white px-8 py-3 rounded-full font-semibold hover:opacity-90 transition shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {!isConnected
                 ? t("actions.connect")
-                : status.kind === "uploading" ||
-                    status.kind === "creating" ||
-                    status.kind === "registering"
+                : deployBusy
                   ? t("actions.inProgress")
                   : t("actions.deploy")}
             </button>

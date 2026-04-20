@@ -43,7 +43,7 @@ export const addresses: Record<
       "0xb0Ba4660b2D136BF087FA9bf0aec946f0a87597e",
     producerRegistry:
       (process.env.NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS as Address) ||
-      "0x702915469f66415C70B4203B40aB9a97203d979B",
+      "0x702915469f66415C70b4203b40ab9A97203D979b",
   },
   // Base Mainnet (future)
   8453: {

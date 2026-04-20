@@ -353,6 +353,21 @@ function ClaimCard({ claim }: { claim: UserPortfolio["claims"][number] }) {
   const claimed = BigInt(claim.usdcClaimed);
   const claimable = entitled > claimed ? entitled - claimed : 0n;
 
+  // Same 4-phase state machine as HarvestPanel's UsdcClaimTimeline, with
+  // the 1 USDC-wei dust tolerance for the 6↔18 decimal rounding.
+  const DUST_18 = 10n ** 12n;
+  const fulfilled = owed > 0n && claimed + DUST_18 >= owed;
+  const fullyDeposited = totalOwed > 0n && deposited >= totalOwed;
+  const phase: 1 | 2 | 3 | 4 = fulfilled
+    ? 4
+    : claimable > 0n || fullyDeposited
+      ? 3
+      : 2;
+  const depositPct =
+    totalOwed > 0n ? Number((deposited * 100n) / totalOwed) : 0;
+
+  const isProduct = claim.redemptionType === "product";
+
   return (
     <Link
       href={`/campaign/${claim.campaign.id}`}
@@ -367,49 +382,99 @@ function ClaimCard({ claim }: { claim: UserPortfolio["claims"][number] }) {
             {claim.campaign.id.slice(0, 8)}…{claim.campaign.id.slice(-4)}
           </div>
         </div>
-        <span
-          className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
-            claim.redemptionType === "product"
-              ? "bg-secondary-container text-white"
-              : "bg-primary-fixed text-on-primary-fixed-variant"
-          }`}
-        >
-          {claim.redemptionType}
-        </span>
+        {isProduct ? (
+          <span className="px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider bg-secondary-container text-white">
+            {t("claim.productBadge")}
+          </span>
+        ) : (
+          <ClaimStatusBadge phase={phase} />
+        )}
       </div>
-      {claim.redemptionType === "usdc" ? (
-        <div className="grid grid-cols-2 gap-3 text-sm pt-3 border-t border-outline-variant/15">
-          <div>
-            <div className="text-xs text-on-surface-variant">
-              {t("claim.burned")}
-            </div>
-            <div className="font-semibold text-on-surface">
-              {Number(formatUnits(BigInt(claim.yieldBurned), 18)).toFixed(2)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-on-surface-variant">
-              {t("claim.claimable")}
-            </div>
-            <div className="font-semibold text-primary">
-              ${Number(formatUnits(claimable, 18)).toFixed(2)}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="pt-3 border-t border-outline-variant/15 text-sm">
+
+      {isProduct ? (
+        <div className="pt-3 border-t border-outline-variant/15">
           <div className="text-xs text-on-surface-variant">
             {t("claim.productAmount")}
           </div>
-          <div className="font-semibold text-primary">
-            {Number(formatUnits(BigInt(claim.productAmount), 18)).toLocaleString(
-              undefined,
-              { maximumFractionDigits: 2 },
-            )}{" "}
-            units
+          <div className="font-semibold text-primary text-lg">
+            {Number(
+              formatUnits(BigInt(claim.productAmount), 18),
+            ).toLocaleString(undefined, { maximumFractionDigits: 2 })}{" "}
+            {t("claim.units")}
           </div>
+        </div>
+      ) : (
+        <div className="pt-3 border-t border-outline-variant/15 space-y-3">
+          <div className="flex justify-between items-end">
+            <div>
+              <div className="text-[11px] text-on-surface-variant uppercase tracking-wider">
+                {fulfilled
+                  ? t("claim.fulfilledLabel")
+                  : t("claim.yourEntitlement")}
+              </div>
+              <div className="text-xl font-bold text-on-surface">
+                ${Number(formatUnits(owed, 18)).toFixed(2)}
+              </div>
+              <div className="text-[11px] text-on-surface-variant">
+                {t("claim.receivedSoFar", {
+                  amount: Number(formatUnits(claimed, 18)).toFixed(2),
+                })}
+              </div>
+            </div>
+            {!fulfilled && claimable > 0n && (
+              <div className="text-right">
+                <div className="text-[11px] text-on-surface-variant uppercase tracking-wider">
+                  {t("claim.claimable")}
+                </div>
+                <div className="text-lg font-bold text-primary">
+                  ${Number(formatUnits(claimable, 18)).toFixed(2)}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {!fulfilled && (
+            <div>
+              <div className="flex justify-between items-center text-[10px] text-on-surface-variant mb-1">
+                <span className="uppercase tracking-wider">
+                  {t("claim.producerDeposit")}
+                </span>
+                <span>
+                  ${Number(formatUnits(deposited, 18)).toFixed(0)} / $
+                  {Number(formatUnits(totalOwed, 18)).toFixed(0)}
+                </span>
+              </div>
+              <div className="w-full h-1 bg-surface-container-high rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(depositPct, 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </Link>
+  );
+}
+
+function ClaimStatusBadge({ phase }: { phase: 1 | 2 | 3 | 4 }) {
+  const t = useTranslations("portfolio.claim.status");
+  const map: Record<1 | 2 | 3 | 4, { label: string; cls: string }> = {
+    1: { label: t("committed"), cls: "bg-amber-100 text-amber-900" },
+    2: { label: t("awaiting"), cls: "bg-amber-100 text-amber-900" },
+    3: { label: t("claimable"), cls: "bg-primary text-white" },
+    4: {
+      label: t("fulfilled"),
+      cls: "bg-primary-fixed text-on-primary-fixed-variant",
+    },
+  };
+  const { label, cls } = map[phase];
+  return (
+    <span
+      className={`px-3 py-1 rounded-full text-[11px] font-semibold uppercase tracking-wider ${cls}`}
+    >
+      {label}
+    </span>
   );
 }

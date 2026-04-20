@@ -5,97 +5,16 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { formatUnits } from "viem";
 import { CampaignCard, type CampaignState } from "@/components/CampaignCard";
-import { useSubgraphCampaigns } from "@/lib/subgraph";
+import { useSubgraphCampaigns, useGlobalStats } from "@/lib/subgraph";
 import { getAddresses } from "@/contracts";
 
 type FilterKey = "all" | "funding" | "active" | "ended";
-
-const MOCK_CAMPAIGNS: Array<{
-  address: string;
-  name: string;
-  producer: string;
-  location: string;
-  image: string;
-  state: CampaignState;
-  progress: number;
-  yieldRate: number;
-  deadline?: string;
-  stakers?: number;
-}> = [
-  {
-    address: "0x1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a01",
-    name: "Ferrara Olive Grove",
-    producer: "Ferrara Family Farm",
-    location: "Sicily",
-    image:
-      "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&q=80",
-    state: "funding",
-    progress: 67,
-    yieldRate: 3.8,
-    deadline: "23",
-  },
-  {
-    address: "0x2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b12",
-    name: "Catania Citrus Orchard",
-    producer: "Catania Citrus Co",
-    location: "Sicily",
-    image:
-      "https://images.unsplash.com/photo-1557800636-894a64c1696f?w=800&q=80",
-    state: "active",
-    progress: 100,
-    yieldRate: 2.4,
-    stakers: 847,
-  },
-  {
-    address: "0x3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c23",
-    name: "Etna Vineyard",
-    producer: "Etna Vineyards",
-    location: "Sicily",
-    image:
-      "https://images.unsplash.com/photo-1566903451935-7e8833aefabe?w=800&q=80",
-    state: "funding",
-    progress: 34,
-    yieldRate: 4.6,
-    deadline: "45",
-  },
-  {
-    address: "0x4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d34",
-    name: "Agrigento Almond Grove",
-    producer: "Agrigento Almonds",
-    location: "Sicily",
-    image:
-      "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?w=800&q=80",
-    state: "active",
-    progress: 100,
-    yieldRate: 1.8,
-    stakers: 412,
-  },
-  {
-    address: "0x5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e45",
-    name: "Bronte Hazelnut Farm",
-    producer: "Bronte Hazelnuts",
-    location: "Sicily",
-    image:
-      "https://images.unsplash.com/photo-1606923829579-0cb981a83e2e?w=800&q=80",
-    state: "funding",
-    progress: 82,
-    yieldRate: 2.9,
-    deadline: "8",
-  },
-  {
-    address: "0x6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f56",
-    name: "Nebrodi Chestnut Grove",
-    producer: "Nebrodi Chestnuts",
-    location: "Sicily",
-    image:
-      "https://images.unsplash.com/photo-1444392061186-9fc38f84f726?w=800&q=80",
-    state: "ended",
-    progress: 100,
-    yieldRate: 0,
-  },
-];
-
 const FILTER_KEYS: FilterKey[] = ["all", "funding", "active", "ended"];
+
+// No image fallback here — CampaignCard renders a branded gradient
+// placeholder when `image` is empty, so unrelated stock photos don't
+// appear on campaigns without metadata.
+const PLACEHOLDER_IMAGE = "";
 
 export default function Home() {
   const t = useTranslations("home");
@@ -104,16 +23,17 @@ export default function Home() {
   const factoryDeployed =
     factory !== "0x0000000000000000000000000000000000000000";
 
-  const { data: onChainCampaigns } = useSubgraphCampaigns();
-  const hasOnChainData = factoryDeployed && (onChainCampaigns?.length ?? 0) > 0;
+  const { data: onChainCampaigns, isLoading } = useSubgraphCampaigns();
+  const { data: stats } = useGlobalStats();
 
   const campaigns = useMemo(() => {
-    if (!hasOnChainData || !onChainCampaigns) return MOCK_CAMPAIGNS;
+    if (!onChainCampaigns) return [];
 
     const toState = (s: string): CampaignState =>
       s === "Active" ? "active" : s === "Ended" ? "ended" : "funding";
 
-    const pricePerTokenUsd = (wei: string) => Number(formatUnits(BigInt(wei), 18));
+    const pricePerTokenUsd = (wei: string) =>
+      Number(formatUnits(BigInt(wei), 18));
     const pctFilled = (supply: string, cap: string) => {
       const c = BigInt(cap);
       return c === 0n ? 0 : Number((BigInt(supply) * 100n) / c);
@@ -127,9 +47,8 @@ export default function Home() {
       address: c.id,
       name: `Campaign ${c.id.slice(0, 8)}…`,
       producer: c.producer,
-      location: "—",
-      image:
-        "https://images.unsplash.com/photo-1550547660-d9450f859349?w=800&q=80",
+      location: "",
+      image: PLACEHOLDER_IMAGE,
       state: toState(c.state),
       progress: pctFilled(c.currentSupply, c.maxCap),
       yieldRate:
@@ -141,10 +60,19 @@ export default function Home() {
       metadataURI: c.metadataURI,
       metadataVersion: c.metadataVersion,
     }));
-  }, [hasOnChainData, onChainCampaigns]);
+  }, [onChainCampaigns]);
 
   const filteredCampaigns =
     filter === "all" ? campaigns : campaigns.filter((c) => c.state === filter);
+
+  const totalRaisedUsd = useMemo(() => {
+    if (!onChainCampaigns) return 0;
+    const sumWei = onChainCampaigns.reduce(
+      (acc, c) => acc + BigInt(c.totalRaised),
+      0n,
+    );
+    return Number(formatUnits(sumWei, 18));
+  }, [onChainCampaigns]);
 
   return (
     <>
@@ -200,13 +128,30 @@ export default function Home() {
           <div className="absolute inset-0 bg-primary-fixed/5 pointer-events-none" />
           {[
             {
-              value: String(onChainCampaigns?.length ?? 12),
+              value: String(stats?.campaignCount ?? onChainCampaigns?.length ?? 0),
               label: t("stats.campaigns"),
               color: "text-on-surface",
             },
-            { value: "€284,500", label: t("stats.raised"), color: "text-on-surface" },
-            { value: "1,847", label: t("stats.investors"), color: "text-on-surface" },
-            { value: "4.2x", label: t("stats.avgYield"), color: "text-primary" },
+            {
+              value: `€${Math.round(totalRaisedUsd).toLocaleString()}`,
+              label: t("stats.raised"),
+              color: "text-on-surface",
+            },
+            {
+              value: String(stats?.userCount ?? 0),
+              label: t("stats.investors"),
+              color: "text-on-surface",
+            },
+            {
+              value: campaigns.length
+                ? `${(
+                    campaigns.reduce((a, c) => a + c.yieldRate, 0) /
+                    campaigns.length
+                  ).toFixed(1)}x`
+                : "—",
+              label: t("stats.avgYield"),
+              color: "text-primary",
+            },
           ].map((stat) => (
             <div key={stat.label} className="flex flex-col relative z-10">
               <span className={`text-3xl font-bold mb-1 ${stat.color}`}>
@@ -248,15 +193,31 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          {filteredCampaigns.map((campaign) => (
-            <CampaignCard key={campaign.address} {...campaign} />
-          ))}
-        </div>
-
-        {filteredCampaigns.length === 0 && (
+        {isLoading ? (
           <div className="text-center py-16 text-on-surface-variant">
-            {t("empty")}
+            {t("loading")}
+          </div>
+        ) : filteredCampaigns.length === 0 ? (
+          <div className="bg-surface-container-lowest rounded-2xl border border-dashed border-outline-variant/40 py-16 px-8 text-center">
+            <div className="text-4xl mb-4">🌱</div>
+            <h3 className="text-lg font-semibold text-on-surface mb-2">
+              {t("emptyTitle")}
+            </h3>
+            <p className="text-sm text-on-surface-variant mb-6 max-w-md mx-auto">
+              {t("emptyBody")}
+            </p>
+            <Link
+              href="/create"
+              className="inline-block regen-gradient text-white px-6 py-3 rounded-full text-xs font-semibold tracking-widest uppercase shadow-lg shadow-primary/20 hover:opacity-90 transition"
+            >
+              {t("ctaCreate")}
+            </Link>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredCampaigns.map((campaign) => (
+              <CampaignCard key={campaign.address} {...campaign} />
+            ))}
           </div>
         )}
       </section>

@@ -1,17 +1,16 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import {
-  useAccount,
-  useWriteContract,
-  useWaitForTransactionReceipt,
-} from "wagmi";
+import { useAccount, useWriteContract } from "wagmi";
+import { waitForTransactionReceipt } from "@wagmi/core";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
 import {
   useSubgraphProducer,
   useProducerCampaigns,
+  useProducerIndexed,
   type SubgraphCampaign,
 } from "@/lib/subgraph";
 import {
@@ -20,6 +19,9 @@ import {
 } from "@/lib/metadata";
 import { uploadImage, uploadProducerProfile } from "@/lib/api";
 import { abis, getAddresses } from "@/contracts";
+import { config } from "@/app/providers";
+import { Spinner } from "@/components/Spinner";
+import { ProducerAggregateDashboard } from "@/components/ProducerAggregateDashboard";
 
 export default function ProducerPage({
   params,
@@ -35,16 +37,24 @@ export default function ProducerPage({
   const isOwner =
     !!connected && connected.toLowerCase() === producerAddress.toLowerCase();
 
-  const { data: producer } = useSubgraphProducer(
+  const { data: producer, isLoading: producerLoading } = useSubgraphProducer(
     isValid ? producerAddress : undefined,
   );
-  const { data: profile } = useProducerProfile(
+  const { data: profile, isLoading: profileLoading } = useProducerProfile(
     producer?.profileURI,
     producer?.version,
   );
-  const { data: campaigns } = useProducerCampaigns(
-    isValid ? producerAddress : undefined,
-  );
+  const { data: campaigns, isLoading: campaignsLoading } =
+    useProducerCampaigns(isValid ? producerAddress : undefined);
+
+  /**
+   * While the subgraph+JSON is loading we don't know yet whether the
+   * producer has a profile — showing "anonymous" immediately would be
+   * misleading. Only flip that switch once we've actually fetched and
+   * gotten nothing back.
+   */
+  const profileLoadingCombined =
+    producerLoading || (!!producer?.profileURI && profileLoading);
 
   const [editing, setEditing] = useState(false);
 
@@ -58,6 +68,10 @@ export default function ProducerPage({
 
   return (
     <div className="max-w-7xl mx-auto px-8 pt-28 pb-20">
+      {isOwner && (
+        <ProducerAggregateDashboard producerAddress={producerAddress} />
+      )}
+
       {profile?.cover && (
         <div
           className="w-full h-48 md:h-60 rounded-2xl bg-cover bg-center mb-8"
@@ -80,7 +94,11 @@ export default function ProducerPage({
           )}
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-on-surface">
-              {profile?.name || t("anonymous")}
+              {profileLoadingCombined ? (
+                <span className="inline-block h-8 w-48 rounded-md bg-surface-container-high animate-pulse" />
+              ) : (
+                profile?.name || t("anonymous")
+              )}
             </h1>
             <p className="text-sm text-on-surface-variant font-mono">
               {producerAddress}
@@ -93,7 +111,7 @@ export default function ProducerPage({
           </div>
         </div>
 
-        {isOwner && !editing && (
+        {isOwner && !editing && !profileLoadingCombined && (
           <button
             onClick={() => setEditing(true)}
             className="bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition"
@@ -121,19 +139,51 @@ export default function ProducerPage({
         </div>
       )}
 
-      {!profile && !editing && (
-        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 mb-10 text-center text-sm text-on-surface-variant">
-          {t("noProfileYet")}
+      {profileLoadingCombined ? (
+        <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 mb-10">
+          <div className="space-y-3">
+            <div className="h-4 w-3/4 rounded bg-surface-container-high animate-pulse" />
+            <div className="h-4 w-1/2 rounded bg-surface-container-high animate-pulse" />
+          </div>
         </div>
+      ) : (
+        !profile &&
+        !editing && (
+          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 mb-10 text-center text-sm text-on-surface-variant">
+            {t("noProfileYet")}
+          </div>
+        )
       )}
 
-      {editing && <ProfileForm onDone={() => setEditing(false)} current={profile} />}
+      {editing && (
+        <ProfileForm
+          onDone={() => setEditing(false)}
+          current={profile}
+          producerAddress={producerAddress}
+          previousVersion={producer?.version}
+        />
+      )}
 
       <section>
         <h2 className="text-xl font-bold text-on-surface mb-4">
           {t("campaignsTitle")}
         </h2>
-        {!campaigns || campaigns.length === 0 ? (
+        {campaignsLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 overflow-hidden"
+              >
+                <div className="h-32 bg-surface-container-high animate-pulse" />
+                <div className="p-4 space-y-2">
+                  <div className="h-4 w-2/3 rounded bg-surface-container-high animate-pulse" />
+                  <div className="h-3 w-1/3 rounded bg-surface-container-high animate-pulse" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : !campaigns || campaigns.length === 0 ? (
           <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 text-center text-sm text-on-surface-variant">
             {t("noCampaigns")}
           </div>
@@ -180,12 +230,18 @@ function CampaignThumb({ campaign }: { campaign: SubgraphCampaign }) {
 function ProfileForm({
   current,
   onDone,
+  producerAddress,
+  previousVersion,
 }: {
   current?: { name?: string; bio?: string; avatar?: string | null; cover?: string | null; website?: string | null; location?: string | null } | null;
   onDone: () => void;
+  producerAddress: Address;
+  /** Subgraph version at the moment the form opened. Undefined if the producer has no profile yet. */
+  previousVersion: string | undefined;
 }) {
   const t = useTranslations("producer.form");
   const { producerRegistry } = getAddresses();
+  const queryClient = useQueryClient();
 
   const [name, setName] = useState(current?.name ?? "");
   const [bio, setBio] = useState(current?.bio ?? "");
@@ -194,16 +250,29 @@ function ProfileForm({
   const [avatarUrl, setAvatarUrl] = useState<string | null>(current?.avatar ?? null);
   const [coverUrl, setCoverUrl] = useState<string | null>(current?.cover ?? null);
 
-  const [busy, setBusy] = useState<string | null>(null);
+  const [busy, setBusy] = useState<
+    null | "uploading" | "profile" | "sig" | "chain" | "indexing"
+  >(null);
   const [error, setError] = useState<string | null>(null);
 
   const { writeContractAsync } = useWriteContract();
-  const [txHash, setTxHash] = useState<`0x${string}` | undefined>();
-  const receipt = useWaitForTransactionReceipt({ hash: txHash });
 
-  if (receipt.isSuccess && txHash) {
-    setTimeout(() => onDone(), 200);
-  }
+  const pollEnabled = busy === "indexing";
+  const indexed = useProducerIndexed(
+    producerAddress,
+    previousVersion,
+    pollEnabled,
+  );
+
+  useEffect(() => {
+    if (!pollEnabled || !indexed.data) return;
+    // Subgraph caught up — invalidate the parent's producer query so the
+    // page re-renders with the new name/avatar, then close the form.
+    queryClient.invalidateQueries({
+      queryKey: ["subgraph", "producer", producerAddress.toLowerCase()],
+    });
+    onDone();
+  }, [pollEnabled, indexed.data, queryClient, producerAddress, onDone]);
 
   const handleImage = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -234,17 +303,24 @@ function ProfileForm({
         website: website || null,
         location: location || null,
       });
-      setBusy("tx");
+      setBusy("sig");
       const hash = await writeContractAsync({
         address: producerRegistry,
         abi: abis.ProducerRegistry as never,
         functionName: "setProfile",
         args: [profile.url],
       });
-      setTxHash(hash);
+      setBusy("chain");
+      const r = await waitForTransactionReceipt(config, { hash });
+      if (r.status !== "success") throw new Error("setProfile reverted");
+      // Now wait for subgraph to index the new version
+      setBusy("indexing");
     } catch (err) {
       setBusy(null);
-      setError(err instanceof Error ? err.message : String(err));
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/user (rejected|denied)/i.test(msg)) {
+        setError(msg);
+      }
     }
   };
 
@@ -325,15 +401,20 @@ function ProfileForm({
         <button
           onClick={handleSave}
           disabled={!name || busy !== null}
-          className="regen-gradient text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition disabled:opacity-50"
+          className="regen-gradient text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2"
         >
+          {busy !== null && <Spinner size={14} />}
           {busy === "uploading"
             ? t("uploading")
             : busy === "profile"
               ? t("savingJson")
-              : busy === "tx"
-                ? t("confirmingTx")
-                : t("save")}
+              : busy === "sig"
+                ? t("awaitingSignature")
+                : busy === "chain"
+                  ? t("confirmingTx")
+                  : busy === "indexing"
+                    ? t("indexing")
+                    : t("save")}
         </button>
       </div>
 

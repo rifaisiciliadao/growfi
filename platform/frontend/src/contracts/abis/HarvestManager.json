@@ -644,7 +644,7 @@
   },
   {
     "type": "event",
-    "name": "USDCClaimed",
+    "name": "USDCCommitted",
     "inputs": [
       {
         "name": "user",
@@ -659,7 +659,13 @@
         "internalType": "uint256"
       },
       {
-        "name": "amount",
+        "name": "yieldBurned",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "usdcAmount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -721,13 +727,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "yieldBurned",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "usdcAmount",
+        "name": "amount",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

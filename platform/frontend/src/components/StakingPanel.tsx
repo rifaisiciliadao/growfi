@@ -1,21 +1,24 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
   useAccount,
   useReadContract,
   useReadContracts,
   useWriteContract,
-  useWaitForTransactionReceipt,
 } from "wagmi";
+import { waitForTransactionReceipt } from "@wagmi/core";
 import { formatUnits, parseUnits, type Address } from "viem";
 import { abis } from "@/contracts";
+import { config } from "@/app/providers";
 import { erc20Abi } from "@/contracts/erc20";
+import { Spinner } from "./Spinner";
 
 interface Props {
   campaignToken: Address;
   stakingVault: Address;
+  yieldToken: Address;
   seasonDuration: bigint; // in seconds
 }
 
@@ -34,19 +37,21 @@ const tokenAbi = abis.CampaignToken as never;
 export function StakingPanel({
   campaignToken,
   stakingVault,
+  yieldToken,
   seasonDuration,
 }: Props) {
   const t = useTranslations("detail.stake");
   const { address: user, isConnected } = useAccount();
 
-  const [pendingHash, setPendingHash] = useState<`0x${string}` | undefined>();
-  const [pendingKind, setPendingKind] = useState<
-    "approve" | "stake" | "claim" | "unstake" | "restake" | null
-  >(null);
+  type TxPhase = "sig" | "chain";
+  const [pending, setPending] = useState<{
+    kind: "approve" | "stake" | "claim" | "unstake" | "restake";
+    phase: TxPhase;
+  } | null>(null);
   const [stakeAmount, setStakeAmount] = useState("");
+  const [txError, setTxError] = useState<string | null>(null);
 
   const { writeContractAsync } = useWriteContract();
-  const receipt = useWaitForTransactionReceipt({ hash: pendingHash });
 
   // 1) Load position IDs for the user
   const { data: positionIds, refetch: refetchIds } = useReadContract({
@@ -73,12 +78,14 @@ export function StakingPanel({
 
   const positions: Position[] = useMemo(() => {
     if (!positionIds || !positionData) return [];
+    type MaybeResult = { result?: unknown };
+    const results = positionData as readonly MaybeResult[];
     return positionIds
       .map((id, i) => {
-        const posResult = positionData[i * 2]?.result as
+        const posResult = results[i * 2]?.result as
           | readonly [Address, bigint, bigint, bigint, bigint, boolean]
           | undefined;
-        const earned = (positionData[i * 2 + 1]?.result as bigint) ?? 0n;
+        const earned = (results[i * 2 + 1]?.result as bigint) ?? 0n;
         if (!posResult) return null;
         return {
           id,
@@ -113,30 +120,51 @@ export function StakingPanel({
   const allowance = (balAllow?.[1]?.result as bigint) ?? 0n;
   const symbol = (balAllow?.[2]?.result as string) ?? "CAMP";
 
-  // 4) Current season for restake eligibility
+  // Yield token symbol — what stakers earn (e.g. "OIL" instead of generic $YIELD)
+  const { data: yieldSymbolRaw } = useReadContract({
+    address: yieldToken,
+    abi: erc20Abi,
+    functionName: "symbol",
+  });
+  const yieldSymbol = (yieldSymbolRaw as string | undefined) ?? "YIELD";
+
+  // 4) Current season for restake eligibility + active-season guard
   const { data: currentSeasonId } = useReadContract({
     address: stakingVault,
     abi: stakingAbi,
     functionName: "currentSeasonId",
   }) as { data: bigint | undefined };
 
-  // Refresh all reads once tx confirms
-  useEffect(() => {
-    if (!receipt.isSuccess || !pendingHash) return;
-    refetchIds();
-    refetchPositions();
-    refetchBalAllow();
-    setPendingKind(null);
-    setPendingHash(undefined);
-    if (pendingKind === "stake") setStakeAmount("");
-  }, [
-    receipt.isSuccess,
-    pendingHash,
-    pendingKind,
-    refetchIds,
-    refetchPositions,
-    refetchBalAllow,
-  ]);
+  // Season struct layout: (seasonId, startTime, endTime, active, ...).
+  // Pre-flight check avoids submitting stake txs that will revert with
+  // NoActiveSeason — the contract rejects stakes when no season is running.
+  const { data: currentSeasonData, isLoading: seasonLoading } = useReadContract(
+    {
+      address: stakingVault,
+      abi: stakingAbi,
+      functionName: "seasons",
+      args:
+        currentSeasonId !== undefined && currentSeasonId > 0n
+          ? [currentSeasonId]
+          : undefined,
+      query: { enabled: currentSeasonId !== undefined && currentSeasonId > 0n },
+    },
+  ) as {
+    data: readonly [bigint, bigint, bigint, boolean, ...unknown[]] | undefined;
+    isLoading: boolean;
+  };
+  const seasonActive =
+    currentSeasonId !== undefined &&
+    currentSeasonId > 0n &&
+    !!currentSeasonData?.[3];
+  // Don't flash the "no active season" banner during the initial fetch.
+  // Wait until currentSeasonId is resolved AND the seasons() read has
+  // settled before declaring there's no active season.
+  const seasonDataResolved =
+    currentSeasonId !== undefined &&
+    (currentSeasonId === 0n || !seasonLoading);
+  const showNoSeasonBanner = seasonDataResolved && !seasonActive;
+
 
   const stakeAmountWei = useMemo(() => {
     if (!stakeAmount || Number(stakeAmount) <= 0) return 0n;
@@ -148,83 +176,126 @@ export function StakingPanel({
   }, [stakeAmount]);
 
   const needsApproval = stakeAmountWei > 0n && allowance < stakeAmountWei;
-  const canStake = isConnected && stakeAmountWei > 0n && stakeAmountWei <= balance;
+  // StakingVault.stake() reverts with TooManyPositions once a user holds
+  // 50 active positions. Guard against it so the tx doesn't revert.
+  const MAX_POSITIONS_PER_USER = 50;
+  const activePositionCount = positions.filter((p) => p.active).length;
+  const tooManyPositions = activePositionCount >= MAX_POSITIONS_PER_USER;
+  const canStake =
+    isConnected &&
+    stakeAmountWei > 0n &&
+    stakeAmountWei <= balance &&
+    seasonActive &&
+    !tooManyPositions;
 
+  /**
+   * Imperative tx flow: sig → chain → refetch → done. Each stage updates
+   * `pending` so the button shows an accurate label + spinner throughout.
+   * If the wallet signature or the on-chain receipt fails, we surface the
+   * error (except for "user rejected" which stays silent).
+   */
   const runTx = async (
-    kind: typeof pendingKind,
-    call: Promise<`0x${string}`>,
+    kind: "approve" | "stake" | "claim" | "unstake" | "restake",
+    args: Parameters<typeof writeContractAsync>[0],
   ) => {
+    setTxError(null);
+    setPending({ kind, phase: "sig" });
     try {
-      setPendingKind(kind);
-      const hash = await call;
-      setPendingHash(hash);
+      const hash = await writeContractAsync(args);
+      setPending({ kind, phase: "chain" });
+      const r = await waitForTransactionReceipt(config, { hash });
+      if (r.status !== "success") throw new Error("Transaction reverted on-chain");
+      refetchIds();
+      refetchPositions();
+      refetchBalAllow();
+      if (kind === "stake") setStakeAmount("");
     } catch (err) {
-      setPendingKind(null);
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/user (rejected|denied)/i.test(msg)) setTxError(msg);
       console.error(err);
+    } finally {
+      setPending(null);
     }
   };
 
+  const pendingKind = pending?.kind ?? null;
+
   const handleApprove = () =>
-    runTx(
-      "approve",
-      writeContractAsync({
-        address: campaignToken,
-        abi: erc20Abi,
-        functionName: "approve",
-        args: [stakingVault, stakeAmountWei],
-      }),
-    );
+    runTx("approve", {
+      address: campaignToken,
+      abi: erc20Abi,
+      functionName: "approve",
+      args: [stakingVault, stakeAmountWei],
+    });
 
   const handleStake = () =>
-    runTx(
-      "stake",
-      writeContractAsync({
-        address: stakingVault,
-        abi: stakingAbi,
-        functionName: "stake",
-        args: [stakeAmountWei],
-      }),
-    );
+    runTx("stake", {
+      address: stakingVault,
+      abi: stakingAbi,
+      functionName: "stake",
+      args: [stakeAmountWei],
+    });
 
   const handleClaim = (positionId: bigint) =>
-    runTx(
-      "claim",
-      writeContractAsync({
-        address: stakingVault,
-        abi: stakingAbi,
-        functionName: "claimYield",
-        args: [positionId],
-      }),
-    );
+    runTx("claim", {
+      address: stakingVault,
+      abi: stakingAbi,
+      functionName: "claimYield",
+      args: [positionId],
+    });
 
   const handleUnstake = (positionId: bigint) =>
-    runTx(
-      "unstake",
-      writeContractAsync({
-        address: stakingVault,
-        abi: stakingAbi,
-        functionName: "unstake",
-        args: [positionId],
-      }),
-    );
+    runTx("unstake", {
+      address: stakingVault,
+      abi: stakingAbi,
+      functionName: "unstake",
+      args: [positionId],
+    });
 
   const handleRestake = (positionId: bigint) =>
-    runTx(
-      "restake",
-      writeContractAsync({
-        address: stakingVault,
-        abi: stakingAbi,
-        functionName: "restake",
-        args: [positionId],
-      }),
-    );
+    runTx("restake", {
+      address: stakingVault,
+      abi: stakingAbi,
+      functionName: "restake",
+      args: [positionId],
+    });
 
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15">
       <h2 className="text-2xl font-bold tracking-tight text-on-surface mb-2">
         {t("title")}
       </h2>
-      <p className="text-sm text-on-surface-variant mb-6">{t("subtitle")}</p>
+      <p className="text-sm text-on-surface-variant mb-6">
+        {t("subtitleTokens", { stake: symbol, yield: yieldSymbol })}
+      </p>
+
+      {showNoSeasonBanner && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="text-amber-600 shrink-0 mt-0.5"
+          >
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
+          </svg>
+          <div>
+            <div className="font-semibold text-amber-900 text-sm">
+              {t("noActiveSeason")}
+            </div>
+            <p className="text-xs text-amber-800 mt-0.5">
+              {t("noActiveSeasonHint")}
+            </p>
+          </div>
+        </div>
+      )}
+
+      {txError && (
+        <div className="bg-red-50 border border-red-200 text-error rounded-xl p-3 mb-4 text-xs break-words">
+          {txError}
+        </div>
+      )}
 
       {/* New stake form */}
       <div className="bg-surface-container-low rounded-xl p-5 mb-6 border border-outline-variant/15">
@@ -260,8 +331,9 @@ export function StakingPanel({
           <button
             onClick={handleApprove}
             disabled={!canStake || pendingKind !== null}
-            className="w-full regen-gradient text-white rounded-xl h-12 font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full regen-gradient text-white rounded-xl h-12 font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
+            {pendingKind === "approve" && <Spinner size={18} />}
             {pendingKind === "approve"
               ? t("approving")
               : t("approveToStake", { symbol })}
@@ -270,8 +342,9 @@ export function StakingPanel({
           <button
             onClick={handleStake}
             disabled={!canStake || pendingKind !== null}
-            className="w-full regen-gradient text-white rounded-xl h-12 font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full regen-gradient text-white rounded-xl h-12 font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
+            {pendingKind === "stake" && <Spinner size={18} />}
             {pendingKind === "stake"
               ? t("staking")
               : !isConnected
@@ -295,6 +368,7 @@ export function StakingPanel({
               key={String(pos.id)}
               pos={pos}
               symbol={symbol}
+              yieldSymbol={yieldSymbol}
               seasonDuration={seasonDuration}
               currentSeasonId={currentSeasonId}
               pendingKind={pendingKind}
@@ -312,6 +386,7 @@ export function StakingPanel({
 function PositionCard({
   pos,
   symbol,
+  yieldSymbol,
   seasonDuration,
   currentSeasonId,
   pendingKind,
@@ -321,6 +396,7 @@ function PositionCard({
 }: {
   pos: Position;
   symbol: string;
+  yieldSymbol: string;
   seasonDuration: bigint;
   currentSeasonId: bigint | undefined;
   pendingKind: string | null;
@@ -359,7 +435,7 @@ function PositionCard({
             {t("yieldAccrued")}
           </div>
           <div className="text-2xl font-bold text-primary">
-            {Number(formatUnits(pos.earned, 18)).toFixed(4)} $YIELD
+            {Number(formatUnits(pos.earned, 18)).toFixed(4)} ${yieldSymbol}
           </div>
         </div>
       </div>
@@ -398,24 +474,27 @@ function PositionCard({
         <button
           onClick={onClaim}
           disabled={locked || pos.earned === 0n}
-          className="flex-1 bg-primary text-white rounded-full py-2.5 text-sm font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 bg-primary text-white rounded-full py-2.5 text-sm font-semibold hover:opacity-90 transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
+          {pendingKind === "claim" && <Spinner size={14} />}
           {pendingKind === "claim" ? t("claiming") : t("claim")}
         </button>
         {isStalePosition && (
           <button
             onClick={onRestake}
             disabled={locked}
-            className="flex-1 bg-surface-container-high text-on-surface rounded-full py-2.5 text-sm font-semibold hover:bg-surface-container-highest transition disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex-1 bg-surface-container-high text-on-surface rounded-full py-2.5 text-sm font-semibold hover:bg-surface-container-highest transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
+            {pendingKind === "restake" && <Spinner size={14} />}
             {pendingKind === "restake" ? t("restaking") : t("restake")}
           </button>
         )}
         <button
           onClick={onUnstake}
           disabled={locked}
-          className="flex-1 bg-transparent border border-outline-variant text-on-surface-variant rounded-full py-2.5 text-sm font-semibold hover:bg-surface-container-low transition disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 bg-transparent border border-outline-variant text-on-surface-variant rounded-full py-2.5 text-sm font-semibold hover:bg-surface-container-low transition disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
+          {pendingKind === "unstake" && <Spinner size={14} />}
           {pendingKind === "unstake" ? t("unstaking") : t("unstake")}
         </button>
       </div>

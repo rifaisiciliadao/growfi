@@ -6,6 +6,7 @@ import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3
 import { nanoid } from "nanoid";
 import { getAddress, type Address } from "viem";
 import { buildTree } from "./merkle.js";
+import { snapshotSeasonYield } from "./snapshot.js";
 
 const PORT = Number(process.env.PORT || 4001);
 const HOST = process.env.HOST || "0.0.0.0";
@@ -186,6 +187,50 @@ app.post<{
     url: `${SPACES_PUBLIC_BASE}/${key}`,
     profile,
   };
+});
+
+/**
+ * Snapshot the per-user $YIELD for a season.
+ *
+ * Given (campaign, seasonId), walks the active positions indexed by
+ * the subgraph for that season and combines
+ * `Position.yieldClaimed` (from YieldMinted events) with the live
+ * `StakingVault.earned(positionId)` read. The response is shaped so
+ * it can be fed directly into /api/merkle/generate.
+ *
+ * Intended usage by the producer:
+ *   1. endSeason(seasonId)
+ *   2. GET /api/snapshot/:campaign/:seasonId
+ *   3. POST /api/merkle/generate with `holders` from step 2
+ *   4. reportHarvest(seasonId, totalValueUSD, root, totalUnits)
+ */
+app.get<{
+  Params: { campaign: string; seasonId: string };
+}>("/api/snapshot/:campaign/:seasonId", async (req, reply) => {
+  const { campaign, seasonId } = req.params;
+  try {
+    const snap = await snapshotSeasonYield(
+      getAddress(campaign),
+      BigInt(seasonId),
+    );
+    return {
+      campaign: snap.campaign,
+      seasonId: snap.seasonId.toString(),
+      stakingVault: snap.stakingVault,
+      yieldToken: snap.yieldToken,
+      totalYield: snap.totalYield.toString(),
+      seasonTotalYieldOwed: snap.seasonTotalYieldOwed?.toString() ?? null,
+      holders: snap.holders.map((h) => ({
+        user: h.user,
+        yieldAmount: h.yieldAmount.toString(),
+      })),
+      notes: snap.notes,
+    };
+  } catch (err) {
+    return reply.status(500).send({
+      error: err instanceof Error ? err.message : String(err),
+    });
+  }
 });
 
 /**
