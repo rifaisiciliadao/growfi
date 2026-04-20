@@ -137,7 +137,9 @@ export function StakingPanel({
     functionName: "currentSeasonId",
   }) as { data: bigint | undefined };
 
-  // Season struct layout: (seasonId, startTime, endTime, active, ...).
+  // Season struct layout (StakingVault.Season):
+  //   0 startTime, 1 endTime, 2 totalYieldMinted, 3 rewardPerTokenAtEnd,
+  //   4 totalYieldOwed, 5 active, 6 existed.
   // Pre-flight check avoids submitting stake txs that will revert with
   // NoActiveSeason — the contract rejects stakes when no season is running.
   const { data: currentSeasonData, isLoading: seasonLoading } = useReadContract(
@@ -152,13 +154,23 @@ export function StakingPanel({
       query: { enabled: currentSeasonId !== undefined && currentSeasonId > 0n },
     },
   ) as {
-    data: readonly [bigint, bigint, bigint, boolean, ...unknown[]] | undefined;
+    data:
+      | readonly [
+          bigint, // startTime
+          bigint, // endTime
+          bigint, // totalYieldMinted
+          bigint, // rewardPerTokenAtEnd
+          bigint, // totalYieldOwed
+          boolean, // active
+          boolean, // existed
+        ]
+      | undefined;
     isLoading: boolean;
   };
   const seasonActive =
     currentSeasonId !== undefined &&
     currentSeasonId > 0n &&
-    !!currentSeasonData?.[3];
+    !!currentSeasonData?.[5];
   // Don't flash the "no active season" banner during the initial fetch.
   // Wait until currentSeasonId is resolved AND the seasons() read has
   // settled before declaring there's no active season.

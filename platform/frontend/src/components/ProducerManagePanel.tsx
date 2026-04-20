@@ -457,6 +457,15 @@ function LifecycleSection({
   // few seconds after endSeason, so relying on `seasons[...]` from props would
   // keep the "End Season" button visible until Goldsky indexes the event.
   // The contract read is instant; we refetch it after every lifecycle tx.
+  //
+  // Season struct layout (StakingVault.sol):
+  //   0: startTime            (uint256)
+  //   1: endTime              (uint256)
+  //   2: totalYieldMinted     (uint256)
+  //   3: rewardPerTokenAtEnd  (uint256)
+  //   4: totalYieldOwed       (uint256)
+  //   5: active               (bool)
+  //   6: existed              (bool)
   const { data: currentSeasonOnChain, refetch: refetchCurrentSeason } =
     useReadContract({
       address: stakingVault,
@@ -466,14 +475,21 @@ function LifecycleSection({
       query: { enabled: currentSeasonId > 0n, refetchInterval: 15_000 },
     }) as {
       data:
-        | readonly [bigint, bigint, bigint, boolean, ...unknown[]]
+        | readonly [
+            bigint, // 0 startTime
+            bigint, // 1 endTime
+            bigint, // 2 totalYieldMinted
+            bigint, // 3 rewardPerTokenAtEnd
+            bigint, // 4 totalYieldOwed
+            boolean, // 5 active
+            boolean, // 6 existed
+          ]
         | undefined;
       refetch: () => void;
     };
-  // seasons() layout: (seasonId, startTime, endTime, active, ...)
-  const hasActiveSeason = !!currentSeasonOnChain?.[3];
-  const onChainStartTs = currentSeasonOnChain?.[1]
-    ? Number(currentSeasonOnChain[1])
+  const hasActiveSeason = !!currentSeasonOnChain?.[5];
+  const onChainStartTs = currentSeasonOnChain?.[0]
+    ? Number(currentSeasonOnChain[0])
     : 0;
 
   // Live reads of supply + caps: activateCampaign reverts with
