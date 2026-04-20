@@ -39,17 +39,19 @@ Note the returned `APP_ID` — you'll need it for updates.
 
 ### 2. Inject secrets (first time only)
 
-Three secrets need to be set in the dashboard, NOT in `app.yaml`:
+Two real secrets need to be set in the dashboard, NOT in `app.yaml`:
 
 | Service | Env var | Source | Notes |
 |---|---|---|---|
 | `growfi-backend` | `DO_SPACES_KEY` | `doctl spaces keys list` | Scope: RUN_TIME |
 | `growfi-backend` | `DO_SPACES_SECRET` | DO Spaces console | Scope: RUN_TIME |
-| `growfi-frontend` | `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` | reown.com dashboard | Scope: BUILD_TIME (baked into the bundle) |
 
 Dashboard path: **Apps → growfi-test → Settings → Env Vars → Edit**.
-Mark each as **encrypted** and set the correct **scope** (BUILD_TIME
-for the WalletConnect ID, RUN_TIME for the DO Spaces pair).
+Mark each as **encrypted** and scope RUN_TIME.
+
+`NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is NOT a secret (it's a
+rate-limit key from reown.com) and is committed in `.do/app.yaml`
+at BUILD_TIME scope. Rotate from the reown dashboard if abused.
 
 ### 3. Trigger the first deploy
 

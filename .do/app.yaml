@@ -120,5 +120,8 @@ services:
       - key: NEXT_PUBLIC_BACKEND_URL
         value: ""
         scope: BUILD_TIME
-      # Secret (set via dashboard):
-      #   NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID (SECRET, BUILD_TIME)
+      # Not actually secret — reown's project ID is a rate-limit key, safe
+      # to commit (and already in the local .env.local of every dev).
+      - key: NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID
+        value: f63b9a7d56918f3d22562760af474053
+        scope: BUILD_TIME
