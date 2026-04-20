@@ -220,3 +220,20 @@ Full guide: `platform/subgraph/DEPLOY.md`.
 - **After re-deploying contracts**, re-extract ABIs with `jq '.abi' out/<Contract>.sol/<Contract>.json > platform/{subgraph,frontend}/...` and re-run `npm run prepare` in the subgraph. Stale ABIs cause `Event signature mismatch` at indexing time.
 - **Permissionless `createCampaign`** means `onlyOwner` was removed; the require `params.producer == msg.sender` is what enforces proper attribution. Tests `vm.prank(producer)` before every factory call.
 - **Checksumming** — `NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS` (and any other env-supplied address) must be EIP-55 checksum or lowercase — mixed case fails viem's validator with `Address … is invalid`. Run `cast to-check-sum-address 0x...` after any new deploy.
+
+### Platform testing
+
+Three layers, all runnable in CI:
+
+| Layer | Command | Coverage |
+|---|---|---|
+| Contracts | `forge test --no-match-path "test/fork/*"` | ~123 unit + 1 full-lifecycle E2E (`test/E2E.t.sol::test_E2E_fullLifecycle`) exercising funding → staking → sell-back → season end → reportHarvest → 2-step redeem → claim. |
+| Backend | `cd platform/backend && npm test` | 24 Node `node:test` cases: merkle packing + OZ-compatibility proof verification, and Fastify `inject()` integration for every route. Uses injected S3 / snapshot stubs — no network, no AWS. |
+| Frontend | `cd platform/frontend && npm run build` | Type-safe build (Next.js + tsc). Manual UI smoke in Chrome for the post-harvest timeline. |
+
+Testnet smoke (manual, needs 2 funded keys):
+1. `forge script script/OliveSetup.s.sol --broadcast` — creates campaign, Alice buys + activates + stakes, mints mUSDC to Bob, Bob buys + stakes. Wait 30 min.
+2. `forge script script/OliveFinish.s.sol --broadcast` — endSeason, both claimYield, reportHarvest (single-leaf Merkle), alice redeemUSDC, bob redeemProduct.
+3. `./script/finish-olive.sh` — producer `depositUSDC` + alice `claimUSDC` via cast (avoids forge simulation drift on the 2-step flow).
+
+All tx paths in the frontend now surface both toast notifications (success with explorer link / error with contract revert reason) AND panel-local error banners for in-context visibility.
