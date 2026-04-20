@@ -114,7 +114,7 @@ Example reference: `script/UpgradeFactoryV2.s.sol` (adds `minSeasonDuration`, re
 
 ## Deployments
 
-See `CONTRACTS.md` for current Base Sepolia addresses (factory proxy, impls, ProxyAdmin, smoke campaigns, frontend env vars). See `DEPLOY.md` for the DigitalOcean App Platform runbook (frontend + backend) — `.do/app.yaml` spec, per-service Dockerfiles, secret injection via dashboard, and the auto-deploy-on-push flow against the `main` branch.
+See `CONTRACTS.md` for current Base Sepolia addresses (factory proxy, impls, ProxyAdmin, smoke campaigns, frontend env vars). See `DEPLOY.md` for the DigitalOcean App Platform runbook (frontend + backend) — `.do/app.yaml` spec, per-service Dockerfiles, CLI-only secret injection via `doctl apps update` + `jq` spec patching, and the auto-deploy-on-push flow against `main`. Live at `https://growfi-test-m9s8u.ondigitalocean.app` (app id `9e4019f4-8dbc-4170-8546-ce7d8579e3a4`, team `turinglabs`). **Path-based ingress gotcha**: the backend rule needs `preserve_path_prefix: true` — by default DO App Platform strips the match prefix before forwarding, so a rule matching `/api` would deliver `/upload` to the backend while our routes are `/api/upload` → every endpoint 404s. The flag is documented inline in `.do/app.yaml`.
 
 ## Audit history
 
