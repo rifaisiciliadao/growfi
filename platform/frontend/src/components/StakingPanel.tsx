@@ -361,7 +361,7 @@ export function StakingPanel({
                 ? t("connectFirst")
                 : stakeAmountWei > balance
                   ? t("insufficientBalance")
-                  : t("newStake")}
+                  : t("newStake", { symbol })}
           </button>
         )}
       </div>

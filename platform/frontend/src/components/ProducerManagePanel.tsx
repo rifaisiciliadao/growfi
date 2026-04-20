@@ -937,7 +937,14 @@ function ObligationCard({
   const noCommitmentsYet = usdcOwed18 === 0n;
   const depositPct =
     usdcOwed18 > 0n ? Number((usdcDeposited18 * 100n) / usdcOwed18) : 0;
-  const fullyDeposited = !noCommitmentsYet && usdcDeposited18 >= usdcOwed18;
+  // Dust tolerance: the 6→18 decimal conversion inside HarvestManager floors
+  // poolPortion to the nearest 1e12 wei-in-18-dec (== 1 USDC-wei in 6-dec),
+  // so a producer who fully covers the net pool can still be short by up to
+  // ~1 USDC-wei due to the protocol-fee rounding. Treat anything within 1e12
+  // of the target as fully deposited in the UI. Matches HarvestPanel.
+  const DUST_18 = 10n ** 12n;
+  const fullyDeposited =
+    !noCommitmentsYet && usdcDeposited18 + DUST_18 >= usdcOwed18;
   const shortfall18 =
     usdcOwed18 > usdcDeposited18 ? usdcOwed18 - usdcDeposited18 : 0n;
 

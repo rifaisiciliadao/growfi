@@ -301,13 +301,23 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
         if (state != State.Funding && state != State.Active) revert InvalidState(State.Funding, state);
         if (paymentAmount == 0) revert ZeroAmount();
         if (!tokenConfigs[paymentToken].active) revert TokenNotAccepted();
-        if (currentSupply >= maxCap) revert MaxCapReached();
+
+        // How many tokens can actually be supplied?
+        //   - `mintableRoom`: new mints up to maxCap (Funding & Active).
+        //   - `queueTokens`: existing $CAMPAIGN parked in the sell-back queue
+        //     (Active only). Fills are burn+mint → supply-neutral, so they
+        //     do NOT consume mintableRoom and remain available even at cap.
+        // Revert only when BOTH are zero — otherwise sellers at cap would be
+        // permanently stuck with no exit path.
+        uint256 mintableRoom = currentSupply < maxCap ? maxCap - currentSupply : 0;
+        uint256 queueTokens = state == State.Active ? _queueTotalTokens() : 0;
+        uint256 buyableMax = mintableRoom + queueTokens;
+        if (buyableMax == 0) revert MaxCapReached();
 
         // Calculate how many $CAMPAIGN tokens the payment buys
         (uint256 tokensOut, uint256 oraclePrice) = _calculateTokensOut(paymentToken, paymentAmount);
-        uint256 available = maxCap - currentSupply;
-        if (tokensOut > available) {
-            tokensOut = available;
+        if (tokensOut > buyableMax) {
+            tokensOut = buyableMax;
             // Recalculate actual payment needed
             paymentAmount = _calculatePaymentNeeded(paymentToken, tokensOut, oraclePrice);
         }
@@ -331,8 +341,10 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
             (paymentRemaining, tokensToMint) = _fillSellBackQueue(paymentToken, paymentRemaining, tokensOut, msg.sender);
         }
 
-        // Mint remaining tokens to buyer
-        if (paymentRemaining > 0) {
+        // Mint remaining tokens to buyer (if any). After the queue fill, this
+        // only runs when there's fresh supply to mint — invariantly bounded
+        // by `mintableRoom` thanks to the `buyableMax` clamp above.
+        if (paymentRemaining > 0 && tokensToMint > 0) {
             if (state == State.Active) {
                 // Funds go to producer
                 IERC20(paymentToken).safeTransfer(producer, paymentRemaining);
@@ -348,6 +360,14 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
         // Auto-activate if min cap reached during Funding
         if (state == State.Funding && currentSupply >= minCap) {
             _activate();
+        }
+    }
+
+    /// @dev Sum of outstanding sell-back queue tokens. O(n) over unfilled
+    ///      orders. Internal to avoid external-call cost from `buy()`.
+    function _queueTotalTokens() internal view returns (uint256 depth) {
+        for (uint256 i = sellBackQueueHead; i < sellBackQueue.length; i++) {
+            depth += sellBackQueue[i].amount;
         }
     }
 
@@ -497,11 +517,7 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
     }
 
     function getSellBackQueueDepth() external view returns (uint256) {
-        uint256 depth = 0;
-        for (uint256 i = sellBackQueueHead; i < sellBackQueue.length; i++) {
-            depth += sellBackQueue[i].amount;
-        }
-        return depth;
+        return _queueTotalTokens();
     }
 
     function getAcceptedTokens() external view returns (address[] memory) {
