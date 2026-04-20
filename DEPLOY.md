@@ -37,17 +37,40 @@ doctl apps create --spec .do/app.yaml
 
 Note the returned `APP_ID` — you'll need it for updates.
 
-### 2. Inject secrets (first time only)
+### 2. Inject secrets (CLI — never commit)
 
-Two real secrets need to be set in the dashboard, NOT in `app.yaml`:
+Two real secrets live outside the repo: `DO_SPACES_KEY` and
+`DO_SPACES_SECRET`. Set them via `doctl` with a throwaway spec file
+that is deleted immediately after applying:
 
-| Service | Env var | Source | Notes |
-|---|---|---|---|
-| `growfi-backend` | `DO_SPACES_KEY` | `doctl spaces keys list` | Scope: RUN_TIME |
-| `growfi-backend` | `DO_SPACES_SECRET` | DO Spaces console | Scope: RUN_TIME |
+```bash
+APP_ID=<your-app-id>
 
-Dashboard path: **Apps → growfi-test → Settings → Env Vars → Edit**.
-Mark each as **encrypted** and scope RUN_TIME.
+# 1. Create a bucket-scoped key for this app (or reuse an existing one;
+#    Spaces never shows the secret again after creation).
+doctl spaces keys create growfi-app-platform \
+  --grants 'bucket=growfi-media;permission=readwrite' \
+  --output json
+
+# 2. Dump the live spec, add the two SECRET envs under growfi-backend,
+#    apply, delete the tmp file.
+doctl apps spec get $APP_ID > /tmp/growfi-spec.yaml
+# Edit /tmp/growfi-spec.yaml — append under the backend service's envs:
+#   - key: DO_SPACES_KEY
+#     scope: RUN_TIME
+#     type: SECRET
+#     value: <access_key from step 1>
+#   - key: DO_SPACES_SECRET
+#     scope: RUN_TIME
+#     type: SECRET
+#     value: <secret_key from step 1>
+
+doctl apps update $APP_ID --spec /tmp/growfi-spec.yaml
+rm /tmp/growfi-spec.yaml
+```
+
+After the update, App Platform re-deploys the backend (only — the
+frontend image is unchanged since only RUN_TIME scope was touched).
 
 `NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID` is NOT a secret (it's a
 rate-limit key from reown.com) and is committed in `.do/app.yaml`
