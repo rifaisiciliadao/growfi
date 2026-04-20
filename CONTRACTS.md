@@ -10,7 +10,7 @@
 |---|---|---|
 | **CampaignFactory** (proxy) | [`0x3fA41528a22645Bef478E9eBae83981C02e98f74`](https://sepolia.basescan.org/address/0x3fA41528a22645Bef478E9eBae83981C02e98f74) | Permissionless campaign creation. `createCampaign(params)` with `msg.sender == params.producer`. |
 | **CampaignRegistry** | [`0xb0Ba4660b2D136BF087FA9bf0aec946f0a87597e`](https://sepolia.basescan.org/address/0xb0Ba4660b2D136BF087FA9bf0aec946f0a87597e) | Onchain map `campaign → metadataURI` + monotonic `version`. Producer-only write, gated by `factory.isCampaign`. Indexed by the subgraph into `Campaign.metadataURI` / `.metadataVersion`. Deploy block `40331554`. |
-| **ProducerRegistry** | [`0x702915469f66415C70B4203B40aB9a97203d979B`](https://sepolia.basescan.org/address/0x702915469f66415c70b4203b40ab9a97203d979b) | Onchain map `producer address → profileURI` + monotonic `version`. Zero-admin; `setProfile(uri)` writes only the caller's own row. Indexed into the subgraph `Producer` entity. Deploy block `40338465`. |
+| **ProducerRegistry** | [`0x702915469f66415C70b4203b40ab9A97203D979b`](https://sepolia.basescan.org/address/0x702915469f66415C70b4203b40ab9A97203D979b) | Onchain map `producer address → profileURI` + monotonic `version`. Zero-admin; `setProfile(uri)` writes only the caller's own row. Indexed into the subgraph `Producer` entity. Deploy block `40338465`. EIP-55 checksum must match exactly — viem rejects other casings. |
 | **MockUSDC** | [`0x32C344Dc9713d904442d0E5B0d2b7994E52B0d4E`](https://sepolia.basescan.org/address/0x32C344Dc9713d904442d0E5B0d2b7994E52B0d4E) | 6-dec testnet USDC. Public `mint(to, amount)` — anyone can mint any amount. |
 
 ### Implementations (used for each new campaign's proxies)
@@ -21,7 +21,7 @@
 | CampaignToken impl | [`0x0DBE11aD9c2bf4126FE8D422e7374dE47600A2ca`](https://sepolia.basescan.org/address/0x0DBE11aD9c2bf4126FE8D422e7374dE47600A2ca) | [`0x7228dd72…`](https://sepolia.basescan.org/tx/0x7228dd7263f8f4515c26f1eeb08893296823e01a94f4ba568530a8b7bf7ee3ff) |
 | StakingVault impl | [`0x81C4e22EC9198f2983217C483e4027cf49E940db`](https://sepolia.basescan.org/address/0x81C4e22EC9198f2983217C483e4027cf49E940db) | [`0xfd70b3fb…`](https://sepolia.basescan.org/tx/0xfd70b3fb2ff4d67d4bcd0a4535c89fa976039a76800d06894bd3679789e1edd9) |
 | YieldToken impl | [`0x092Ed1e0845f6817e24316A730E98ec074e5F017`](https://sepolia.basescan.org/address/0x092Ed1e0845f6817e24316A730E98ec074e5F017) | [`0x562a768b…`](https://sepolia.basescan.org/tx/0x562a768b969623760de624f76cf9b7ef6f3f9b90504044f9a032f42880c2f051) |
-| HarvestManager impl | [`0x8d434e38dd91D9b738f8803dbD18b815720BEDad`](https://sepolia.basescan.org/address/0x8d434e38dd91D9b738f8803dbD18b815720BEDad) | [`0x3903da59…`](https://sepolia.basescan.org/tx/0x3903da595b989062e36f4ae530a7f70e1c2be712a1723f9b265832d55c8f3373) |
+| HarvestManager impl (v2, 2-step redeem) | [`0x944d4810c83C2a6E4c57d3F55C62A499fA0A79Ff`](https://sepolia.basescan.org/address/0x944d4810c83c2a6e4c57d3f55c62a499fa0a79ff) | Deployed 2026-04-18 via `script/UpgradeHarvestManager.s.sol`. Emits `USDCCommitted` / `USDCDeposited` / `USDCRedeemed`. Previously `0x8d434e38…` (pre-rename). |
 | Factory impl | [`0x38da3922d3Bc3281F57946618404F0E341777F68`](https://sepolia.basescan.org/address/0x38da3922d3Bc3281F57946618404F0E341777F68) | [`0xfee08622…`](https://sepolia.basescan.org/tx/0xfee08622258e8cefd67940446e2a4a777bf4b463f7b4f3dd4da19592f98045f1) |
 
 ### Configuration
@@ -44,6 +44,18 @@
 | Upgrade script | `script/UpgradeFactoryV2.s.sol` |
 
 V2 adds `minSeasonDuration` as a `uint256` storage field + `setMinSeasonDuration(uint256)` onlyOwner setter + `initializeV2()` reinitializer. Existing `createCampaign` validation switched from hardcoded `>= 30 days` to `>= minSeasonDuration`.
+
+### HarvestManager 2-step redeem upgrade (2026-04-18)
+
+The HarvestManager impl was replaced to fix semantic event names (old names had the `Committed`/`Redeemed` labels swapped). Each running campaign's HarvestManager proxy was individually upgraded via its own producer-owned ProxyAdmin. The pre-upgrade event names `USDCRedeemed` (at commit time) and `USDCClaimed` (at transfer) are **obsolete** — don't look for them in logs or ABIs. The new flow:
+
+| Step | Function | Event |
+|---|---|---|
+| 1. commit | `redeemUSDC(seasonId, yieldAmount)` — burns $YIELD, registers pending claim | `USDCCommitted(user, seasonId, yieldBurned, usdcAmount)` |
+| 2. fund | `depositUSDC(seasonId, amount)` — producer tops up the pool (98/2 split) | `USDCDeposited` |
+| 3. claim | `claimUSDC(seasonId)` — holder pulls pro-rata USDC | `USDCRedeemed(user, seasonId, amount)` |
+
+Full UX spec in `docs/REDEEM_2STEP.md`. Subgraph + frontend ABIs were re-extracted to match; `platform/subgraph/subgraph.yaml` + `platform/frontend/src/contracts/abis/HarvestManager.json` are authoritative.
 
 ### Smoke test campaigns (for integration testing)
 
@@ -68,9 +80,29 @@ NEXT_PUBLIC_CHAIN_ID=84532
 NEXT_PUBLIC_FACTORY_ADDRESS=0x3fA41528a22645Bef478E9eBae83981C02e98f74
 NEXT_PUBLIC_USDC_ADDRESS=0x32C344Dc9713d904442d0E5B0d2b7994E52B0d4E
 NEXT_PUBLIC_REGISTRY_ADDRESS=0xb0Ba4660b2D136BF087FA9bf0aec946f0a87597e
-NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x702915469f66415C70B4203B40aB9a97203d979B
+NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x702915469f66415C70b4203b40ab9A97203D979b
 NEXT_PUBLIC_SUBGRAPH_URL=https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/prod/gn
+NEXT_PUBLIC_BACKEND_URL=http://localhost:4001
 ```
+
+> **EIP-55 gotcha**: viem's address validator rejects mixed-case strings that aren't valid EIP-55 checksums. `ProducerRegistry`'s preferred checksum is `0x702915469f66415C70b4203b40ab9A97203D979b` (note the lowercased `C` and `b`s). If you paste raw-case from a block explorer and it fails, run `cast to-check-sum-address 0x...`.
+
+---
+
+## Backend endpoints (port 4001)
+
+Used by the frontend and by the producer's reportHarvest flow.
+
+| Endpoint | Purpose |
+|---|---|
+| `POST /api/upload` | multipart image → DO Spaces, returns public URL |
+| `POST /api/metadata` | campaign metadata JSON → DO Spaces |
+| `POST /api/producer` | producer profile JSON → DO Spaces |
+| `GET /api/snapshot/:campaign/:seasonId` | live per-holder $YIELD snapshot for a season (subgraph + on-chain `earned`). Feeds directly into `/api/merkle/generate`. |
+| `POST /api/merkle/generate` | builds the Merkle tree for a season's product allocation, persists leaves+proofs, returns `{ root, url, count }`. Root goes into `HarvestManager.reportHarvest`. |
+| `GET /api/merkle/:campaign/:seasonId/:user` | returns `{ user, productAmount, proof }` for a single holder — consumed by the frontend's `redeemProduct` path. |
+
+All S3 endpoints require `DO_SPACES_KEY` + `DO_SPACES_SECRET` env; without them they return `503`. Tree payloads are written at `merkle/<campaign>/<seasonId>.json` with `public-read` ACL.
 
 ---
 
