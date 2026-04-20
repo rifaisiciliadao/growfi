@@ -22,6 +22,15 @@ export interface KnownToken {
  * is preview-only so the producer can see what the catalog will look like on
  * mainnet. Once mainnet launches, flip `enabled` to true and fill in the
  * remaining address/feed gaps.
+ *
+ * SECURITY INVARIANT: every entry MUST be a standard ERC20 — no
+ * fee-on-transfer, no rebasing, no ERC777 hooks. `Campaign.buy` records the
+ * declared `paymentAmount` in `purchases[]` assuming the contract receives
+ * exactly that amount. A fee-on-transfer token silently accumulates a pool
+ * shortfall that makes the last buyback refund revert with
+ * `ERC20InsufficientBalance`. Producers can still manually whitelist
+ * arbitrary ERC20s via `addAcceptedToken`, but this catalog will never
+ * surface them. Regression: `test/PoolSecurity.t.sol`.
  */
 export const KNOWN_TOKENS: KnownToken[] = [
   {

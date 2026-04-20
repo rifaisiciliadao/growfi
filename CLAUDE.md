@@ -44,6 +44,7 @@ Invariant config: `runs = 256, depth = 128, fail_on_revert = false` → ~33k ran
 - **No `ReentrancyGuardUpgradeable`**: OZ 5.6 dropped it. All contracts use the regular stateless `ReentrancyGuard` (namespaced-storage-slot variant), which is safe with clones/proxies without init.
 - `depositUSDC(amount)` always splits **98% → pool, 2% → feeRecipient** on every deposit. Producer sizes the gross via `HarvestManager.remainingDepositGross(seasonId)`.
 - Oracle-mode payment tokens must have `decimals() ≤ 18` (enforced at `addAcceptedToken`). `TokenConfig.paymentDecimals` is cached; pricing math scales by `10^(18 - paymentDecimals)`.
+- **Accepted payment tokens MUST behave like a standard ERC20**: no fee-on-transfer, no rebasing, no ERC777 hooks. The producer's accepted-token allowlist is permissionless per-campaign, so a careless producer could add a fee-on-transfer token; `Campaign.buy` then records the DECLARED `paymentAmount` in `purchases[user][token]` while the contract actually receives less, which makes the last buyback refund revert with `ERC20InsufficientBalance` if the campaign fails. Regression: `test/PoolSecurity.t.sol::test_feeOnTransfer_buybackShortfallForLastUser`. ERC777 reentrancy is safe because `Campaign` does not register an ERC1820 recipient hook, but fee-on-transfer is not code-mitigated — it's a producer-responsibility footgun. Frontend should filter the `KNOWN_TOKENS` list to standard ERC20s only.
 - On L2, the factory's `initialize` MUST pass the Chainlink sequencer-uptime feed. `address(0)` on L1/testnet. Feed addresses:
   - Arbitrum One: `0xFdB631F5EE196F0ed6FAa767959853A9F217697D`
   - Base Mainnet: `0xBCF85224fc0756B9Fa45aA7892530B47e10b6433`
@@ -227,7 +228,7 @@ Three layers, all runnable in CI:
 
 | Layer | Command | Coverage |
 |---|---|---|
-| Contracts | `forge test --no-match-path "test/fork/*"` | ~123 unit + 1 full-lifecycle E2E (`test/E2E.t.sol::test_E2E_fullLifecycle`) exercising funding → staking → sell-back → season end → reportHarvest → 2-step redeem → claim. |
+| Contracts | `forge test --no-match-path "test/fork/*"` | ~123 unit + 1 full-lifecycle E2E (`test/E2E.t.sol::test_E2E_fullLifecycle`) + 10 pool-security PoCs (`test/PoolSecurity.t.sol`) covering reentrancy on every `nonReentrant` entry, cross-function reentry, cross-proxy reentry, and fee-on-transfer blast-radius. |
 | Backend | `cd platform/backend && npm test` | 24 Node `node:test` cases: merkle packing + OZ-compatibility proof verification, and Fastify `inject()` integration for every route. Uses injected S3 / snapshot stubs — no network, no AWS. |
 | Frontend | `cd platform/frontend && npm run build` | Type-safe build (Next.js + tsc). Manual UI smoke in Chrome for the post-harvest timeline. |
 
