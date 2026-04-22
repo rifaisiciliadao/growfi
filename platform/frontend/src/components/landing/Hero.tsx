@@ -166,7 +166,18 @@ export function Hero() {
           </h1>
 
           <p
-            className="animate-fade-rise-delay mt-8 max-w-2xl text-lg leading-relaxed sm:text-xl"
+            className="animate-fade-rise-delay mt-8 max-w-3xl text-xl leading-snug sm:text-2xl"
+            style={{
+              color: "#0f0f0f",
+              fontStyle: "italic",
+              textShadow: "0 1px 0 rgba(255,255,255,0.4)",
+            }}
+          >
+            {t("lead")}
+          </p>
+
+          <p
+            className="animate-fade-rise-delay mt-4 max-w-2xl text-lg leading-relaxed sm:text-xl"
             style={{
               color: "#0f0f0f",
               textShadow: "0 1px 0 rgba(255,255,255,0.4)",

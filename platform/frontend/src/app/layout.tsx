@@ -36,10 +36,51 @@ const crimsonText = Crimson_Text({
   display: "swap",
 });
 
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL ??
+  "https://growfi-test-m9s8u.ondigitalocean.app";
+
+const SITE_TITLE = "GrowFi — Regenerative Finance for a Living Planet";
+const SITE_DESCRIPTION =
+  "Fund real harvests onchain. Invest in olives, harvest oil — or get your USDC back, locked in smart-contract escrow until the soft cap is met.";
+
 export const metadata: Metadata = {
-  title: "GrowFi — Regenerative Finance for a Living Planet",
-  description:
-    "Fund real Sicilian olive harvests onchain. $1,000 returns 5 liters of cold-pressed EVO at harvest — or your USDC back, guaranteed by smart contract escrow.",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_TITLE,
+    template: "%s · GrowFi",
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: "GrowFi",
+  authors: [{ name: "Rifai Sicilia DAO", url: "https://www.rifaisicilia.com/" }],
+  keywords: [
+    "RegenFi",
+    "regenerative finance",
+    "tokenized harvests",
+    "permissionless",
+    "Base",
+    "onchain agriculture",
+    "DeFi",
+  ],
+  openGraph: {
+    type: "website",
+    url: SITE_URL,
+    siteName: "GrowFi",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    creator: "@RifaiSicilia",
+    site: "@RifaiSicilia",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
 };
 
 export default function RootLayout({

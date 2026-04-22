@@ -17,12 +17,11 @@ export function useCountUp({
 }: Options) {
   const [value, setValue] = useState(0);
   const startTs = useRef<number | null>(null);
+  const startValue = useRef(0);
   const rafRef = useRef<number | null>(null);
-  const started = useRef(false);
 
   useEffect(() => {
-    if (!active || started.current) return;
-    started.current = true;
+    if (!active) return;
 
     const prefersReduced =
       typeof window !== "undefined" &&
@@ -32,12 +31,19 @@ export function useCountUp({
       return;
     }
 
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    startTs.current = null;
+    setValue((prev) => {
+      startValue.current = prev;
+      return prev;
+    });
+
     const tick = (ts: number) => {
       if (startTs.current === null) startTs.current = ts;
       const elapsed = ts - startTs.current;
       const t = Math.min(1, elapsed / duration);
       const eased = 1 - Math.pow(1 - t, 3);
-      setValue(to * eased);
+      setValue(startValue.current + (to - startValue.current) * eased);
       if (t < 1) {
         rafRef.current = requestAnimationFrame(tick);
       }

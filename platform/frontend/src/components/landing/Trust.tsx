@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useInView } from "@/lib/landing/useInView";
 
-const ITEM_COUNT = 3;
+const ITEM_COUNT = 4;
 
 export function Trust() {
   const t = useTranslations("landing.trust");
@@ -69,17 +69,16 @@ export function Trust() {
           <div className="md:col-span-7">
             <dl className="grid grid-cols-1 gap-0 sm:grid-cols-2">
               {Array.from({ length: ITEM_COUNT }).map((_, i) => {
-                const isRight = i === 1;
-                const isFullWidth = i === 2;
+                const isRight = i % 2 === 1;
+                const isTopRow = i < 2;
                 return (
                   <div
                     key={i}
-                    className={`reveal reveal-delay-${Math.min(i + 1, 6)} ${inView ? "in-view" : ""} group relative flex flex-col px-6 py-8 md:px-8 md:py-10 transition-colors duration-400 hover:bg-white/[0.04] ${isFullWidth ? "sm:col-span-2" : ""}`}
+                    className={`reveal reveal-delay-${Math.min(i + 1, 6)} ${inView ? "in-view" : ""} group relative flex flex-col px-6 py-8 md:px-8 md:py-10 transition-colors duration-400 hover:bg-white/[0.04]`}
                     style={{
-                      borderTop:
-                        i === 0 || i === 1
-                          ? "1px solid rgba(255,255,255,0.14)"
-                          : "none",
+                      borderTop: isTopRow
+                        ? "1px solid rgba(255,255,255,0.14)"
+                        : "none",
                       borderBottom: "1px solid rgba(255,255,255,0.14)",
                     }}
                   >

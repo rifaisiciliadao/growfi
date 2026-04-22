@@ -739,19 +739,20 @@
       "fundCta": "Fund the Harvest"
     },
     "hero": {
-      "badge": "First campaign live · Sharewood Forest, Sicily",
+      "badge": "First campaign live · Syntropic agroforestry, Sicily",
       "titleA": "Invest in the",
       "titleLand": "land.",
       "titleB": "Harvest the",
       "titleYield": "yield.",
-      "subtitle1": "Fund real harvests onchain:",
+      "lead": "We connect investors, producers and consumers to fund the regenerative economy.",
+      "subtitle1": "Fund real syntropic agroforestry harvests onchain:",
       "subtitleHighlight": "invest in olives, harvest oil",
       "examples": [
         "invest in olives, harvest oil",
-        "invest in wheat, harvest flour",
-        "invest in grapes, harvest wine",
         "invest in cacao, harvest chocolate",
-        "invest in coffee cherries, harvest roasted beans"
+        "invest in shade coffee, harvest roasted beans",
+        "invest in grapes, harvest wine",
+        "invest in orchard beehives, harvest honey"
       ],
       "subtitle2": "— redeem physical product at harvest, or get your USDC back, locked in escrow until the soft cap is met.",
       "ctaFund": "Fund the Harvest",
@@ -774,7 +775,7 @@
       "steps": [
         {
           "title": "Producer launches the campaign",
-          "body": "A Sicilian producer tokenizes next season's harvest as $CAMPAIGN. Sets soft cap, hard cap, funding deadline. All parameters immutable onchain from minute one."
+          "body": "A producer tokenizes next season's harvest as $CAMPAIGN. Sets soft cap, hard cap, funding deadline. All parameters immutable onchain from minute one."
         },
         {
           "title": "You fund in USDC",
@@ -793,14 +794,14 @@
           "body": "Restake for the next harvest, or unstake with zero penalty once the season ends. Need liquidity early? Queue a sell-back — new buyers fill you first at the current price, FIFO."
         }
       ],
-      "tail": "Protocol is commodity-agnostic. Olive oil today, citrus, wine, honey, coffee tomorrow. Any producer can launch a campaign — no permission required, no approval committee.",
+      "tail": "Protocol is commodity-agnostic — olive oil, cacao, coffee, wine, honey. Any producer launches a campaign, no permission. For higher-trust campaigns, producers can plug in dMRV (digital monitoring) via partners like Silvi.",
       "ctaSee": "See live campaigns"
     },
     "campaigns": {
       "kicker": "Campaigns",
-      "title1": "One real harvest.",
-      "title2": "Launch yours.",
-      "intro": "Sharewood Forest is live. Every new campaign goes through the same permissionless factory — no gatekeeping, no approvals.",
+      "title1": "One campaign, one real harvest.",
+      "title2": "Fund today, redeem at harvest.",
+      "intro": "Every campaign here tokenises a real syntropic harvest. You fund in USDC, earn $YIELD through the season, and at the end you redeem physical product — or USDC back if the harvest doesn't launch.",
       "filters": {
         "all": "All",
         "funding": "Funding",
@@ -816,8 +817,8 @@
       "expectedYield": "Expected yield",
       "ctaFund": "Fund this harvest",
       "ctaView": "View",
-      "createTitle": "Are you a producer?",
-      "createBody": "Tokenise your next harvest in minutes. Permissionless factory, no approvals needed.",
+      "createTitle": "Are you a syntropic producer?",
+      "createBody": "Tokenise your next harvest in minutes. Open your campaign to investors aligned with regeneration.",
       "createCta": "Create campaign"
     },
     "trust": {
@@ -838,6 +839,11 @@
           "detail": "Every price feed validated: non-negative, updated within 1 hour, decimals capped at 18. No oracle manipulation surface."
         },
         {
+          "label": "Optional dMRV",
+          "value": "via Silvi",
+          "detail": "Satellite monitoring + ground-truth verification. Producers can plug in dMRV to raise campaign trust — public, subgraph-indexed."
+        },
+        {
           "label": "Protocol fee",
           "value": "2%",
           "detail": "Single fee. Deducted at activation and at harvest. Never on the secondary market. No admin withdrawal, no rescue function."
@@ -846,6 +852,15 @@
       "escrowTitle1": "Real escrow.",
       "escrowTitle2": "Automatic refund.",
       "escrowBody": "Funds sit in the Campaign contract until the soft cap is reached. If the deadline passes under-funded, any wallet can trigger buyback — every investor burns their $CAMPAIGN and withdraws the exact USDC they paid in. Zero discretion, one block, no DAO vote."
+    },
+    "partners": {
+      "kicker": "Partners",
+      "title1": "Built with",
+      "title2": "regeneration partners.",
+      "intro": "GrowFi is the onchain rail. Harvest credibility comes from the DAOs and protocols monitoring the ground and verifying the practice.",
+      "rifaiRole": "Host DAO · registered cultural association in Italy. Steward of Sicilian producers and the first live campaign.",
+      "silviRole": "dMRV partner · satellite monitoring and ground-truth verification for planted trees and harvests. Pluggable into any campaign.",
+      "visit": "Visit"
     },
     "footer": {
       "tagline1": "Regenerative finance",

@@ -3,6 +3,7 @@ import { Hero } from "@/components/landing/Hero";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Campaigns } from "@/components/landing/Campaigns";
 import { Trust } from "@/components/landing/Trust";
+import { Partners } from "@/components/landing/Partners";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
         <HowItWorks />
         <Campaigns />
         <Trust />
+        <Partners />
         <LandingFooter />
       </div>
     </div>

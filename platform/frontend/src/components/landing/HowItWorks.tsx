@@ -77,13 +77,6 @@ export function HowItWorks() {
               >
                 {t(`steps.${i}.body`)}
               </p>
-              <span
-                className="absolute bottom-0 left-0 h-[2px] w-0 rounded-full transition-all duration-500 group-hover:w-full"
-                style={{
-                  background:
-                    "linear-gradient(90deg, #006b2c 0%, #00873a 100%)",
-                }}
-              />
             </li>
           ))}
         </ol>

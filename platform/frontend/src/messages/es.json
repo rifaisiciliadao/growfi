@@ -739,19 +739,20 @@
       "fundCta": "Financia la Cosecha"
     },
     "hero": {
-      "badge": "Primera campaña live · Sharewood Forest, Sicilia",
+      "badge": "Primera campaña live · Agroforestería sintrópica, Sicilia",
       "titleA": "Invierte en la",
       "titleLand": "tierra.",
       "titleB": "Cosecha el",
       "titleYield": "rendimiento.",
-      "subtitle1": "Financia cosechas reales onchain:",
+      "lead": "Conectamos inversores, productores y consumidores para financiar la economía regenerativa.",
+      "subtitle1": "Financia cosechas reales de agroforestería sintrópica onchain:",
       "subtitleHighlight": "invierte en olivos, cosecha aceite",
       "examples": [
         "invierte en olivos, cosecha aceite",
-        "invierte en trigo, cosecha harina",
-        "invierte en vides, cosecha vino",
         "invierte en cacao, cosecha chocolate",
-        "invierte en café verde, cosecha café tostado"
+        "invierte en café de sombra, cosecha café tostado",
+        "invierte en vides, cosecha vino",
+        "invierte en colmenas en huerto, cosecha miel"
       ],
       "subtitle2": "— en la cosecha retiras producto físico, o tus USDC de vuelta, bloqueados en escrow hasta el soft cap.",
       "ctaFund": "Financia la Cosecha",
@@ -774,7 +775,7 @@
       "steps": [
         {
           "title": "El productor lanza la campaña",
-          "body": "Un productor siciliano tokeniza la próxima cosecha como $CAMPAIGN. Fija soft cap, hard cap, deadline. Todos los parámetros inmutables onchain desde el minuto cero."
+          "body": "Un productor tokeniza la próxima cosecha como $CAMPAIGN. Fija soft cap, hard cap, deadline. Todos los parámetros inmutables onchain desde el minuto cero."
         },
         {
           "title": "Tú financias en USDC",
@@ -793,14 +794,14 @@
           "body": "Restake para la próxima cosecha, o unstake sin penalidad al final de la temporada. ¿Necesitas liquidez antes? Encola un sell-back — nuevos buyers te rellenan primero al precio actual, FIFO."
         }
       ],
-      "tail": "El protocolo es commodity-agnostic. Aceite hoy, cítricos, vino, miel, café mañana. Cualquier productor puede lanzar una campaña — sin permiso, sin comité.",
+      "tail": "Protocolo agnóstico sobre el producto — aceite, cacao, café, vino, miel. Cualquier productor lanza su campaña, sin permiso. Para campañas de alta confianza, el productor puede conectar dMRV (monitoreo digital) vía partners como Silvi.",
       "ctaSee": "Ver campañas live"
     },
     "campaigns": {
       "kicker": "Campañas",
-      "title1": "Una cosecha real.",
-      "title2": "Lanza la tuya.",
-      "intro": "Sharewood Forest está live. Cada nueva campaña pasa por la misma factory permissionless — cero gatekeeping, cero aprobaciones.",
+      "title1": "Una campaña, una cosecha real.",
+      "title2": "Financia hoy, retira en la cosecha.",
+      "intro": "Cada campaña aquí tokeniza una cosecha sintrópica real. Financias en USDC, acumulas $YIELD en la temporada y al final retiras producto físico — o USDC de vuelta si la cosecha no arranca.",
       "filters": {
         "all": "Todas",
         "funding": "Funding",
@@ -816,8 +817,8 @@
       "expectedYield": "Rendimiento esperado",
       "ctaFund": "Financia esta cosecha",
       "ctaView": "Ver",
-      "createTitle": "¿Eres productor?",
-      "createBody": "Tokeniza tu próxima cosecha en minutos. Factory permissionless, sin aprobaciones.",
+      "createTitle": "¿Eres productor sintrópico?",
+      "createBody": "Tokeniza tu próxima cosecha en minutos. Abre tu campaña a inversores alineados con la regeneración.",
       "createCta": "Crear campaña"
     },
     "trust": {
@@ -838,6 +839,11 @@
           "detail": "Cada feed validado: no negativo, actualizado en 1h, decimals cap a 18. Cero superficie de manipulación."
         },
         {
+          "label": "dMRV opcional",
+          "value": "vía Silvi",
+          "detail": "Monitoreo satelital y verificación en campo. El productor puede conectar dMRV para elevar la confianza de la campaña — transparencia pública, subgraph-indexed."
+        },
+        {
           "label": "Fee protocolo",
           "value": "2%",
           "detail": "Fee única. Deducida en activación y cosecha. Nunca en secundario. Sin withdrawal admin, sin rescue function."
@@ -846,6 +852,15 @@
       "escrowTitle1": "Escrow real.",
       "escrowTitle2": "Reembolso automático.",
       "escrowBody": "Los fondos están en el contrato Campaign hasta alcanzar el soft cap. Si la deadline pasa bajo el cap, cualquier wallet puede triggerar el buyback — cada inversor quema su $CAMPAIGN y retira los USDC exactos que pagó. Cero discreción, un bloque, sin voto DAO."
+    },
+    "partners": {
+      "kicker": "Partners",
+      "title1": "Construido con",
+      "title2": "partners regenerativos.",
+      "intro": "GrowFi es el rail onchain. La credibilidad de las cosechas viene de las DAOs y protocolos que monitorean el campo y verifican la práctica.",
+      "rifaiRole": "DAO host · asociación cultural registrada en Italia. Steward de productores sicilianos y la primera campaña live.",
+      "silviRole": "Partner dMRV · monitoreo satelital y verificación en campo para árboles plantados y cosechas. Conectable a cualquier campaña.",
+      "visit": "Visitar"
     },
     "footer": {
       "tagline1": "Finanza regenerativa",
