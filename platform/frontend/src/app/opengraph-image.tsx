@@ -1,35 +1,20 @@
 import { ImageResponse } from "next/og";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 
-export const runtime = "edge";
 export const alt = "GrowFi — Regenerative Finance for a Living Planet";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-async function loadGoogleFont(family: string, weight: number, italic = false) {
-  const axis = italic ? "ital,wght@1," : "wght@";
-  const url = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(
-    family,
-  )}:${axis}${weight}&display=swap`;
-  const css = await (
-    await fetch(url, {
-      headers: {
-        "user-agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
-      },
-    })
-  ).text();
-  const m = css.match(/src:\s*url\(([^)]+?)\)\s*format/);
-  if (!m) throw new Error(`font url not parsed for ${family}`);
-  const res = await fetch(m[1]);
-  if (!res.ok) throw new Error(`font fetch ${res.status} for ${family}`);
-  return res.arrayBuffer();
-}
-
+// Fonts are shipped as TTFs under public/fonts/. Google Fonts CSS fetching
+// at build time returned WOFF2 (which satori can't parse), so the OG route
+// keeps the assets local and reads them from the filesystem at prerender.
 async function tryLoadFonts() {
   try {
+    const fontDir = path.join(process.cwd(), "public", "fonts");
     const [beVietnam, crimsonItalic] = await Promise.all([
-      loadGoogleFont("Be Vietnam Pro", 700),
-      loadGoogleFont("Crimson Text", 400, true),
+      readFile(path.join(fontDir, "BeVietnamPro-Bold.ttf")),
+      readFile(path.join(fontDir, "CrimsonText-Italic.ttf")),
     ]);
     return { beVietnam, crimsonItalic };
   } catch (err) {
