@@ -165,6 +165,7 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
                         params.maxCap,
                         params.fundingDeadline,
                         params.seasonDuration,
+                        PROTOCOL_FEE_BPS,
                         FUNDING_FEE_BPS,
                         protocolFeeRecipient,
                         sequencerUptimeFeed

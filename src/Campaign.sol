@@ -78,14 +78,15 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
     uint256 public maxCap; // maximum tokens mintable
     uint256 public fundingDeadline;
     uint256 public seasonDuration;
+    /// @custom:deprecated Was the activation-time 2% fee skimmed off escrow in
+    ///                   `_activate`. Replaced by the per-`buy()` `fundingFeeBps`
+    ///                   skim. Kept in storage for upgrade-safety; the value is
+    ///                   written by `initialize` (for call-site compatibility)
+    ///                   but no code reads it anymore.
+    uint256 public protocolFeeBps;
     /// @notice Sink for the per-`buy()` funding fee. Also used as the sink for any
     ///         future Campaign-level fees. Snapshotted from the factory at init.
     address public protocolFeeRecipient;
-    /// @notice Funding-side fee in basis points, applied on every `buy()` gross inflow.
-    ///         Non-refundable on buyback — this is the protocol's "ticket fee" for
-    ///         hosting the campaign regardless of outcome. The yield-side 2% lives
-    ///         separately in `HarvestManager.protocolFeeBps`.
-    uint256 public fundingFeeBps;
     /// @notice Chainlink L2 sequencer-uptime feed address; `address(0)` on L1.
     AggregatorV3Interface public sequencerUptimeFeed;
 
@@ -110,6 +111,16 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
     mapping(address => uint256[]) public userSellBackIndices;
     // Track per-user count of still-open sell-back orders (≤ MAX_OPEN_SELLBACK_ORDERS_PER_USER).
     mapping(address => uint256) public openSellBackCount;
+
+    // --- Appended storage (v2 — funding fee at buy time) ---
+
+    /// @notice Funding-side fee in basis points, applied on every `buy()` gross inflow.
+    ///         Non-refundable on buyback — this is the protocol's "ticket fee" for
+    ///         hosting the campaign regardless of outcome. The yield-side 2% lives
+    ///         separately in `HarvestManager.protocolFeeBps`. On fresh campaigns
+    ///         this is written by `initialize`; on existing pre-v2 campaigns it is
+    ///         seeded by `initializeV2` during the upgrade dance.
+    uint256 public fundingFeeBps;
 
     // --- Events ---
 
@@ -206,6 +217,11 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
         _disableInitializers();
     }
 
+    /// @param protocolFeeBps_ Legacy param — value is written into the zombie
+    ///                        `protocolFeeBps` slot for layout compatibility.
+    ///                        No code path reads it after the v2 upgrade.
+    /// @param fundingFeeBps_  Per-`buy()` fee skimmed off the gross inflow and
+    ///                        forwarded to `protocolFeeRecipient_`. 3% = 300.
     function initialize(
         address producer_,
         address factory_,
@@ -214,6 +230,7 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
         uint256 maxCap_,
         uint256 fundingDeadline_,
         uint256 seasonDuration_,
+        uint256 protocolFeeBps_,
         uint256 fundingFeeBps_,
         address protocolFeeRecipient_,
         address sequencerUptimeFeed_
@@ -226,10 +243,19 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
         maxCap = maxCap_;
         fundingDeadline = fundingDeadline_;
         seasonDuration = seasonDuration_;
+        protocolFeeBps = protocolFeeBps_;
         fundingFeeBps = fundingFeeBps_;
         protocolFeeRecipient = protocolFeeRecipient_;
         sequencerUptimeFeed = AggregatorV3Interface(sequencerUptimeFeed_);
         state = State.Funding;
+    }
+
+    /// @notice One-shot reinitializer for campaigns deployed before the v2
+    ///         Campaign impl (no per-`buy()` funding fee). Seeds the new
+    ///         `fundingFeeBps` slot. Called in the same tx as the proxy
+    ///         upgrade via `ProxyAdmin.upgradeAndCall(proxy, newImpl, initData)`.
+    function initializeV2(uint256 fundingFeeBps_) external reinitializer(2) {
+        fundingFeeBps = fundingFeeBps_;
     }
 
     /// @notice Set the CampaignToken address. Can only be called once by the factory.
