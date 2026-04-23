@@ -217,6 +217,19 @@
   },
   {
     "type": "function",
+    "name": "fundingFeeBps",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "getAcceptedTokens",
     "inputs": [],
     "outputs": [
@@ -305,7 +318,7 @@
         "internalType": "uint256"
       },
       {
-        "name": "protocolFeeBps_",
+        "name": "fundingFeeBps_",
         "type": "uint256",
         "internalType": "uint256"
       },
@@ -430,6 +443,11 @@
         "name": "oraclePrice",
         "type": "uint256",
         "internalType": "uint256"
+      },
+      {
+        "name": "fundingFee",
+        "type": "uint256",
+        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -456,19 +474,6 @@
         "name": "",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "protocolFeeBps",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "stateMutability": "view"
@@ -979,6 +984,31 @@
       },
       {
         "name": "newDeadline",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "FundingFeeCollected",
+    "inputs": [
+      {
+        "name": "buyer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "paymentToken",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "fee",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"

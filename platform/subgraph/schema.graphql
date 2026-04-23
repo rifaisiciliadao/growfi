@@ -54,7 +54,8 @@ type Purchase @entity(immutable: true) {
   campaign: Campaign!
   buyer: Bytes!
   paymentToken: Bytes!
-  paymentAmount: BigInt!
+  paymentAmount: BigInt!                  # GROSS amount pulled from the buyer
+  fundingFee: BigInt!                     # Portion skimmed to the protocol at buy time (3% bps)
   campaignTokensOut: BigInt!
   oraclePriceUsed: BigInt!
   newCurrentSupply: BigInt!

@@ -55,12 +55,20 @@ export function handleTokensPurchased(event: TokensPurchasedEvent): void {
   const campaign = Campaign.load(campaignAddress);
   if (campaign == null) return;
 
-  // Purchase entity
+  // Purchase entity. `fundingFee` is derived from the contract's constant
+  // FUNDING_FEE_BPS = 300 (3%) — same integer-division math the contract uses,
+  // so the subgraph stays aligned with on-chain skim amounts without an extra
+  // eth_call per event. Revisit if FUNDING_FEE_BPS ever becomes tunable.
+  const FUNDING_FEE_BPS = BigInt.fromI32(300);
+  const BPS_DENOM = BigInt.fromI32(10_000);
+  const fundingFee = event.params.paymentAmount.times(FUNDING_FEE_BPS).div(BPS_DENOM);
+
   const purchase = new Purchase(eventId(event.transaction.hash, event.logIndex));
   purchase.campaign = campaignAddress;
   purchase.buyer = event.params.buyer;
   purchase.paymentToken = event.params.paymentToken;
   purchase.paymentAmount = event.params.paymentAmount;
+  purchase.fundingFee = fundingFee;
   purchase.campaignTokensOut = event.params.campaignTokensOut;
   purchase.oraclePriceUsed = event.params.oraclePriceUsed;
   purchase.newCurrentSupply = event.params.newCurrentSupply;
