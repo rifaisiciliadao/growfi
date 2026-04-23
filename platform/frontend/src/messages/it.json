@@ -234,6 +234,8 @@
       "maxCapReachedHint": "Il tetto massimo è stato raggiunto — non si possono più acquistare token.",
       "remainingCap": "Solo {amount} ${symbol} disponibili prima del max cap",
       "clampedToCap": "Limitato a {tokens} ${tokenSymbol} — ti verranno addebitati solo {payment} {paymentSymbol}, il resto resta nel tuo wallet.",
+      "feeBreakdown": "Fee protocollo (3%): {fee} {symbol} · alla campagna: {net} {symbol}",
+      "feeBreakdownHint": "La fee è trattenuta dal protocollo e non è rimborsabile se la campagna fallisce.",
       "connectFirst": "Connetti Wallet",
       "noToken": "Nessun token selezionato",
       "noTokensConfigured": "Nessun token di pagamento configurato.",

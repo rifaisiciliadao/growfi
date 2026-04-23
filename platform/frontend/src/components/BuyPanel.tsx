@@ -197,6 +197,13 @@ export function BuyPanel({
   }, [selected, tokensOutEstimate, pricePerToken, parsedAmount]);
   const isClamped = tokensOutEstimate < rawTokensOut && rawTokensOut > 0n;
 
+  // Funding fee preview — mirrors the contract's integer-division math
+  // (FUNDING_FEE_BPS = 300). Shown as a subtle breakdown under the "You Receive"
+  // card so the buyer knows exactly how much hits the campaign vs. the protocol.
+  const grossPayment = isClamped ? effectivePayment : parsedAmount;
+  const fundingFee = (grossPayment * 300n) / 10_000n;
+  const netToCampaign = grossPayment - fundingFee;
+
   // 4) Read user balance + allowance
   const { data: balanceAllowance, refetch: refetchBalanceAllowance } =
     useReadContracts({
@@ -548,6 +555,24 @@ export function BuyPanel({
                     ).toLocaleString(undefined, { maximumFractionDigits: 2 }),
                     paymentSymbol: selected.symbol,
                   })}
+                </div>
+              )}
+              {selected && fundingFee > 0n && (
+                <div className="mt-3 pt-3 border-t border-outline-variant/15 text-xs text-on-surface-variant space-y-1">
+                  <div>
+                    {t("feeBreakdown", {
+                      fee: Number(
+                        formatUnits(fundingFee, selected.decimals),
+                      ).toLocaleString(undefined, { maximumFractionDigits: 4 }),
+                      net: Number(
+                        formatUnits(netToCampaign, selected.decimals),
+                      ).toLocaleString(undefined, { maximumFractionDigits: 2 }),
+                      symbol: selected.symbol,
+                    })}
+                  </div>
+                  <div className="text-[10px] opacity-70">
+                    {t("feeBreakdownHint")}
+                  </div>
                 </div>
               )}
             </div>

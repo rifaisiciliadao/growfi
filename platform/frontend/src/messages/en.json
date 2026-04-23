@@ -234,6 +234,8 @@
       "maxCapReachedHint": "The hard cap has been reached — no more tokens can be minted.",
       "remainingCap": "Only {amount} ${symbol} left before max cap",
       "clampedToCap": "Capped at {tokens} ${tokenSymbol} — only {payment} {paymentSymbol} will be charged, the rest stays in your wallet.",
+      "feeBreakdown": "Protocol fee (3%): {fee} {symbol} · goes to campaign: {net} {symbol}",
+      "feeBreakdownHint": "The fee is kept by the protocol and is not refunded if the campaign fails.",
       "connectFirst": "Connect Wallet",
       "noToken": "No token selected",
       "noTokensConfigured": "No payment tokens configured yet.",
