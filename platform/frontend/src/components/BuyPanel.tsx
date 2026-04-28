@@ -30,6 +30,8 @@ interface Props {
   currentSupply: bigint;        // 18 decimals — tokens already sold
   maxCap: bigint;               // 18 decimals — hard cap
   currentState: number;         // 0 = Funding, 1 = Active, 2 = Buyback, 3 = Ended
+  /** v3 — producer's yearly yield commitment in bps (0 if pre-v3). */
+  expectedYearlyReturnBps?: bigint;
 }
 
 /**
@@ -80,6 +82,7 @@ export function BuyPanel({
   currentSupply,
   maxCap,
   currentState,
+  expectedYearlyReturnBps = 0n,
 }: Props) {
   const t = useTranslations("detail.buy");
   const { address: user, isConnected } = useAccount();
@@ -578,6 +581,21 @@ export function BuyPanel({
             </div>
           </div>
 
+          {/* v3 — Expected return panel. Driven by the buyer's actual gross
+              payment (NOT a separate input), so the numbers update as the
+              user types in the YOU PAY field above. Hidden when the campaign
+              has no yearly-return commitment (pre-v3) or no input yet. */}
+          {expectedYearlyReturnBps > 0n && grossPayment > 0n && selected && (
+            <BuyExpectedReturn
+              grossPayment={grossPayment}
+              fundingFee={fundingFee}
+              netToCampaign={netToCampaign}
+              yearlyBps={expectedYearlyReturnBps}
+              decimals={selected.decimals}
+              symbol={selected.symbol}
+            />
+          )}
+
           <button
             onClick={onClick}
             disabled={!canInteract || !hasEnoughBalance}
@@ -628,6 +646,81 @@ export function BuyPanel({
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+/**
+ * BuyExpectedReturn — inline projection of the buyer's expected per-harvest
+ * yield + total return, derived from the producer's `expectedYearlyReturnBps`
+ * commitment and the buyer's actual `grossPayment` (NET goes to the campaign,
+ * the 3% protocol fee is excluded from the principal that earns yield).
+ *
+ * Math:
+ *   principalNet      = grossPayment - fundingFee
+ *   yieldPerHarvest   = principalNet * yearlyBps / 10_000   (assumes 1 harvest/year)
+ *   harvestsToRepay   = ⌈10_000 / yearlyBps⌉
+ *   totalReturn       = yieldPerHarvest * harvestsToRepay
+ */
+function BuyExpectedReturn({
+  grossPayment,
+  fundingFee,
+  netToCampaign,
+  yearlyBps,
+  decimals,
+  symbol,
+}: {
+  grossPayment: bigint;
+  fundingFee: bigint;
+  netToCampaign: bigint;
+  yearlyBps: bigint;
+  decimals: number;
+  symbol: string;
+}) {
+  const principalNet = Number(formatUnits(netToCampaign, decimals));
+  const yearlyReturnPct = Number(yearlyBps) / 100;
+  const yieldPerHarvest = (principalNet * Number(yearlyBps)) / 10_000;
+  const harvestsToRepay = Math.ceil(10_000 / Number(yearlyBps));
+  const totalReturn = yieldPerHarvest * harvestsToRepay;
+
+  // Hide the unused params lint with a void touch — keeps the API explicit
+  // for callers and lets future iterations show "you pay X gross".
+  void grossPayment;
+  void fundingFee;
+
+  const fmt = (n: number) =>
+    n >= 100
+      ? n.toLocaleString(undefined, { maximumFractionDigits: 0 })
+      : n.toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+  return (
+    <div className="bg-surface-container-low rounded-xl p-4 border border-outline-variant/15 mt-4">
+      <div className="flex items-baseline justify-between mb-3">
+        <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+          Expected return
+        </span>
+        <span className="text-[11px] text-on-surface-variant">
+          @ {yearlyReturnPct % 1 === 0 ? yearlyReturnPct.toFixed(0) : yearlyReturnPct.toFixed(1)}%/yr
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            Per harvest
+          </div>
+          <div className="text-2xl font-bold text-on-surface">
+            {fmt(yieldPerHarvest)} {symbol}
+          </div>
+        </div>
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
+            After {harvestsToRepay} harvests
+          </div>
+          <div className="text-2xl font-bold text-primary">
+            {fmt(totalReturn)} {symbol}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

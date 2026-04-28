@@ -246,6 +246,11 @@ export default function CampaignDetail({
                     }
                     maxCap={(cd?.[3]?.result as bigint | undefined) ?? 0n}
                     currentState={stateIdx}
+                    expectedYearlyReturnBps={
+                      sgCampaign
+                        ? BigInt(sgCampaign.expectedYearlyReturnBps ?? "0")
+                        : 0n
+                    }
                   />
                   <SellBackPanel
                     campaignAddress={campaignAddress}

@@ -1,9 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-
 /**
- * ProductiveAssetCard — surfaces the v3 commitments + a small ROI calculator.
+ * ProductiveAssetCard — surfaces the v3 producer commitments + collateral state.
  *
  * The numbers come from the on-chain immutable fields the producer set at
  * `createCampaign`:
@@ -15,11 +13,10 @@ import { useState, useMemo } from "react";
  * Derived figures:
  *   - harvestsToRepay = ceil(10_000 / yearlyBps)
  *   - tail            = max(0, harvestsToRepay - coverage)
- *   - guaranteeRatio  = coverage / harvestsToRepay     (0..1)
  *   - collateralFree  = collateralLocked - collateralDrawn
  *
- * The ROI input is a plain client-side projection: invested * yearlyBps/10000
- * per year, scaled by the user-entered USDC amount.
+ * The ROI calculator lives in `BuyPanel` so it reacts to the actual amount
+ * the buyer is about to pay — see `BuyPanel.tsx`.
  */
 export function ProductiveAssetCard({
   yearlyReturnBps,
@@ -51,17 +48,6 @@ export function ProductiveAssetCard({
   const drawnNum = Number(collateralDrawn6) / 1e6;
   const freeNum = Math.max(0, lockedNum - drawnNum);
   const firstYearHarvestNum = Number(firstYearHarvest18) / 1e18;
-
-  const [investUsd, setInvestUsd] = useState("1000");
-  const projection = useMemo(() => {
-    const principal = Number(investUsd);
-    if (!Number.isFinite(principal) || principal <= 0 || yearlyReturnBps === 0n)
-      return null;
-    const yearly = (principal * Number(yearlyReturnBps)) / 10_000;
-    const horizon = harvestsToRepay ?? 1;
-    const total = yearly * horizon;
-    return { yearly, horizon, total };
-  }, [investUsd, yearlyReturnBps, harvestsToRepay]);
 
   if (yearlyReturnBps === 0n && firstYearHarvest18 === 0n && coverageHarvests === 0n) {
     return null; // pre-v3 campaign — no commitments published
@@ -153,46 +139,8 @@ export function ProductiveAssetCard({
         )}
       </div>
 
-      {/* ROI calculator */}
-      {yearlyReturnBps > 0n && (
-        <div className="rounded-xl border border-outline-variant/15 p-4 space-y-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant block">
-            ROI calculator
-          </span>
-          <label className="block">
-            <span className="text-[11px] text-on-surface-variant">If you invest…</span>
-            <div className="relative mt-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">
-                $
-              </span>
-              <input
-                type="number"
-                min="0"
-                step="100"
-                value={investUsd}
-                onChange={(e) => setInvestUsd(e.target.value)}
-                className="input pl-7"
-              />
-            </div>
-          </label>
-          {projection !== null && (
-            <div className="grid grid-cols-2 gap-3">
-              <Tile
-                label="Per-harvest yield"
-                value={`$${projection.yearly.toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
-              />
-              <Tile
-                label={`After ${projection.horizon} harvests`}
-                value={`$${projection.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-              />
-            </div>
-          )}
-          <p className="text-[10px] text-on-surface-variant">
-            Projection uses the producer's stated yearly return as the baseline.
-            Actual yield depends on each season's reported harvest value.
-          </p>
-        </div>
-      )}
+      {/* ROI calculator moved into BuyPanel — driven by the actual amount the
+          buyer is about to pay. Keeping commitment + collateral here only. */}
     </div>
   );
 }
