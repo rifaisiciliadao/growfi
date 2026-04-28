@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import { readContract } from "@wagmi/core";
+import { config as wagmiConfig } from "@/app/providers";
 import {
   parseUnits,
   formatUnits,
@@ -275,6 +277,43 @@ export default function CreateCampaign() {
     if (!form.fundingDeadline) {
       setStatus({ kind: "error", error: t("status.errorDeadline") });
       return;
+    }
+
+    // Pre-flight: if the producer asked to lock collateral right after
+    // deploy, we need that USDC actually sitting in their wallet. Check
+    // BEFORE we burn any signatures — without this, the createCampaign +
+    // setMetadata + addAcceptedToken txs all succeed and only the very
+    // last lockCollateral reverts with ERC20InsufficientBalance, leaving
+    // the producer with a deployed-but-unfunded campaign and a wallet
+    // signature graveyard. Cheap balance read, infinitely cheaper than
+    // shipping 5+ txs and discovering the rug at the end.
+    const collateralUsd = Number(form.initialCollateralUsd || "0");
+    if (collateralUsd > 0) {
+      const required6 = parseUnits(form.initialCollateralUsd, USDC_DECIMALS);
+      try {
+        const balance = (await readContract(wagmiConfig, {
+          address: getAddresses().usdc,
+          abi: erc20Abi,
+          functionName: "balanceOf",
+          args: [connectedAddress!],
+        })) as bigint;
+        if (balance < required6) {
+          setStatus({
+            kind: "error",
+            error: t("status.errorInsufficientBalance", {
+              required: collateralUsd.toLocaleString(),
+              actual: (Number(balance) / 1e6).toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              }),
+            }),
+          });
+          return;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        setStatus({ kind: "error", error: msg });
+        return;
+      }
     }
 
     try {
