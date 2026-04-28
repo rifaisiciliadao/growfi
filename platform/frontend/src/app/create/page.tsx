@@ -137,6 +137,48 @@ export default function CreateCampaign() {
   const next = () => setStep((s) => Math.min(4, s + 1));
   const prev = () => setStep((s) => Math.max(1, s - 1));
 
+  // Per-step validation. Avanti is disabled until every required field on
+  // the current step is filled. Cheap derived check, runs every render.
+  const isStepValid = (() => {
+    if (step === 1) {
+      return (
+        form.name.trim().length > 0 &&
+        form.tokenSymbol.trim().length > 0 &&
+        form.yieldName.trim().length > 0 &&
+        form.yieldSymbol.trim().length > 0 &&
+        form.description.trim().length > 0 &&
+        !!form.imageFile &&
+        form.location.trim().length > 0 &&
+        form.productType.length > 0
+      );
+    }
+    if (step === 2) {
+      const pos = (s: string) => Number(s) > 0;
+      return (
+        pos(form.pricePerToken) &&
+        pos(form.minCapTrees) &&
+        pos(form.maxCapTrees) &&
+        Number(form.maxCapTrees) >= Number(form.minCapTrees) &&
+        form.fundingDeadline.length > 0 &&
+        pos(form.seasonDuration) &&
+        pos(form.minProductClaim) &&
+        pos(form.expectedAnnualHarvestUsd) &&
+        Number(form.firstHarvestYear) >= 2025 &&
+        Number(form.coverageHarvests) >= 0
+      );
+    }
+    if (step === 3) {
+      // At least one accepted token row, with a valid rate.
+      return (
+        form.acceptedTokens.length > 0 &&
+        form.acceptedTokens.every(
+          (t) => t.symbol.length > 0 && Number(t.humanRate) > 0,
+        )
+      );
+    }
+    return true; // step 4 = review, always allowed
+  })();
+
   const maxCap = Number(form.maxCapTrees || 0) * 1000;
   const minCap = Number(form.minCapTrees || 0) * 1000;
 
@@ -640,19 +682,35 @@ export default function CreateCampaign() {
                   hint={t("step2.expectedAnnualHarvestHint")}
                 >
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-on-surface-variant">
+                    {/* Left-side $ adornment — same height as input, neat separator */}
+                    <span className="absolute inset-y-0 left-0 flex items-center pl-4 pr-3 border-r border-outline-variant/15 text-sm font-bold text-on-surface-variant pointer-events-none">
                       $
                     </span>
                     <input
-                      type="number"
-                      min="1"
-                      step="100"
-                      value={form.expectedAnnualHarvestUsd}
-                      onChange={(e) =>
-                        update("expectedAnnualHarvestUsd", e.target.value)
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9,]*"
+                      value={
+                        form.expectedAnnualHarvestUsd === ""
+                          ? ""
+                          : Number(
+                              form.expectedAnnualHarvestUsd,
+                            ).toLocaleString("en-US")
                       }
-                      className="input pl-7"
+                      onChange={(e) => {
+                        // Strip non-digits before storing → keeps the form
+                        // value submission-ready (BigInt below) while the
+                        // display stays comma-separated.
+                        const raw = e.target.value.replace(/[^\d]/g, "");
+                        update("expectedAnnualHarvestUsd", raw);
+                      }}
+                      placeholder="5,000"
+                      className="input pl-12 pr-14 font-semibold tabular-nums"
                     />
+                    {/* Right-side /yr suffix */}
+                    <span className="absolute inset-y-0 right-0 flex items-center pr-4 pl-3 border-l border-outline-variant/15 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant pointer-events-none">
+                      / yr
+                    </span>
                   </div>
                 </Field>
                 <Field
@@ -1001,7 +1059,8 @@ export default function CreateCampaign() {
             {step < 4 ? (
               <button
                 onClick={next}
-                className="regen-gradient text-white px-8 py-3 rounded-full font-semibold hover:opacity-90 transition shadow-lg shadow-primary/20"
+                disabled={!isStepValid}
+                className="regen-gradient text-white px-8 py-3 rounded-full font-semibold hover:opacity-90 transition shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
               >
                 {t("actions.next")}
               </button>
