@@ -106,16 +106,16 @@ services:
         value: "84532"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_FACTORY_ADDRESS
-        value: "0x5178A4AB4c6400CeeB812663AFfd1bd5B0c9FF64"
+        value: "0x91fD5C9D274C519a152Af14223BD10Ed0b446BDD"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_USDC_ADDRESS
-        value: "0x1b0a76431b3CfD55b3be22497F03920C71623c47"
+        value: "0xF286970e2470948abB010B4DD35e1AD2Da3397B0"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_REGISTRY_ADDRESS
-        value: "0x6cfC4b78131947721A2370B594Ed81BD758a1e17"
+        value: "0x45AB8513a042f3C3A6A0E02f3641b10C6bd05eE8"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS
-        value: "0x2bbc8FE2626C7f83fDe22E4799E76B93Cc8b379e"
+        value: "0x4910C1580C30Eb1c6C12C2136f3eA598c55d77C2"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_SUBGRAPH_URL
         value: https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/prod/gn
