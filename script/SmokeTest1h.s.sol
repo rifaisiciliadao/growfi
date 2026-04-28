@@ -49,6 +49,7 @@ contract SmokeTest1h is Script {
                 seasonDuration: 1 hours,
                 minProductClaim: 1e18,
                 expectedAnnualHarvestUsd: 5_000e18,
+                expectedAnnualHarvest: 1_000e18,
                 firstHarvestYear: 2030,
                 coverageHarvests: 0
             })

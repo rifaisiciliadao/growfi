@@ -40,6 +40,7 @@ export function handleCampaignCreated(event: CampaignCreatedEvent): void {
   campaign.seasonDuration = event.params.seasonDuration;
   campaign.minProductClaim = event.params.minProductClaim;
   campaign.expectedAnnualHarvestUsd = event.params.expectedAnnualHarvestUsd;
+  campaign.expectedAnnualHarvest = event.params.expectedAnnualHarvest;
   campaign.firstHarvestYear = event.params.firstHarvestYear;
   campaign.coverageHarvests = event.params.coverageHarvests;
   campaign.collateralLocked = BigInt.zero();

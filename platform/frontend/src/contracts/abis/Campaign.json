@@ -230,6 +230,19 @@
   },
   {
     "type": "function",
+    "name": "expectedAnnualHarvest",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "expectedAnnualHarvestUsd",
     "inputs": [],
     "outputs": [
@@ -416,6 +429,11 @@
             "internalType": "uint256"
           },
           {
+            "name": "expectedAnnualHarvest",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
             "name": "firstHarvestYear",
             "type": "uint256",
             "internalType": "uint256"
@@ -465,6 +483,11 @@
     "inputs": [
       {
         "name": "expectedAnnualHarvestUsd_",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "expectedAnnualHarvest_",
         "type": "uint256",
         "internalType": "uint256"
       },

@@ -73,6 +73,7 @@ contract E2ETest is Test {
                 seasonDuration: SEASON_DURATION,
                 minProductClaim: MIN_PRODUCT_CLAIM,
                 expectedAnnualHarvestUsd: 5_000e18,
+                expectedAnnualHarvest: 1_000e18,
                 firstHarvestYear: 2030,
                 coverageHarvests: 0
             })

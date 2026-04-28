@@ -32,6 +32,10 @@ interface Props {
   currentState: number;         // 0 = Funding, 1 = Active, 2 = Buyback, 3 = Ended
   /** Expected annual harvest USD (18-dec). */
   annualHarvestUsd18: bigint;
+  /** Expected annual harvest in product units (18-dec). */
+  annualHarvest18: bigint;
+  /** Display label for the product unit (L, kg, …) — derived from metadata.productType. */
+  productUnit: string;
   /** Calendar year of the first reportable harvest (e.g. 2027). */
   firstHarvestYear: bigint;
 }
@@ -85,6 +89,8 @@ export function BuyPanel({
   maxCap,
   currentState,
   annualHarvestUsd18,
+  annualHarvest18,
+  productUnit,
   firstHarvestYear,
 }: Props) {
   const t = useTranslations("detail.buy");
@@ -592,6 +598,8 @@ export function BuyPanel({
             <BuyExpectedReturn
               netToCampaign={netToCampaign}
               annualHarvestUsd18={annualHarvestUsd18}
+              annualHarvest18={annualHarvest18}
+              productUnit={productUnit}
               firstHarvestYear={firstHarvestYear}
               maxCap={maxCap}
               pricePerToken={pricePerToken}
@@ -675,6 +683,8 @@ export function BuyPanel({
 function BuyExpectedReturn({
   netToCampaign,
   annualHarvestUsd18,
+  annualHarvest18,
+  productUnit,
   firstHarvestYear,
   maxCap,
   pricePerToken,
@@ -683,14 +693,18 @@ function BuyExpectedReturn({
 }: {
   netToCampaign: bigint;
   annualHarvestUsd18: bigint;
+  annualHarvest18: bigint;
+  productUnit: string;
   firstHarvestYear: bigint;
   maxCap: bigint;
   pricePerToken: bigint;
   decimals: number;
   symbol: string;
 }) {
+  const t = useTranslations("detail.buy.expectedReturn");
   const principalNet = Number(formatUnits(netToCampaign, decimals));
   const annual = Number(annualHarvestUsd18) / 1e18;
+  const annualQty = Number(annualHarvest18) / 1e18;
   const maxRaise = (Number(maxCap) / 1e18) * (Number(pricePerToken) / 1e18);
   const firstYear = Number(firstHarvestYear);
 
@@ -698,6 +712,7 @@ function BuyExpectedReturn({
 
   const buyerShare = Math.min(1, principalNet / maxRaise);
   const yieldPerHarvest = buyerShare * annual;
+  const productPerHarvest = buyerShare * annualQty;
   const harvestsToRepay = Math.ceil(maxRaise / annual);
   const paybackEnd = firstYear + harvestsToRepay - 1;
   const impliedPct = (annual / maxRaise) * 100;
@@ -711,7 +726,7 @@ function BuyExpectedReturn({
     <div className="bg-surface-container-low rounded-xl p-4 border border-outline-variant/15 mt-4 space-y-3">
       <div className="flex items-baseline justify-between">
         <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-          Expected return
+          {t("title")}
         </span>
         <span className="text-[11px] text-on-surface-variant">
           @ {impliedPct.toFixed(impliedPct < 1 ? 2 : 1)}%/yr
@@ -720,34 +735,36 @@ function BuyExpectedReturn({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-            Per harvest
+            {t("perHarvest")}
           </div>
           <div className="text-2xl font-bold text-on-surface">
             {fmt(yieldPerHarvest)} {symbol}
           </div>
-          {firstYear > 0 && (
-            <div className="text-[10px] text-on-surface-variant mt-0.5">
-              first in {firstYear}
-            </div>
-          )}
+          <div className="text-[11px] text-on-surface-variant mt-0.5">
+            {productPerHarvest > 0
+              ? `≈ ${fmt(productPerHarvest)} ${productUnit}`
+              : ""}
+            {firstYear > 0 && (
+              <> · {t("firstIn", { year: firstYear })}</>
+            )}
+          </div>
         </div>
         <div>
           <div className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-            Payback
+            {t("payback")}
           </div>
           <div className="text-2xl font-bold text-primary">
-            {harvestsToRepay} yrs
+            {t("years", { n: harvestsToRepay })}
           </div>
           {firstYear > 0 && (
-            <div className="text-[10px] text-on-surface-variant mt-0.5">
-              by {paybackEnd}
+            <div className="text-[11px] text-on-surface-variant mt-0.5">
+              {t("byYear", { year: paybackEnd })}
             </div>
           )}
         </div>
       </div>
       <p className="text-[10px] text-on-surface-variant">
-        Every harvest after payback is pure profit — the campaign is a
-        perpetual income stream, not a fixed-term bond.
+        {t("perpetualNote")}
       </p>
     </div>
   );

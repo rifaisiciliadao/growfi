@@ -12,6 +12,7 @@ import {
 } from "@/contracts/tokens";
 import { uploadImage, uploadMetadata } from "@/lib/api";
 import { waitForTx } from "@/lib/waitForTx";
+import { productUnitLabel } from "@/lib/productUnit";
 import Link from "next/link";
 import { txUrl } from "@/lib/explorer";
 
@@ -30,6 +31,8 @@ type FormData = {
   minProductClaim: string;
   /** Producer's expected annual harvest value in whole USD (e.g. "5000" → $5,000/yr). */
   expectedAnnualHarvestUsd: string;
+  /** Producer's expected annual harvest in product units (e.g. "1000" → 1000 L of oil/yr). */
+  expectedAnnualHarvest: string;
   /** Calendar year of the first reportable harvest (e.g. "2027"). */
   firstHarvestYear: string;
   /** Number of harvests the producer pre-funds via lockCollateral. 0 = no commitment. */
@@ -76,6 +79,7 @@ export default function CreateCampaign() {
     seasonDuration: "365",
     minProductClaim: "5",
     expectedAnnualHarvestUsd: "5000",
+    expectedAnnualHarvest: "250",
     firstHarvestYear: String(new Date().getFullYear() + 2),
     coverageHarvests: "0",
     tokenSymbol: "OLIVE",
@@ -163,6 +167,7 @@ export default function CreateCampaign() {
         pos(form.seasonDuration) &&
         pos(form.minProductClaim) &&
         pos(form.expectedAnnualHarvestUsd) &&
+        pos(form.expectedAnnualHarvest) &&
         Number(form.firstHarvestYear) >= 2025 &&
         Number(form.coverageHarvests) >= 0
       );
@@ -236,6 +241,8 @@ export default function CreateCampaign() {
       );
       const annualHarvestUsd =
         BigInt(form.expectedAnnualHarvestUsd || "0") * 10n ** 18n;
+      const annualHarvestQty =
+        BigInt(form.expectedAnnualHarvest || "0") * 10n ** 18n;
       const firstHarvestYear = BigInt(form.firstHarvestYear || "0");
       const coverage = BigInt(form.coverageHarvests || "0");
 
@@ -257,6 +264,7 @@ export default function CreateCampaign() {
             seasonDuration: BigInt(Number(form.seasonDuration) * 86400),
             minProductClaim: BigInt(form.minProductClaim) * 10n ** 18n,
             expectedAnnualHarvestUsd: annualHarvestUsd,
+            expectedAnnualHarvest: annualHarvestQty,
             firstHarvestYear: firstHarvestYear,
             coverageHarvests: coverage,
           },
@@ -675,11 +683,11 @@ export default function CreateCampaign() {
                 </Field>
               </div>
 
-              {/* v3 — annual harvest commitment + first harvest year + coverage */}
+              {/* v3 — annual harvest commitment (USD + product qty) + first harvest year + coverage */}
               <div className="grid grid-cols-2 gap-6">
                 <Field
-                  label={t("step2.expectedAnnualHarvest")}
-                  hint={t("step2.expectedAnnualHarvestHint")}
+                  label={t("step2.expectedAnnualHarvestUsd")}
+                  hint={t("step2.expectedAnnualHarvestUsdHint")}
                 >
                   <div className="relative">
                     {/* Left-side $ adornment — same height as input, neat separator */}
@@ -714,22 +722,48 @@ export default function CreateCampaign() {
                   </div>
                 </Field>
                 <Field
-                  label={t("step2.firstHarvestYear")}
-                  hint={t("step2.firstHarvestYearHint")}
+                  label={t("step2.expectedAnnualHarvestQty", {
+                    unit: productUnitLabel(form.productType),
+                  })}
+                  hint={t("step2.expectedAnnualHarvestQtyHint", {
+                    unit: productUnitLabel(form.productType),
+                  })}
                 >
-                  <input
-                    type="number"
-                    min="2025"
-                    max="2100"
-                    step="1"
-                    value={form.firstHarvestYear}
-                    onChange={(e) =>
-                      update("firstHarvestYear", e.target.value)
-                    }
-                    className="input"
-                  />
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={form.expectedAnnualHarvest}
+                      onChange={(e) =>
+                        update("expectedAnnualHarvest", e.target.value)
+                      }
+                      placeholder="250"
+                      className="input pr-16 font-semibold tabular-nums"
+                    />
+                    <span className="absolute inset-y-0 right-0 flex items-center pr-4 pl-3 border-l border-outline-variant/15 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant pointer-events-none">
+                      {productUnitLabel(form.productType)} / yr
+                    </span>
+                  </div>
                 </Field>
               </div>
+
+              <Field
+                label={t("step2.firstHarvestYear")}
+                hint={t("step2.firstHarvestYearHint")}
+              >
+                <input
+                  type="number"
+                  min="2025"
+                  max="2100"
+                  step="1"
+                  value={form.firstHarvestYear}
+                  onChange={(e) =>
+                    update("firstHarvestYear", e.target.value)
+                  }
+                  className="input"
+                />
+              </Field>
 
               <Field
                 label={t("step2.coverageHarvests")}
@@ -756,11 +790,13 @@ export default function CreateCampaign() {
                 />
               </Field>
 
-              {/* Feasibility summary — derives bps + payback from caps + annual */}
+              {/* Feasibility summary — derives bps + payback + price/unit */}
               <FeasibilitySummary
                 maxCapTrees={form.maxCapTrees}
                 pricePerToken={form.pricePerToken}
                 annualHarvestUsd={form.expectedAnnualHarvestUsd}
+                annualHarvestQty={form.expectedAnnualHarvest}
+                productType={form.productType}
                 firstHarvestYear={form.firstHarvestYear}
                 coverageHarvests={form.coverageHarvests}
               />
@@ -1354,19 +1390,25 @@ function FeasibilitySummary({
   maxCapTrees,
   pricePerToken,
   annualHarvestUsd,
+  annualHarvestQty,
+  productType,
   firstHarvestYear,
   coverageHarvests,
 }: {
   maxCapTrees: string;
   pricePerToken: string;
   annualHarvestUsd: string;
+  annualHarvestQty: string;
+  productType: string;
   firstHarvestYear: string;
   coverageHarvests: string;
 }) {
   const maxRaise = Number(maxCapTrees) * 1000 * Number(pricePerToken);
   const annual = Number(annualHarvestUsd);
+  const annualQty = Number(annualHarvestQty);
   const firstYear = Number(firstHarvestYear);
   const cov = Number(coverageHarvests);
+  const unit = productUnitLabel(productType);
 
   if (!(maxRaise > 0 && annual > 0 && firstYear > 0)) return null;
 
@@ -1375,6 +1417,7 @@ function FeasibilitySummary({
   const recommendedColl = annual * cov;
   const paybackEnd = firstYear + harvestsToRepay - 1;
   const coverageEnd = cov > 0 ? firstYear + cov - 1 : null;
+  const pricePerUnit = annualQty > 0 ? annual / annualQty : null;
 
   const fmt$ = (n: number) =>
     `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
@@ -1390,6 +1433,12 @@ function FeasibilitySummary({
           label="Implied yield"
           value={`${yieldPct.toFixed(yieldPct < 1 ? 2 : 1)}%/yr`}
         />
+        {pricePerUnit !== null && (
+          <Row
+            label={`Price per ${unit}`}
+            value={`$${pricePerUnit.toLocaleString(undefined, { maximumFractionDigits: pricePerUnit < 10 ? 2 : 0 })}`}
+          />
+        )}
         <Row
           label="Payback"
           value={`${harvestsToRepay} harvests (${firstYear}–${paybackEnd})`}

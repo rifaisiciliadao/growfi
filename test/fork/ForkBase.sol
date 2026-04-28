@@ -67,6 +67,7 @@ abstract contract ForkBase is Test {
                 seasonDuration: 365 days,
                 minProductClaim: 5e18,
                 expectedAnnualHarvestUsd: 5_000e18,
+                expectedAnnualHarvest: 1_000e18,
                 firstHarvestYear: 2030,
                 coverageHarvests: 0
             })

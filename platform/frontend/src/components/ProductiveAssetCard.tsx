@@ -24,6 +24,8 @@
  */
 export function ProductiveAssetCard({
   annualHarvestUsd18,
+  annualHarvest18,
+  productUnit,
   firstHarvestYear,
   coverageHarvests,
   maxCap18,
@@ -32,6 +34,8 @@ export function ProductiveAssetCard({
   collateralDrawn6,
 }: {
   annualHarvestUsd18: bigint;
+  annualHarvest18: bigint;
+  productUnit: string;
   firstHarvestYear: bigint;
   coverageHarvests: bigint;
   maxCap18: bigint;
@@ -40,10 +44,12 @@ export function ProductiveAssetCard({
   collateralDrawn6: bigint;
 }) {
   const annual = Number(annualHarvestUsd18) / 1e18;
+  const annualQty = Number(annualHarvest18) / 1e18;
   const firstYear = Number(firstHarvestYear);
   const coverage = Number(coverageHarvests);
   const maxRaise =
     (Number(maxCap18) / 1e18) * (Number(pricePerToken18) / 1e18);
+  const pricePerUnit = annualQty > 0 ? annual / annualQty : null;
 
   const lockedNum = Number(collateralLocked6) / 1e6;
   const drawnNum = Number(collateralDrawn6) / 1e6;
@@ -73,18 +79,36 @@ export function ProductiveAssetCard({
       </h3>
 
       <div className="grid grid-cols-2 gap-3">
-        <Tile label="Annual harvest" value={annual > 0 ? `${fmt$(annual)}/yr` : "—"} />
-        <Tile label="Implied yield" value={impliedYieldPct > 0 ? `${impliedYieldPct.toFixed(impliedYieldPct < 1 ? 2 : 1)}%/yr` : "—"} />
+        <Tile
+          label="Annual harvest"
+          value={
+            annual > 0
+              ? annualQty > 0
+                ? `${fmt$(annual)}/yr · ${annualQty.toLocaleString(undefined, { maximumFractionDigits: 0 })} ${productUnit}/yr`
+                : `${fmt$(annual)}/yr`
+              : "—"
+          }
+        />
+        <Tile
+          label="Implied yield"
+          value={
+            impliedYieldPct > 0
+              ? `${impliedYieldPct.toFixed(impliedYieldPct < 1 ? 2 : 1)}%/yr`
+              : "—"
+          }
+        />
         <Tile
           label="First harvest"
           value={firstYear > 0 ? String(firstYear) : "—"}
         />
         <Tile
-          label="Payback"
+          label={pricePerUnit !== null ? `Price per ${productUnit}` : "Payback"}
           value={
-            harvestsToRepay !== null && paybackEnd !== null
-              ? `${harvestsToRepay} yrs (→ ${paybackEnd})`
-              : "—"
+            pricePerUnit !== null
+              ? `$${pricePerUnit.toLocaleString(undefined, { maximumFractionDigits: pricePerUnit < 10 ? 2 : 0 })}`
+              : harvestsToRepay !== null && paybackEnd !== null
+                ? `${harvestsToRepay} yrs (→ ${paybackEnd})`
+                : "—"
           }
         />
       </div>

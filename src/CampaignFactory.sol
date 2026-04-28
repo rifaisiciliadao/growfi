@@ -79,6 +79,7 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
         uint256 minProductClaim,
         uint256 createdAt,
         uint256 expectedAnnualHarvestUsd,
+        uint256 expectedAnnualHarvest,
         uint256 firstHarvestYear,
         uint256 coverageHarvests
     );
@@ -104,6 +105,7 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
         // v3 — productive-asset metadata + collateral coverage commitment.
         // Set once at creation; immutable for the life of the campaign.
         uint256 expectedAnnualHarvestUsd;    // USD/yr, 1e18 (e.g. 5_000e18 = $5,000/yr)
+        uint256 expectedAnnualHarvest;       // product units/yr, 1e18 (e.g. 1_000e18 = 1,000 L)
         uint256 firstHarvestYear;            // calendar year (e.g. 2030)
         uint256 coverageHarvests;            // 0 ≤ n; recommended ≤ harvestsToRepay
     }
@@ -157,7 +159,8 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
         require(params.minCap <= params.maxCap, "minCap > maxCap");
         require(params.fundingDeadline > block.timestamp, "Deadline in past");
         require(params.seasonDuration >= minSeasonDuration, "Season too short");
-        require(params.expectedAnnualHarvestUsd > 0, "Zero expected annual harvest");
+        require(params.expectedAnnualHarvestUsd > 0, "Zero expected annual harvest USD");
+        require(params.expectedAnnualHarvest > 0, "Zero expected annual harvest qty");
         require(params.firstHarvestYear > 0, "Zero firstHarvestYear");
         // coverageHarvests is allowed to be 0 (= producer publishes targets but
         // doesn't pre-fund any seasons). Upper bound is harvestsToRepay; we don't
@@ -182,6 +185,7 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
                             protocolFeeBps: PROTOCOL_FEE_BPS,
                             fundingFeeBps: FUNDING_FEE_BPS,
                             expectedAnnualHarvestUsd: params.expectedAnnualHarvestUsd,
+                            expectedAnnualHarvest: params.expectedAnnualHarvest,
                             firstHarvestYear: params.firstHarvestYear,
                             coverageHarvests: params.coverageHarvests,
                             protocolFeeRecipient: protocolFeeRecipient,
@@ -282,6 +286,7 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
             params.minProductClaim,
             block.timestamp,
             params.expectedAnnualHarvestUsd,
+            params.expectedAnnualHarvest,
             params.firstHarvestYear,
             params.coverageHarvests
         );

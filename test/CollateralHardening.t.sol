@@ -65,6 +65,7 @@ contract CollateralHardeningTest is Test {
                 seasonDuration: SEASON_DURATION,
                 minProductClaim: 5e18,
                 expectedAnnualHarvestUsd: 5_000e18,
+                expectedAnnualHarvest: 1_000e18,
                 firstHarvestYear: 2030,
                 coverageHarvests: COVERAGE
             })

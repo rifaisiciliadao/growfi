@@ -33,6 +33,7 @@ export interface SubgraphCampaign {
   seasonDuration: string;
   minProductClaim: string;
   expectedAnnualHarvestUsd: string;
+  expectedAnnualHarvest: string;
   firstHarvestYear: string;
   coverageHarvests: string;
   collateralLocked: string;
@@ -64,6 +65,7 @@ const CAMPAIGN_FIELDS = `
   seasonDuration
   minProductClaim
   expectedAnnualHarvestUsd
+  expectedAnnualHarvest
   firstHarvestYear
   coverageHarvests
   collateralLocked

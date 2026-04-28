@@ -18,6 +18,7 @@ import { erc20Abi } from "@/contracts/erc20";
 import { useSubgraphCampaign, useSubgraphProducer } from "@/lib/subgraph";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { useCampaignMetadata, useProducerProfile } from "@/lib/metadata";
+import { productUnitLabel } from "@/lib/productUnit";
 import { uploadImage, uploadMetadata } from "@/lib/api";
 import { BuyPanel } from "@/components/BuyPanel";
 import { StakingPanel } from "@/components/StakingPanel";
@@ -251,6 +252,12 @@ export default function CampaignDetail({
                         ? BigInt(sgCampaign.expectedAnnualHarvestUsd ?? "0")
                         : 0n
                     }
+                    annualHarvest18={
+                      sgCampaign
+                        ? BigInt(sgCampaign.expectedAnnualHarvest ?? "0")
+                        : 0n
+                    }
+                    productUnit={productUnitLabel(metadata?.productType)}
                     firstHarvestYear={
                       sgCampaign
                         ? BigInt(sgCampaign.firstHarvestYear ?? "0")
@@ -336,6 +343,8 @@ export default function CampaignDetail({
           {sgCampaign && (
             <ProductiveAssetCard
               annualHarvestUsd18={BigInt(sgCampaign.expectedAnnualHarvestUsd ?? "0")}
+              annualHarvest18={BigInt(sgCampaign.expectedAnnualHarvest ?? "0")}
+              productUnit={productUnitLabel(metadata?.productType)}
               firstHarvestYear={BigInt(sgCampaign.firstHarvestYear ?? "0")}
               coverageHarvests={BigInt(sgCampaign.coverageHarvests ?? "0")}
               maxCap18={(cd?.[3]?.result as bigint | undefined) ?? 0n}

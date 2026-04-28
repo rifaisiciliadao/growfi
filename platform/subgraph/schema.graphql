@@ -20,6 +20,7 @@ type Campaign @entity(immutable: false) {
 
   # v3 — productive-asset commitments (set at creation, immutable).
   expectedAnnualHarvestUsd: BigInt!
+  expectedAnnualHarvest: BigInt!
   firstHarvestYear: BigInt!
   coverageHarvests: BigInt!
 

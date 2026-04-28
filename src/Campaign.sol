@@ -134,6 +134,15 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
     ///         Immutable after init.
     uint256 public expectedAnnualHarvestUsd;
 
+    /// @notice Producer's commitment: expected annual harvest quantity in
+    ///         product units (1e18 internal scale; e.g. 1_000e18 = 1,000 L of
+    ///         olive oil). Together with `expectedAnnualHarvestUsd` this gives
+    ///         the implied price per unit so the UI can show holders both the
+    ///         USD and the product expected return ("$194/yr ≈ 38.8 L of
+    ///         olive oil"). The display unit label (L, kg, …) is derived from
+    ///         `Campaign.metadataURI → productType`. Immutable after init.
+    uint256 public expectedAnnualHarvest;
+
     /// @notice Producer's commitment: calendar year of the first reportable
     ///         harvest (e.g. 2030). Used by the frontend to label subsequent
     ///         harvests as Year 1 → 2030, Year 2 → 2031, etc. Stored as a
@@ -300,6 +309,8 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
         uint256 fundingFeeBps;
         // Expected annual harvest value in USD, 18-dec (e.g. 5_000e18 = $5,000/yr).
         uint256 expectedAnnualHarvestUsd;
+        // Expected annual harvest in product units, 18-dec (e.g. 1_000e18 = 1,000 L).
+        uint256 expectedAnnualHarvest;
         // Calendar year of the first reportable harvest (e.g. 2030).
         uint256 firstHarvestYear;
         // Number of upcoming harvests pre-funded via `lockCollateral`.
@@ -322,6 +333,7 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
         protocolFeeBps = p.protocolFeeBps;
         fundingFeeBps = p.fundingFeeBps;
         expectedAnnualHarvestUsd = p.expectedAnnualHarvestUsd;
+        expectedAnnualHarvest = p.expectedAnnualHarvest;
         firstHarvestYear = p.firstHarvestYear;
         coverageHarvests = p.coverageHarvests;
         protocolFeeRecipient = p.protocolFeeRecipient;
@@ -344,11 +356,13 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
     ///         `ProxyAdmin.upgradeAndCall(proxy, newImpl, initializeV3(...))`.
     function initializeV3(
         uint256 expectedAnnualHarvestUsd_,
+        uint256 expectedAnnualHarvest_,
         uint256 firstHarvestYear_,
         uint256 coverageHarvests_,
         address usdc_
     ) external reinitializer(3) {
         expectedAnnualHarvestUsd = expectedAnnualHarvestUsd_;
+        expectedAnnualHarvest = expectedAnnualHarvest_;
         firstHarvestYear = firstHarvestYear_;
         coverageHarvests = coverageHarvests_;
         usdc = IERC20(usdc_);

@@ -59,6 +59,7 @@ contract OliveSetup is Script {
                 seasonDuration: 30 minutes,
                 minProductClaim: 1e18,
                 expectedAnnualHarvestUsd: 5_000e18,
+                expectedAnnualHarvest: 250e18, // 250 L of premium olive oil → $20/L
                 firstHarvestYear: 2030,
                 coverageHarvests: 3
             })
