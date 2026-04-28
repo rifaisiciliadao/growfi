@@ -2,8 +2,14 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import { useAccount, useWriteContract } from "wagmi";
-import { parseUnits, decodeEventLog, zeroAddress, type Address } from "viem";
+import { useAccount, useReadContract, useWriteContract } from "wagmi";
+import {
+  parseUnits,
+  formatUnits,
+  decodeEventLog,
+  zeroAddress,
+  type Address,
+} from "viem";
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
 import { erc20Abi } from "@/contracts/erc20";
 import {
@@ -1653,13 +1659,36 @@ function CollateralStep({
   const notify = useTxNotify();
   const [minting, setMinting] = useState(false);
 
+  const { usdc: usdcAddress } = getAddresses();
+
+  /**
+   * Live mUSDC balance read for the connected wallet. Refetches every 8s
+   * so a fresh mint via the faucet button surfaces in the cap without
+   * a manual reload. Used as a hard ceiling on the input — entering a
+   * number > balance is silently clamped, and the parent's `isStepValid`
+   * gate (in the outer component) blocks "Avanti" when value > balance.
+   */
+  const { data: balanceRaw, refetch: refetchBalance } = useReadContract({
+    address: usdcAddress,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: user ? [user] : undefined,
+    query: { enabled: !!user, refetchInterval: 8_000 },
+  });
+  const balance6 = (balanceRaw as bigint | undefined) ?? 0n;
+  const balanceUsd = Number(balance6) / 1e6;
+  const enteredUsd = Number(value || "0");
+  // The user can type any digit string; we display whatever they typed
+  // but the parent state has been clamped via onChange below. So this
+  // is just a safety net for stale UI flashes.
+  const overBalance = enteredUsd > balanceUsd;
+
   const handleMint = async () => {
     if (!user) return;
     try {
       setMinting(true);
-      const { usdc } = getAddresses();
       const hash = await writeContractAsync({
-        address: usdc,
+        address: usdcAddress,
         abi: mockUsdcMintAbi,
         functionName: "mint",
         args: [user, MOCK_USDC_MINT_AMOUNT],
@@ -1667,6 +1696,7 @@ function CollateralStep({
       const r = await waitForTx(hash);
       if (r.status !== "success") throw new Error("mint reverted");
       notify.success(tTx("mintConfirmed"), hash);
+      await refetchBalance();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (!/user (rejected|denied)/i.test(msg)) {
@@ -1714,23 +1744,44 @@ function CollateralStep({
           <label className="block text-sm font-semibold text-on-surface">
             {t("amount")}
           </label>
-          {/* Testnet faucet — mints 10k mUSDC directly from this step so the
-              producer can fund the lockCollateral tx without leaving /create.
-              On mainnet getAddresses().usdc is the real USDC and the call
-              would revert (no public mint), so the button surfaces only when
-              the chain is the Sepolia mock. */}
-          {user && CHAIN_ID === 84532 && (
-            <button
-              type="button"
-              onClick={handleMint}
-              disabled={minting}
-              title={tBuy("mintHint")}
-              className="text-xs font-semibold text-primary hover:bg-primary-fixed/30 px-2 py-1 rounded-full transition-colors disabled:opacity-50 flex items-center gap-1"
-            >
-              {minting ? <Spinner size={12} /> : <span>+</span>}
-              {tBuy("mint", { amount: "10,000" })}
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {/* Live wallet balance — clickable as a Max shortcut. Floors to
+                whole USD because the input is whole-dollar (USDC has 6 dec
+                but we don't want to ship "0.999999" via comma-strip). */}
+            {user && (
+              <button
+                type="button"
+                onClick={() =>
+                  onChange(String(Math.floor(balanceUsd)))
+                }
+                className="text-xs text-on-surface-variant hover:text-primary transition-colors"
+                title={t("useMax")}
+              >
+                {t("balance", {
+                  amount: balanceUsd.toLocaleString(undefined, {
+                    maximumFractionDigits: 2,
+                  }),
+                })}
+              </button>
+            )}
+            {/* Testnet faucet — mints 10k mUSDC directly from this step so
+                the producer can fund the lockCollateral tx without leaving
+                /create. On mainnet getAddresses().usdc is the real USDC and
+                the call would revert (no public mint), so the button
+                surfaces only when the chain is the Sepolia mock. */}
+            {user && CHAIN_ID === 84532 && (
+              <button
+                type="button"
+                onClick={handleMint}
+                disabled={minting}
+                title={tBuy("mintHint")}
+                className="text-xs font-semibold text-primary hover:bg-primary-fixed/30 px-2 py-1 rounded-full transition-colors disabled:opacity-50 flex items-center gap-1"
+              >
+                {minting ? <Spinner size={12} /> : <span>+</span>}
+                {tBuy("mint", { amount: "10,000" })}
+              </button>
+            )}
+          </div>
         </div>
         <div className="relative">
           {/* Right-side combined adornment "$ USDC" — mirrors the harvest
@@ -1747,34 +1798,59 @@ function CollateralStep({
             }
             onChange={(e) => {
               const raw = e.target.value.replace(/[^\d]/g, "");
-              onChange(raw || "0");
+              // Hard-cap at the wallet balance — entering a higher number
+              // would only produce a guaranteed lockCollateral revert at
+              // submit time. Cheaper to clamp at the keystroke.
+              const n = Number(raw || "0");
+              const capped =
+                user && n > balanceUsd
+                  ? String(Math.floor(balanceUsd))
+                  : raw;
+              onChange(capped || "0");
             }}
             placeholder="0"
-            className="input pr-24 font-semibold tabular-nums"
+            className={`input pr-24 font-semibold tabular-nums ${overBalance ? "border-error" : ""}`}
           />
           <span className="absolute inset-y-0 right-0 w-24 flex items-center justify-center border-l border-outline-variant/15 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant pointer-events-none">
             $ USDC
           </span>
         </div>
-        <p className="text-xs text-on-surface-variant mt-1.5">
-          {recommended > 0
-            ? t("amountHint", {
-                recommended: fmt$(recommended),
-                annual: annual.toLocaleString(),
-                coverage: cov.toString(),
-              })
-            : t("amountHintNoCoverage")}
-        </p>
+        {overBalance ? (
+          <p className="text-xs text-error mt-1.5">
+            {t("overBalance", {
+              amount: balanceUsd.toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              }),
+            })}
+          </p>
+        ) : (
+          <p className="text-xs text-on-surface-variant mt-1.5">
+            {recommended > 0
+              ? t("amountHint", {
+                  recommended: fmt$(recommended),
+                  annual: annual.toLocaleString(),
+                  coverage: cov.toString(),
+                })
+              : t("amountHintNoCoverage")}
+          </p>
+        )}
       </div>
 
-      {/* Quick-pick chip for the recommended amount — one-click commitment. */}
+      {/* Quick-pick chip for the recommended amount — clamps at balance so
+          a producer with insufficient mUSDC can't blindly "Use recommended"
+          and then watch the lockCollateral tx revert. */}
       {recommended > 0 && (
         <button
           type="button"
-          onClick={() => onChange(String(recommended))}
-          className="text-xs font-semibold text-primary hover:underline"
+          onClick={() =>
+            onChange(String(Math.min(recommended, Math.floor(balanceUsd))))
+          }
+          disabled={!user || balanceUsd <= 0}
+          className="text-xs font-semibold text-primary hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
         >
-          {t("useRecommended", { amount: fmt$(recommended) })}
+          {t("useRecommended", {
+            amount: fmt$(Math.min(recommended, Math.floor(balanceUsd))),
+          })}
         </button>
       )}
 
