@@ -50,14 +50,16 @@ contract OliveSetup is Script {
                 tokenSymbol: "OLIVE",
                 yieldName: "Olive Yield",
                 yieldSymbol: "oYIELD",
+                // $0.144/token × 350k maxCap = $50,400 max raise
+                // 10% yearly bps × 350k × $0.144 = $5,040 / yr at full raise
                 pricePerToken: 0.144e18,
-                minCap: 500e18,
-                maxCap: 2_000e18,
+                minCap: 100_000e18,
+                maxCap: 350_000e18,
                 fundingDeadline: block.timestamp + 1 days,
                 seasonDuration: 30 minutes,
                 minProductClaim: 1e18,
                 expectedYearlyReturnBps: 1000,
-                expectedFirstYearHarvest: 5_000e18,
+                expectedFirstYearHarvest: 35_000e18,
                 coverageHarvests: 3
             })
         );
@@ -85,18 +87,20 @@ contract OliveSetup is Script {
         // Accept USDC at 0.144 USDC per 1 OLIVE.
         campaign.addAcceptedToken(address(usdc), Campaign.PricingMode.Fixed, 144_000, address(0));
 
-        // Alice buys 700 OLIVE → activates (>500 minCap). 700 * 0.144 = 100.8 USDC = 100_800_000 (6-dec).
+        // Alice buys 120,000 OLIVE → activates (>100k minCap).
+        // 120_000 * 0.144 = 17,280 USDC = 17_280_000_000 (6-dec).
         usdc.approve(address(campaign), type(uint256).max);
-        campaign.buy(address(usdc), 100_800_000);
+        campaign.buy(address(usdc), 17_280_000_000);
         require(uint8(campaign.state()) == uint8(Campaign.State.Active), "Alice buy didn't activate");
-        console.log("alice bought     : 700 OLIVE (state=Active)");
+        console.log("alice bought     : 120,000 OLIVE (state=Active, ~$17,280)");
 
         // v3 — Lock USDC as a 3-harvest yield reserve.
-        // expectedYearlyUsdc ≈ totalRaised * 10% ≈ 14.4 USDC after both buys;
-        // 3 harvests ≈ 43.2 USDC. Lock 50 USDC to over-cover and leave a
-        // visible residual so the UI shows non-zero free balance.
-        campaign.lockCollateral(50_000_000);
-        console.log("collateral lock  : 50 mUSDC for 3 harvests");
+        // Sized for the FULL maxCap raise ($50,400 × 10% × 3 = $15,120) so
+        // the coverage stays valid even after the campaign tops up. Locks
+        // 15,000 USDC to round nicely; UI will show ~99% guarantee ratio
+        // against current totalRaised.
+        campaign.lockCollateral(15_000_000_000);
+        console.log("collateral lock  : 15,000 mUSDC for 3 harvests");
 
         // Start season.
         campaign.startSeason(1);
@@ -109,20 +113,20 @@ contract OliveSetup is Script {
         uint256 alicePos = sv.stake(ct.balanceOf(alice));
         console.log("alice stake pos  :", alicePos);
 
-        // Mint 50 mUSDC to Bob so he can buy.
-        usdc.mint(bob, 50_000_000);
-        console.log("minted 50 mUSDC to bob");
+        // Mint 10,000 mUSDC to Bob so he can buy.
+        usdc.mint(bob, 10_000_000_000);
+        console.log("minted 10,000 mUSDC to bob");
 
         vm.stopBroadcast();
 
         // ------------------------------------------------------------
-        // Bob: buy 300 OLIVE (43.2 USDC) + stake.
+        // Bob: buy 50,000 OLIVE (7,200 USDC) + stake.
         // ------------------------------------------------------------
         vm.startBroadcast(bobPK);
 
         IERC20(address(usdc)).approve(address(campaign), type(uint256).max);
-        campaign.buy(address(usdc), 43_200_000);
-        console.log("bob bought       : 300 OLIVE");
+        campaign.buy(address(usdc), 7_200_000_000);
+        console.log("bob bought       : 50,000 OLIVE (~$7,200)");
 
         IERC20(address(ct)).approve(address(sv), type(uint256).max);
         uint256 bobPos = sv.stake(ct.balanceOf(bob));
