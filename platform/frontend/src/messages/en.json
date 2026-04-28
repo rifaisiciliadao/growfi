@@ -55,6 +55,7 @@
       "info": "Info",
       "params": "Parameters",
       "payments": "Payments",
+      "collateral": "Collateral",
       "confirm": "Confirm"
     },
     "step1": {
@@ -129,6 +130,22 @@
       "signatureNotice": "You'll sign 1 transaction per token right after the deploy. Tokens can also be added later from the campaign detail page."
     },
     "step4": {
+      "title": "Lock Collateral",
+      "subtitle": "Optional. Lock USDC right after deploy as a yield-coverage signal for investors. You can skip and add it later from the campaign manage panel.",
+      "amount": "USDC to lock now",
+      "amountHint": "Recommended: {recommended} (= ${annual}/yr × {coverage} harvests). Set to 0 to skip.",
+      "amountHintNoCoverage": "You committed 0 covered harvests in step 2 — no collateral is required. You can still lock some as a goodwill signal.",
+      "useRecommended": "Use recommended ({amount})",
+      "skipNote": "Skipping is fine — investors will see the campaign without collateral signal until you lock from the manage tab.",
+      "extraSignatures": "Locking now adds 2 wallet signatures after deploy: approve USDC + lockCollateral.",
+      "extraSignaturesLabel": "Heads up",
+      "commitmentLabel": "Annual commitment",
+      "yieldLabel": "Implied yield",
+      "coverageLabel": "Coverage",
+      "noCoverage": "Not committed",
+      "recommendedLabel": "Recommended"
+    },
+    "step5": {
       "title": "Confirm and Deploy",
       "subtitle": "Verify the parameters before deploying the campaign.",
       "sections": {
@@ -178,7 +195,11 @@
       "errorWallet": "Connect wallet before proceeding",
       "errorFactory": "CampaignFactory not yet deployed. Set NEXT_PUBLIC_FACTORY_ADDRESS.",
       "errorImage": "Upload a cover image",
-      "errorDeadline": "Set the funding deadline"
+      "errorDeadline": "Set the funding deadline",
+      "collateralApproveSig": "Sign USDC approval for collateral lock…",
+      "collateralApproveChain": "Confirming USDC approval on-chain…",
+      "collateralLockSig": "Sign lockCollateral transaction…",
+      "collateralLockChain": "Locking collateral on-chain…"
     },
     "success": {
       "title": "Campaign live on-chain",
@@ -287,6 +308,11 @@
       "confirming": "Waiting for confirmation…",
       "indexing": "Syncing with indexer…",
       "nameRequired": "Campaign name is required"
+    },
+    "collateralMissing": {
+      "title": "Collateral commitment not yet funded",
+      "body": "You committed {coverage} pre-funded harvests. Locked: {locked} of {required} required ({missing} still missing). Lock now to back the yield-coverage signal investors see on the campaign page.",
+      "cta": "Lock collateral"
     },
     "stake": {
       "title": "Your Positions",

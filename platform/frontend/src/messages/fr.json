@@ -55,6 +55,7 @@
       "info": "Infos",
       "params": "Paramètres",
       "payments": "Paiements",
+      "collateral": "Collateral",
       "confirm": "Confirmer"
     },
     "step1": {
@@ -129,6 +130,22 @@
       "signatureNotice": "Tu signeras 1 transaction par token juste après le deploy. Les tokens peuvent aussi être ajoutés plus tard depuis la page de détail."
     },
     "step4": {
+      "title": "Verrouiller le Collateral",
+      "subtitle": "Optionnel. Verrouille des USDC juste après le déploiement comme signal de couverture pour les investisseurs. Tu peux passer et le faire plus tard depuis l'onglet Gestion.",
+      "amount": "USDC à verrouiller maintenant",
+      "amountHint": "Recommandé : {recommended} (= ${annual}/an × {coverage} récoltes). Mets 0 pour passer.",
+      "amountHintNoCoverage": "Tu as engagé 0 récolte couverte à l'étape 2 — aucun collateral requis. Tu peux quand même en verrouiller comme signe de bonne foi.",
+      "useRecommended": "Utiliser le recommandé ({amount})",
+      "skipNote": "Passer c'est ok — les investisseurs verront la campagne sans signal de collateral jusqu'à ce que tu verrouilles depuis l'onglet Gestion.",
+      "extraSignatures": "Verrouiller maintenant ajoute 2 signatures après le déploiement : approve USDC + lockCollateral.",
+      "extraSignaturesLabel": "Attention",
+      "commitmentLabel": "Engagement annuel",
+      "yieldLabel": "Rendement implicite",
+      "coverageLabel": "Couverture",
+      "noCoverage": "Non engagé",
+      "recommendedLabel": "Recommandé"
+    },
+    "step5": {
       "title": "Confirmer et Déployer",
       "subtitle": "Vérifie les paramètres avant de déployer la campagne.",
       "sections": {
@@ -178,7 +195,11 @@
       "errorWallet": "Connecte le wallet avant de continuer",
       "errorFactory": "CampaignFactory pas encore déployée. Configure NEXT_PUBLIC_FACTORY_ADDRESS.",
       "errorImage": "Charge une image de couverture",
-      "errorDeadline": "Configure l'échéance de funding"
+      "errorDeadline": "Configure l'échéance de funding",
+      "collateralApproveSig": "Signe l'approbation USDC pour le verrouillage du collateral…",
+      "collateralApproveChain": "Confirmation de l'approbation USDC on-chain…",
+      "collateralLockSig": "Signe la transaction lockCollateral…",
+      "collateralLockChain": "Verrouillage du collateral on-chain…"
     },
     "success": {
       "title": "Campagne live on-chain",
@@ -287,6 +308,11 @@
       "confirming": "En attente de confirmation…",
       "indexing": "Synchronisation avec l'indexeur…",
       "nameRequired": "Le nom est obligatoire"
+    },
+    "collateralMissing": {
+      "title": "Engagement de collateral pas encore financé",
+      "body": "Tu as engagé {coverage} récoltes pré-financées. Verrouillés : {locked} sur {required} requis ({missing} encore manquants). Verrouille maintenant pour soutenir le signal de couverture que les investisseurs voient sur la page de la campagne.",
+      "cta": "Verrouiller le collateral"
     },
     "stake": {
       "title": "Tes Positions",

@@ -191,6 +191,20 @@ export default function CampaignDetail({
         </div>
       )}
 
+      {isProducerViewing && hasOnChainData && sgCampaign && (
+        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pt-6">
+          <CollateralMissingBanner
+            currentState={stateIdx}
+            annualHarvestUsd18={BigInt(
+              sgCampaign.expectedAnnualHarvestUsd ?? "0",
+            )}
+            coverageHarvests={BigInt(sgCampaign.coverageHarvests ?? "0")}
+            collateralLocked6={BigInt(sgCampaign.collateralLocked ?? "0")}
+            onGoToManage={() => setActiveTab("manage")}
+          />
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 py-8 md:py-12 flex flex-col lg:flex-row gap-8 md:gap-12 items-start">
         <div className="w-full lg:w-[65%] flex flex-col gap-6">
           {activeTab === "invest" && (
@@ -362,6 +376,93 @@ export default function CampaignDetail({
         </div>
       </div>
     </>
+  );
+}
+
+/**
+ * CollateralMissingBanner — producer-only nudge that appears when the
+ * campaign committed coverageHarvests > 0 in the v3 fields but
+ * collateralLocked is below the required floor. Hidden once funded, hidden
+ * post-Funding/Active (the contract refuses lockCollateral in Buyback or
+ * Ended state, so nudging there would be a dead-end). CTA flips the active
+ * tab to "manage" — same single-page state, no navigation, so the producer
+ * lands directly on the CollateralSection inside ProducerManagePanel.
+ */
+function CollateralMissingBanner({
+  currentState,
+  annualHarvestUsd18,
+  coverageHarvests,
+  collateralLocked6,
+  onGoToManage,
+}: {
+  currentState: number;
+  annualHarvestUsd18: bigint;
+  coverageHarvests: bigint;
+  collateralLocked6: bigint;
+  onGoToManage: () => void;
+}) {
+  const t = useTranslations("detail.collateralMissing");
+
+  // Required = annualHarvestUsd × coverageHarvests, rescaled from 18-dec
+  // (subgraph store) to 6-dec (USDC actually deposited via lockCollateral).
+  // Collateral has no commitment to fund → banner hidden.
+  if (coverageHarvests === 0n || annualHarvestUsd18 === 0n) return null;
+  // Banner only meaningful while collateral can still be locked.
+  // Campaign.lockCollateral guards Funding (0) | Active (1) only.
+  if (currentState !== 0 && currentState !== 1) return null;
+
+  const required18 = annualHarvestUsd18 * coverageHarvests;
+  // 18-dec USD → 6-dec USDC: divide by 1e12.
+  const required6 = required18 / 10n ** 12n;
+  if (collateralLocked6 >= required6) return null;
+
+  const missing6 = required6 - collateralLocked6;
+  const requiredUsd = Number(required6) / 1e6;
+  const missingUsd = Number(missing6) / 1e6;
+  const lockedUsd = Number(collateralLocked6) / 1e6;
+  const fmt$ = (n: number) =>
+    `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
+  return (
+    <div className="rounded-2xl border border-amber-300/40 bg-amber-50 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex items-start gap-3">
+        <div className="shrink-0 w-10 h-10 rounded-full bg-amber-200/60 flex items-center justify-center text-amber-800">
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+            <line x1="12" y1="9" x2="12" y2="13" />
+            <line x1="12" y1="17" x2="12.01" y2="17" />
+          </svg>
+        </div>
+        <div className="min-w-0">
+          <h3 className="text-sm font-bold text-amber-900 mb-0.5">
+            {t("title")}
+          </h3>
+          <p className="text-xs text-amber-800 leading-snug">
+            {t("body", {
+              locked: fmt$(lockedUsd),
+              required: fmt$(requiredUsd),
+              missing: fmt$(missingUsd),
+              coverage: coverageHarvests.toString(),
+            })}
+          </p>
+        </div>
+      </div>
+      <button
+        onClick={onGoToManage}
+        className="shrink-0 bg-amber-900 text-white text-xs font-bold px-4 py-2.5 rounded-full hover:bg-amber-800 transition whitespace-nowrap"
+      >
+        {t("cta")}
+      </button>
+    </div>
   );
 }
 

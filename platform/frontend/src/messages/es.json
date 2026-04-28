@@ -55,6 +55,7 @@
       "info": "Información",
       "params": "Parámetros",
       "payments": "Pagos",
+      "collateral": "Collateral",
       "confirm": "Confirmar"
     },
     "step1": {
@@ -129,6 +130,22 @@
       "signatureNotice": "Firmarás 1 transacción por token justo después del deploy. Los tokens también pueden añadirse luego desde la página de detalle."
     },
     "step4": {
+      "title": "Bloquear Collateral",
+      "subtitle": "Opcional. Bloquea USDC justo después del deploy como señal de cobertura para los inversores. Puedes saltarlo y bloquearlo después desde el panel de gestión.",
+      "amount": "USDC a bloquear ahora",
+      "amountHint": "Recomendado: {recommended} (= ${annual}/año × {coverage} cosechas). Pon 0 para saltar.",
+      "amountHintNoCoverage": "Has comprometido 0 cosechas cubiertas en el paso 2 — no se requiere collateral. Aún puedes bloquear algo como señal de buena fe.",
+      "useRecommended": "Usar el recomendado ({amount})",
+      "skipNote": "Saltar está bien — los inversores verán la campaña sin la señal de collateral hasta que lo bloquees desde la pestaña Gestión.",
+      "extraSignatures": "Bloquear ahora añade 2 firmas después del deploy: approve USDC + lockCollateral.",
+      "extraSignaturesLabel": "Atención",
+      "commitmentLabel": "Compromiso anual",
+      "yieldLabel": "Yield implícito",
+      "coverageLabel": "Cobertura",
+      "noCoverage": "Sin compromiso",
+      "recommendedLabel": "Recomendado"
+    },
+    "step5": {
       "title": "Confirmar y Desplegar",
       "subtitle": "Verifica los parámetros antes de desplegar la campaña.",
       "sections": {
@@ -178,7 +195,11 @@
       "errorWallet": "Conecta la wallet antes de continuar",
       "errorFactory": "CampaignFactory aún no desplegado. Configura NEXT_PUBLIC_FACTORY_ADDRESS.",
       "errorImage": "Sube una imagen de portada",
-      "errorDeadline": "Configura el plazo de financiación"
+      "errorDeadline": "Configura el plazo de financiación",
+      "collateralApproveSig": "Firma la aprobación de USDC para el bloqueo de collateral…",
+      "collateralApproveChain": "Confirmando aprobación USDC en cadena…",
+      "collateralLockSig": "Firma la transacción lockCollateral…",
+      "collateralLockChain": "Bloqueando collateral en cadena…"
     },
     "success": {
       "title": "Campaña live on-chain",
@@ -287,6 +308,11 @@
       "confirming": "Esperando confirmación…",
       "indexing": "Sincronizando con el indexador…",
       "nameRequired": "El nombre es obligatorio"
+    },
+    "collateralMissing": {
+      "title": "Compromiso de collateral aún no financiado",
+      "body": "Te comprometiste con {coverage} cosechas pre-financiadas. Bloqueados: {locked} de {required} requeridos ({missing} aún faltan). Bloquea ahora para respaldar la señal de cobertura que los inversores ven en la página de la campaña.",
+      "cta": "Bloquear collateral"
     },
     "stake": {
       "title": "Tus Posiciones",

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useAccount, useWriteContract } from "wagmi";
 import { parseUnits, decodeEventLog, zeroAddress, type Address } from "viem";
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
+import { erc20Abi } from "@/contracts/erc20";
 import {
   KNOWN_TOKENS,
   PRICING_MODE_ENUM,
@@ -13,6 +14,8 @@ import {
 import { uploadImage, uploadMetadata } from "@/lib/api";
 import { waitForTx } from "@/lib/waitForTx";
 import { productUnitLabel } from "@/lib/productUnit";
+
+const USDC_DECIMALS = 6;
 import Link from "next/link";
 import { txUrl } from "@/lib/explorer";
 
@@ -37,6 +40,8 @@ type FormData = {
   firstHarvestYear: string;
   /** Number of harvests the producer pre-funds via lockCollateral. 0 = no commitment. */
   coverageHarvests: string;
+  /** Whole-USD amount the producer will lockCollateral right after deploy. "0" or "" = skip. */
+  initialCollateralUsd: string;
   tokenSymbol: string;
   yieldName: string;
   yieldSymbol: string;
@@ -52,7 +57,7 @@ type FormData = {
   }>;
 };
 
-const STEP_KEYS = ["info", "params", "payments", "confirm"] as const;
+const STEP_KEYS = ["info", "params", "payments", "collateral", "confirm"] as const;
 const PRODUCT_KEYS = [
   "olive-oil",
   "citrus",
@@ -82,6 +87,7 @@ export default function CreateCampaign() {
     expectedAnnualHarvest: "250",
     firstHarvestYear: String(new Date().getFullYear() + 2),
     coverageHarvests: "0",
+    initialCollateralUsd: "0",
     tokenSymbol: "OLIVE",
     yieldName: "Olive Oil",
     yieldSymbol: "OIL",
@@ -115,6 +121,10 @@ export default function CreateCampaign() {
         index: number;
         total: number;
       }
+    | { kind: "collateral-approve-sig"; campaign: Address }
+    | { kind: "collateral-approve-chain"; campaign: Address }
+    | { kind: "collateral-lock-sig"; campaign: Address }
+    | { kind: "collateral-lock-chain"; campaign: Address }
     | {
         kind: "success";
         campaign: Address;
@@ -138,7 +148,7 @@ export default function CreateCampaign() {
     setForm((f) => ({ ...f, [key]: value }));
   };
 
-  const next = () => setStep((s) => Math.min(4, s + 1));
+  const next = () => setStep((s) => Math.min(5, s + 1));
   const prev = () => setStep((s) => Math.max(1, s - 1));
 
   // Per-step validation. Avanti is disabled until every required field on
@@ -181,7 +191,13 @@ export default function CreateCampaign() {
         )
       );
     }
-    return true; // step 4 = review, always allowed
+    if (step === 4) {
+      // Collateral step is fully optional — empty / 0 means "skip", any positive
+      // number is a commit. Negative numbers / NaN block.
+      const v = Number(form.initialCollateralUsd || "0");
+      return Number.isFinite(v) && v >= 0;
+    }
+    return true; // step 5 = review, always allowed
   })();
 
   const maxCap = Number(form.maxCapTrees || 0) * 1000;
@@ -200,7 +216,11 @@ export default function CreateCampaign() {
     status.kind === "registering-sig" ||
     status.kind === "registering-chain" ||
     status.kind === "whitelisting-sig" ||
-    status.kind === "whitelisting-chain";
+    status.kind === "whitelisting-chain" ||
+    status.kind === "collateral-approve-sig" ||
+    status.kind === "collateral-approve-chain" ||
+    status.kind === "collateral-lock-sig" ||
+    status.kind === "collateral-lock-chain";
 
   const handleDeploy = async () => {
     if (!isConnected) {
@@ -384,7 +404,48 @@ export default function CreateCampaign() {
         }
       }
 
-      // ── 5. Done ───────────────────────────────────────────────────────
+      // ── 5. Optional collateral lock ──────────────────────────────────
+      // If the producer entered a positive amount in step 4, fire two extra
+      // signatures: approve(factoryUsdc, campaign, amount) → lockCollateral.
+      // factory.usdc on Base Sepolia = mUSDC mock; on mainnet = USDC. The
+      // contract guards Funding|Active state — fresh-deployed campaigns are
+      // Funding, so this always succeeds path-wise.
+      const collateralUsd = Number(form.initialCollateralUsd || "0");
+      if (collateralUsd > 0) {
+        const { usdc: usdcAddr } = getAddresses();
+        const collateralAmount = parseUnits(
+          form.initialCollateralUsd,
+          USDC_DECIMALS,
+        );
+
+        setStatus({ kind: "collateral-approve-sig", campaign: newCampaign });
+        const approveHash = await writeContractAsync({
+          address: usdcAddr,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [newCampaign, collateralAmount],
+        });
+        setStatus({ kind: "collateral-approve-chain", campaign: newCampaign });
+        const ar = await waitForTx(approveHash);
+        if (ar.status !== "success") {
+          throw new Error("collateral approve reverted on-chain");
+        }
+
+        setStatus({ kind: "collateral-lock-sig", campaign: newCampaign });
+        const lockHash = await writeContractAsync({
+          address: newCampaign,
+          abi: abis.Campaign as never,
+          functionName: "lockCollateral",
+          args: [collateralAmount],
+        });
+        setStatus({ kind: "collateral-lock-chain", campaign: newCampaign });
+        const lr = await waitForTx(lockHash);
+        if (lr.status !== "success") {
+          throw new Error("lockCollateral reverted on-chain");
+        }
+      }
+
+      // ── 6. Done ───────────────────────────────────────────────────────
       setStatus({
         kind: "success",
         campaign: newCampaign,
@@ -960,7 +1021,30 @@ export default function CreateCampaign() {
           </>
         )}
 
-        {step === 4 && status.kind === "success" && (
+        {step === 4 && (
+          <>
+            <div className="mb-10">
+              <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-on-surface mb-2">
+                {t("step4.title")}
+              </h1>
+              <p className="text-sm text-on-surface-variant">
+                {t("step4.subtitle")}
+              </p>
+            </div>
+
+            <CollateralStep
+              annualHarvestUsd={form.expectedAnnualHarvestUsd}
+              coverageHarvests={form.coverageHarvests}
+              maxCapTrees={form.maxCapTrees}
+              pricePerToken={form.pricePerToken}
+              firstHarvestYear={form.firstHarvestYear}
+              value={form.initialCollateralUsd}
+              onChange={(v) => update("initialCollateralUsd", v)}
+            />
+          </>
+        )}
+
+        {step === 5 && status.kind === "success" && (
           <DeploySuccessScreen
             campaign={status.campaign}
             createTx={status.createTx}
@@ -968,28 +1052,28 @@ export default function CreateCampaign() {
           />
         )}
 
-        {step === 4 && status.kind !== "success" && (
+        {step === 5 && status.kind !== "success" && (
           <>
             <div className="mb-10">
               <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-on-surface mb-2">
-                {t("step4.title")}
+                {t("step5.title")}
               </h1>
-              <p className="text-on-surface-variant">{t("step4.subtitle")}</p>
+              <p className="text-on-surface-variant">{t("step5.subtitle")}</p>
             </div>
 
             <div className="space-y-4">
-              <ReviewSection title={t("step4.sections.info")}>
-                <ReviewRow label={t("step4.rows.name")} value={form.name || "—"} />
+              <ReviewSection title={t("step5.sections.info")}>
+                <ReviewRow label={t("step5.rows.name")} value={form.name || "—"} />
                 <ReviewRow
-                  label={t("step4.rows.symbol")}
+                  label={t("step5.rows.symbol")}
                   value={form.tokenSymbol}
                 />
                 <ReviewRow
-                  label={t("step4.rows.location")}
+                  label={t("step5.rows.location")}
                   value={form.location || "—"}
                 />
                 <ReviewRow
-                  label={t("step4.rows.productType")}
+                  label={t("step5.rows.productType")}
                   value={
                     form.productType
                       ? t(`step1.products.${form.productType}` as never)
@@ -998,43 +1082,43 @@ export default function CreateCampaign() {
                 />
               </ReviewSection>
 
-              <ReviewSection title={t("step4.sections.tokenomics")}>
+              <ReviewSection title={t("step5.sections.tokenomics")}>
                 <ReviewRow
-                  label={t("step4.rows.price")}
+                  label={t("step5.rows.price")}
                   value={`$${form.pricePerToken}`}
                 />
                 <ReviewRow
-                  label={t("step4.rows.minCap")}
-                  value={t("step4.rows.trees", {
+                  label={t("step5.rows.minCap")}
+                  value={t("step5.rows.trees", {
                     count: form.minCapTrees,
                     tokens: minCap.toLocaleString(),
                   })}
                 />
                 <ReviewRow
-                  label={t("step4.rows.maxCap")}
-                  value={t("step4.rows.trees", {
+                  label={t("step5.rows.maxCap")}
+                  value={t("step5.rows.trees", {
                     count: form.maxCapTrees,
                     tokens: maxCap.toLocaleString(),
                   })}
                 />
                 <ReviewRow
-                  label={t("step4.rows.deadline")}
+                  label={t("step5.rows.deadline")}
                   value={form.fundingDeadline || "—"}
                 />
                 <ReviewRow
-                  label={t("step4.rows.season")}
-                  value={t("step4.rows.days", { count: form.seasonDuration })}
+                  label={t("step5.rows.season")}
+                  value={t("step5.rows.days", { count: form.seasonDuration })}
                 />
                 <ReviewRow
-                  label={t("step4.rows.minProduct")}
-                  value={t("step4.rows.units", {
+                  label={t("step5.rows.minProduct")}
+                  value={t("step5.rows.units", {
                     count: form.minProductClaim,
                   })}
                 />
               </ReviewSection>
 
               <p className="text-xs text-on-surface-variant px-2 mt-2">
-                {t("step4.notice")}
+                {t("step5.notice")}
               </p>
 
               {status.kind === "uploading-image" && (
@@ -1075,6 +1159,26 @@ export default function CreateCampaign() {
                       })}
                 </StatusBox>
               )}
+              {status.kind === "collateral-approve-sig" && (
+                <StatusBox kind="info">
+                  {t("status.collateralApproveSig")}
+                </StatusBox>
+              )}
+              {status.kind === "collateral-approve-chain" && (
+                <StatusBox kind="info">
+                  {t("status.collateralApproveChain")}
+                </StatusBox>
+              )}
+              {status.kind === "collateral-lock-sig" && (
+                <StatusBox kind="info">
+                  {t("status.collateralLockSig")}
+                </StatusBox>
+              )}
+              {status.kind === "collateral-lock-chain" && (
+                <StatusBox kind="info">
+                  {t("status.collateralLockChain")}
+                </StatusBox>
+              )}
               {status.kind === "error" && (
                 <StatusBox kind="error">{status.error}</StatusBox>
               )}
@@ -1092,7 +1196,7 @@ export default function CreateCampaign() {
               {t("actions.back")}
             </button>
 
-            {step < 4 ? (
+            {step < 5 ? (
               <button
                 onClick={next}
                 disabled={!isStepValid}
@@ -1464,6 +1568,139 @@ function Row({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="font-bold text-on-surface">{value}</div>
+    </div>
+  );
+}
+
+/**
+ * CollateralStep — optional pre-funding of the yield reserve right after
+ * deploy. Recommended amount = annualHarvestUsd × coverageHarvests; setting
+ * it to 0 (or leaving empty) skips the lock and the producer can still add
+ * collateral later from /campaign/[address]?tab=manage. The actual approve +
+ * lockCollateral happens in handleDeploy AFTER createCampaign + setMetadata
+ * + addAcceptedToken complete.
+ */
+function CollateralStep({
+  annualHarvestUsd,
+  coverageHarvests,
+  maxCapTrees,
+  pricePerToken,
+  firstHarvestYear,
+  value,
+  onChange,
+}: {
+  annualHarvestUsd: string;
+  coverageHarvests: string;
+  maxCapTrees: string;
+  pricePerToken: string;
+  firstHarvestYear: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const t = useTranslations("create.step4");
+  const annual = Number(annualHarvestUsd || "0");
+  const cov = Number(coverageHarvests || "0");
+  const recommended = annual * cov;
+  const firstYear = Number(firstHarvestYear || "0");
+  const coverageEnd = cov > 0 && firstYear > 0 ? firstYear + cov - 1 : null;
+  const maxRaise =
+    Number(maxCapTrees || "0") * 1000 * Number(pricePerToken || "0");
+  const yieldPct = annual > 0 && maxRaise > 0 ? (annual / maxRaise) * 100 : 0;
+
+  const fmt$ = (n: number) =>
+    `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+
+  return (
+    <div className="space-y-6">
+      {/* Recap of what they committed in step 2 — sets the context for the
+          recommended amount below. Helps the producer see the link between
+          coverage horizon and lock size. */}
+      {annual > 0 && (
+        <div className="rounded-xl border border-primary/30 bg-primary-fixed/30 p-4 grid grid-cols-2 gap-3 text-sm">
+          <Row label={t("commitmentLabel")} value={`${fmt$(annual)} / yr`} />
+          <Row
+            label={t("yieldLabel")}
+            value={`${yieldPct.toFixed(yieldPct < 1 ? 2 : 1)}%/yr`}
+          />
+          {cov > 0 && coverageEnd !== null ? (
+            <Row
+              label={t("coverageLabel")}
+              value={`${cov} (${firstYear}–${coverageEnd})`}
+            />
+          ) : (
+            <Row label={t("coverageLabel")} value={t("noCoverage")} />
+          )}
+          {recommended > 0 && (
+            <Row
+              label={t("recommendedLabel")}
+              value={fmt$(recommended)}
+            />
+          )}
+        </div>
+      )}
+
+      <Field
+        label={t("amount")}
+        hint={
+          recommended > 0
+            ? t("amountHint", {
+                recommended: fmt$(recommended),
+                annual: annual.toLocaleString(),
+                coverage: cov.toString(),
+              })
+            : t("amountHintNoCoverage")
+        }
+      >
+        <div className="relative">
+          {/* $ adornment + USDC suffix mirrors the styled currency input
+              from step 2 — full-height with border-rule dividers. */}
+          <span className="absolute inset-y-0 left-0 flex items-center pl-4 pr-3 border-r border-outline-variant/15 text-sm font-bold text-on-surface-variant pointer-events-none">
+            $
+          </span>
+          <input
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9,]*"
+            value={
+              !value || value === "0"
+                ? ""
+                : Number(value).toLocaleString("en-US")
+            }
+            onChange={(e) => {
+              const raw = e.target.value.replace(/[^\d]/g, "");
+              onChange(raw || "0");
+            }}
+            placeholder="0"
+            className="input pl-12 pr-20 font-semibold tabular-nums"
+          />
+          <span className="absolute inset-y-0 right-0 flex items-center pr-4 pl-3 border-l border-outline-variant/15 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant pointer-events-none">
+            USDC
+          </span>
+        </div>
+      </Field>
+
+      {/* Quick-pick chip for the recommended amount — one-click commitment. */}
+      {recommended > 0 && (
+        <button
+          type="button"
+          onClick={() => onChange(String(recommended))}
+          className="text-xs font-semibold text-primary hover:underline"
+        >
+          {t("useRecommended", { amount: fmt$(recommended) })}
+        </button>
+      )}
+
+      <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
+        <p className="text-xs text-on-surface-variant">{t("skipNote")}</p>
+        {Number(value || "0") > 0 && (
+          <p className="text-xs text-on-surface-variant">
+            <span className="font-semibold text-on-surface">
+              {t("extraSignaturesLabel")}:
+            </span>{" "}
+            {t("extraSignatures")}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
