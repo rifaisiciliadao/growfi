@@ -599,9 +599,12 @@
       "live": "Live"
     }
   },
+  "kyc": {
+    "verified": "KYC vérifié — identité attestée onchain par un admin du registry"
+  },
   "producer": {
     "invalidAddress": "Adresse producteur invalide.",
-    "anonymous": "Producteur anonyme",
+    "anonymous": "Anon grower",
     "editProfile": "Modifier le profil",
     "createProfile": "Créer un profil",
     "noProfileYet": "Ce producteur n'a pas encore publié de profil.",

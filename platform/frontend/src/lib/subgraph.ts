@@ -239,6 +239,7 @@ export interface BatchProducerProfile {
   id: string;
   profileURI: string;
   version: string;
+  kyced: boolean;
   name?: string;
   avatar?: string;
 }
@@ -259,6 +260,7 @@ export function useBatchProducerProfiles(
         id: string;
         profileURI: string;
         version: string;
+        kyced: boolean;
       }> }>(
         `
         query BatchProducers($ids: [ID!]!) {
@@ -266,6 +268,7 @@ export function useBatchProducerProfiles(
             id
             profileURI
             version
+            kyced
           }
         }
         `,
@@ -478,6 +481,8 @@ export interface SubgraphProducer {
   profileURI: string | null;
   version: string;
   updatedAt: string | null;
+  kyced: boolean;
+  kycSetAt: string | null;
 }
 
 /**
@@ -532,6 +537,8 @@ export function useSubgraphProducer(address: string | undefined) {
             profileURI
             version
             updatedAt
+            kyced
+            kycSetAt
           }
         }
         `,

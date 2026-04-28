@@ -29,6 +29,7 @@ import { RefundPanel, TriggerBuybackCta } from "@/components/RefundPanel";
 import { SellBackPanel } from "@/components/SellBackPanel";
 import { InvestorList } from "@/components/InvestorList";
 import { ActivateCtaBanner } from "@/components/ActivateCtaBanner";
+import { KycBadge } from "@/components/KycBadge";
 import { Spinner } from "@/components/Spinner";
 import { waitForTx } from "@/lib/waitForTx";
 
@@ -1232,17 +1233,7 @@ function ProducerCard({ producer }: { producer?: Address }) {
             <span className="font-semibold text-on-surface truncate">
               {name ?? short}
             </span>
-            {profile && (
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="currentColor"
-                className="text-primary shrink-0"
-              >
-                <path d="M12 2L4 5v6.09c0 5.05 3.41 9.76 8 10.91 4.59-1.15 8-5.86 8-10.91V5l-8-3zm-2 15l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z" />
-              </svg>
-            )}
+            <KycBadge kyced={sgProducer?.kyced} size={16} />
           </div>
           {location && (
             <div className="text-sm text-on-surface-variant mt-0.5 truncate">

@@ -8,6 +8,8 @@ import {
   useCampaignInvestors,
   useBatchProducerProfiles,
 } from "@/lib/subgraph";
+import { useBatchEnsNames } from "@/lib/ens";
+import { KycBadge } from "@/components/KycBadge";
 import { erc20Abi } from "@/contracts/erc20";
 
 /**
@@ -37,9 +39,14 @@ export function InvestorList({
   });
   const campaignSymbol = (symbolRaw as string | undefined) ?? "CAMP";
   const t = useTranslations("detail.investors");
+  const tProducer = useTranslations("producer");
   const { data: investors, isLoading } = useCampaignInvestors(campaignAddress);
   const addresses = (investors ?? []).map((i) => i.buyer);
   const { data: profiles } = useBatchProducerProfiles(addresses);
+  // Mainnet ENS reverse lookups for any wallet without an internal
+  // profile. Cached 1h via React Query so a re-render of the page reuses
+  // the result instead of hitting eth.llamarpc.com again.
+  const { data: ensNames } = useBatchEnsNames(addresses);
 
   if (isLoading) {
     return (
@@ -91,9 +98,15 @@ export function InvestorList({
       <ol className="space-y-2">
         {top.map((inv, i) => {
           const profile = profiles?.get(inv.buyer.toLowerCase());
+          const ensName = ensNames?.get(inv.buyer.toLowerCase()) ?? null;
+          // Display name priority: internal profile > ENS reverse name >
+          // anon fallback. Internal profile is the strongest claim because
+          // it's gated by the producer's own signature; ENS is a strong
+          // public identity but not domain-specific. Anon fallback is the
+          // softest — "Anon grower" rather than the raw address so the
+          // row reads as a person not a hash.
           const displayName =
-            profile?.name ??
-            `${inv.buyer.slice(0, 6)}…${inv.buyer.slice(-4)}`;
+            profile?.name || ensName || tProducer("anonymous");
           const sharePct =
             currentSupply > 0n
               ? Number((inv.totalTokens * 10000n) / currentSupply) / 100
@@ -123,20 +136,9 @@ export function InvestorList({
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-semibold text-on-surface truncate">
-                    {displayName}
-                    {profile?.name && (
-                      <svg
-                        width="10"
-                        height="10"
-                        viewBox="0 0 16 16"
-                        className="inline-block ml-1 mb-0.5 text-primary"
-                        fill="currentColor"
-                        aria-label="verified"
-                      >
-                        <path d="M8 0a8 8 0 100 16A8 8 0 008 0zm3.78 6.28l-4.5 4.5a.75.75 0 01-1.06 0l-2-2a.75.75 0 011.06-1.06L6.75 9.19l3.97-3.97a.75.75 0 011.06 1.06z" />
-                      </svg>
-                    )}
+                  <div className="text-sm font-semibold text-on-surface truncate flex items-center gap-1">
+                    <span className="truncate">{displayName}</span>
+                    <KycBadge kyced={profile?.kyced} size={12} />
                   </div>
                   <div className="text-[11px] text-on-surface-variant">
                     {t("sharePct", {

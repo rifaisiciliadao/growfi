@@ -21,6 +21,8 @@ import { uploadImage, uploadProducerProfile } from "@/lib/api";
 import { abis, getAddresses } from "@/contracts";
 import { Spinner } from "@/components/Spinner";
 import { ProducerAggregateDashboard } from "@/components/ProducerAggregateDashboard";
+import { KycBadge } from "@/components/KycBadge";
+import { useEnsName } from "@/lib/ens";
 import { waitForTx } from "@/lib/waitForTx";
 
 export default function ProducerPage({
@@ -46,6 +48,11 @@ export default function ProducerPage({
   );
   const { data: campaigns, isLoading: campaignsLoading } =
     useProducerCampaigns(isValid ? producerAddress : undefined);
+  // ENS reverse-lookup against mainnet — cheap, cached. Used as the
+  // display name when there's no internal profile but the wallet has a
+  // public ENS identity (e.g. turinglabs.eth). KYC badge is NOT promoted
+  // by ENS — only the on-chain `producer.kyced` flag triggers the badge.
+  const { data: ensName } = useEnsName(isValid ? producerAddress : undefined);
 
   /**
    * While the subgraph+JSON is loading we don't know yet whether the
@@ -93,11 +100,16 @@ export default function ProducerPage({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-on-surface break-words">
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-on-surface break-words flex items-center gap-2 flex-wrap">
               {profileLoadingCombined ? (
                 <span className="inline-block h-8 w-48 rounded-md bg-surface-container-high animate-pulse" />
               ) : (
-                profile?.name || t("anonymous")
+                <>
+                  <span className="break-words">
+                    {profile?.name || ensName || t("anonymous")}
+                  </span>
+                  <KycBadge kyced={producer?.kyced} size={20} />
+                </>
               )}
             </h1>
             <p className="text-xs md:text-sm text-on-surface-variant font-mono break-all">
