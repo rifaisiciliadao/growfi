@@ -104,10 +104,10 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
         uint256 minProductClaim;
         // v3 — productive-asset metadata + collateral coverage commitment.
         // Set once at creation; immutable for the life of the campaign.
-        uint256 expectedAnnualHarvestUsd;    // USD/yr, 1e18 (e.g. 5_000e18 = $5,000/yr)
-        uint256 expectedAnnualHarvest;       // product units/yr, 1e18 (e.g. 1_000e18 = 1,000 L)
-        uint256 firstHarvestYear;            // calendar year (e.g. 2030)
-        uint256 coverageHarvests;            // 0 ≤ n; recommended ≤ harvestsToRepay
+        uint256 expectedAnnualHarvestUsd; // USD/yr, 1e18 (e.g. 5_000e18 = $5,000/yr)
+        uint256 expectedAnnualHarvest; // product units/yr, 1e18 (e.g. 1_000e18 = 1,000 L)
+        uint256 firstHarvestYear; // calendar year (e.g. 2030)
+        uint256 coverageHarvests; // 0 ≤ n; recommended ≤ harvestsToRepay
     }
 
     // --- Init ---
@@ -173,8 +173,7 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
                 params.producer,
                 abi.encodeCall(
                     Campaign.initialize,
-                    (
-                        Campaign.InitParams({
+                    (Campaign.InitParams({
                             producer: params.producer,
                             factory: address(this),
                             pricePerToken: params.pricePerToken,
@@ -191,8 +190,7 @@ contract CampaignFactory is Initializable, Ownable2StepUpgradeable {
                             protocolFeeRecipient: protocolFeeRecipient,
                             sequencerUptimeFeed: sequencerUptimeFeed,
                             usdc: usdc
-                        })
-                    )
+                        }))
                 )
             )
         );

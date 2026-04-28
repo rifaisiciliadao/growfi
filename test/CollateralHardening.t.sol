@@ -71,7 +71,7 @@ contract CollateralHardeningTest is Test {
             })
         );
 
-        (address c, address cTok,, , address hmAddr,,) = factory.campaigns(0);
+        (address c, address cTok,,, address hmAddr,,) = factory.campaigns(0);
         campaign = Campaign(c);
         ct = CampaignToken(cTok);
         hm = HarvestManager(hmAddr);
@@ -87,7 +87,7 @@ contract CollateralHardeningTest is Test {
     /// we never assume otherwise without a deliberate change.
     function test_fot_lockCollateral_overCountsBalance() public {
         FeeOnTransferToken fot = new FeeOnTransferToken("FoT", "FOT", 18, 100); // 1% burn
-        (, Campaign campaign,, ) = _bootstrap(address(fot));
+        (, Campaign campaign,,) = _bootstrap(address(fot));
 
         // Activate via a regular buy (FoT through buy is a separate footgun
         // already covered in PoolSecurity; we don't care for this test).
@@ -132,7 +132,7 @@ contract CollateralHardeningTest is Test {
     /// abort the inner call.
     function test_reentrancy_lockCollateral_blocked() public {
         ReentrantToken rog = new ReentrantToken("Rogue", "ROG", 18);
-        (, Campaign campaign,, ) = _bootstrap(address(rog));
+        (, Campaign campaign,,) = _bootstrap(address(rog));
 
         // Activate quickly via a regular buy with ROG as payment.
         vm.prank(producer);
@@ -210,7 +210,7 @@ contract CollateralHardeningTest is Test {
         vm.stopPrank();
 
         // Past the deadline.
-        (,,,,, , uint256 deadline,,,,, ) = hm.seasonHarvests(1);
+        (,,,,,, uint256 deadline,,,,,) = hm.seasonHarvests(1);
         vm.warp(deadline + 1);
 
         // Arm the token so usdc.safeTransferFrom (called inside
@@ -251,7 +251,7 @@ contract CollateralHardeningTest is Test {
     /// would fail. Defensive snapshot of the v3 layout we ship.
     function test_storageLayout_v1v2v3FieldsResolveAtExpectedAccessors() public {
         MockERC20 usdc = new MockERC20("USD Coin", "USDC", 6);
-        (, Campaign campaign,, ) = _bootstrap(address(usdc));
+        (, Campaign campaign,,) = _bootstrap(address(usdc));
 
         // v1 fields (state machine, caps, dates)
         assertEq(campaign.producer(), producer, "v1: producer slot");
@@ -286,7 +286,7 @@ contract CollateralHardeningTest is Test {
     /// trip the explicit assertEq in the layout test above. Defense in depth.
     function test_storageLayout_zombieSlotPreservesValue() public {
         MockERC20 usdc = new MockERC20("USD Coin", "USDC", 6);
-        (, Campaign campaign,, ) = _bootstrap(address(usdc));
+        (, Campaign campaign,,) = _bootstrap(address(usdc));
         assertGt(campaign.protocolFeeBps(), 0, "zombie slot must hold init value");
     }
 }

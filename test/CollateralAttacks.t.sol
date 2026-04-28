@@ -266,7 +266,7 @@ contract CollateralAttacksTest is Test {
         _stake(alice, campaignToken.balanceOf(alice));
         _endAndReport(1, 1_000e18);
 
-        (,,,,, , uint256 deadline,,,,, ) = harvestManager.seasonHarvests(1);
+        (,,,,,, uint256 deadline,,,,,) = harvestManager.seasonHarvests(1);
         vm.warp(deadline + 1);
 
         // First settle: succeeds (regardless of whether there's a draw or not).
@@ -338,7 +338,7 @@ contract CollateralAttacksTest is Test {
         }
 
         // Past deadline.
-        (,,,,, , uint256 deadline,,,,, ) = harvestManager.seasonHarvests(1);
+        (,,,,,, uint256 deadline,,,,,) = harvestManager.seasonHarvests(1);
         vm.warp(deadline + 1);
 
         uint256 drawnBefore = campaign.collateralDrawn();
@@ -364,7 +364,7 @@ contract CollateralAttacksTest is Test {
         _stake(alice, campaignToken.balanceOf(alice));
         _endAndReport(1, 100e18);
 
-        (,,,,, , uint256 deadline,,,,, ) = harvestManager.seasonHarvests(1);
+        (,,,,,, uint256 deadline,,,,,) = harvestManager.seasonHarvests(1);
         vm.warp(deadline + 1);
 
         vm.prank(attacker);
@@ -390,7 +390,7 @@ contract CollateralAttacksTest is Test {
         // Alice commits a USDC claim → usdcOwed becomes non-zero.
         _commitUsdcClaim(alice, posId, 1);
 
-        (,,,,, , uint256 deadline,,,,, ) = harvestManager.seasonHarvests(1);
+        (,,,,,, uint256 deadline,,,,,) = harvestManager.seasonHarvests(1);
         vm.warp(deadline + 1);
 
         uint256 remainingBefore = harvestManager.remainingDepositGross(1);
@@ -423,7 +423,7 @@ contract CollateralAttacksTest is Test {
         _endAndReport(1, 1_000e18);
         _commitUsdcClaim(alice, posId, 1);
 
-        (,,,,, , uint256 deadline,,,,, ) = harvestManager.seasonHarvests(1);
+        (,,,,,, uint256 deadline,,,,,) = harvestManager.seasonHarvests(1);
         vm.warp(deadline + 1);
 
         uint256 gross = harvestManager.remainingDepositGross(1);

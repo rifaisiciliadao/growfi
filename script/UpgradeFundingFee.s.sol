@@ -54,9 +54,8 @@ contract UpgradeFundingFeeScript is Script {
         // 2. Upgrade the factory proxy. No reinitializer: factory storage
         //    layout is unchanged in this version — only createCampaign's
         //    Campaign.initialize call signature changed.
-        ProxyAdmin(factoryProxyAdmin).upgradeAndCall(
-            ITransparentUpgradeableProxy(factoryProxy), address(newFactoryImpl), bytes("")
-        );
+        ProxyAdmin(factoryProxyAdmin)
+            .upgradeAndCall(ITransparentUpgradeableProxy(factoryProxy), address(newFactoryImpl), bytes(""));
         console.log("factory upgraded");
 
         // 3. Repoint the factory at the new Campaign impl so future campaigns
@@ -72,9 +71,7 @@ contract UpgradeFundingFeeScript is Script {
             address admin = address(uint160(uint256(vm.load(proxy, ERC1967_ADMIN_SLOT))));
             console.log("campaign proxy      :", proxy);
             console.log(" proxyAdmin         :", admin);
-            ProxyAdmin(admin).upgradeAndCall(
-                ITransparentUpgradeableProxy(proxy), address(newCampaignImpl), initV2
-            );
+            ProxyAdmin(admin).upgradeAndCall(ITransparentUpgradeableProxy(proxy), address(newCampaignImpl), initV2);
             console.log(" upgraded + initializeV2");
         }
 

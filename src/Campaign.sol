@@ -187,26 +187,14 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
         uint256 newCurrentSupply
     );
 
-    event FundingFeeCollected(
-        address indexed buyer,
-        address indexed paymentToken,
-        uint256 fee
-    );
+    event FundingFeeCollected(address indexed buyer, address indexed paymentToken, uint256 fee);
 
     /// @notice Producer locked additional USDC into the pre-paid yield reserve.
-    event CollateralLocked(
-        address indexed producer,
-        uint256 amount,
-        uint256 newCollateralLocked
-    );
+    event CollateralLocked(address indexed producer, uint256 amount, uint256 newCollateralLocked);
 
     /// @notice `settleSeasonShortfall` covered the gap between producer's
     ///         depositUSDC and the season's `usdcOwed` for `seasonId`.
-    event CollateralShortfallSettled(
-        uint256 indexed seasonId,
-        uint256 amountDrawn,
-        uint256 newCollateralDrawn
-    );
+    event CollateralShortfallSettled(uint256 indexed seasonId, uint256 amountDrawn, uint256 newCollateralDrawn);
 
     event AcceptedTokenAdded(
         address indexed tokenAddress, string symbol, uint8 pricingMode, uint256 fixedRate, address oracleFeed
@@ -440,18 +428,18 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
         //    claimStart, claimEnd, usdcDeadline, usdcDeposited, usdcOwed,
         //    protocolFeeCollected, protocolFeeTransferred, reported)
         (
-            ,                          // merkleRoot
-            ,                          // totalHarvestValueUSD
-            ,                          // totalYieldSupply
-            ,                          // totalProductUnits
-            ,                          // claimStart
-            ,                          // claimEnd
-            uint256 deadline,          // usdcDeadline
-            ,                          // usdcDeposited
-            ,                          // usdcOwed
-            ,                          // protocolFeeCollected
-            ,                          // protocolFeeTransferred
-            bool reported              // reported flag
+            , // merkleRoot
+            , // totalHarvestValueUSD
+            , // totalYieldSupply
+            , // totalProductUnits
+            , // claimStart
+            , // claimEnd
+            uint256 deadline, // usdcDeadline
+            , // usdcDeposited
+            , // usdcOwed
+            , // protocolFeeCollected
+            , // protocolFeeTransferred
+            bool reported // reported flag
         ) = harvestManager.seasonHarvests(seasonId);
         if (!reported) revert SeasonNotReported();
         if (block.timestamp <= deadline) revert DeadlineNotReached();
@@ -477,7 +465,6 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
 
         emit CollateralShortfallSettled(seasonId, draw, collateralDrawn);
     }
-
 
     // --- Season Management ---
 

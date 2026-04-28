@@ -400,7 +400,9 @@ contract PoolSecurityTest is Test {
 
         assertEq(campaign.purchases(alice, address(fot)), 97e18);
         assertEq(campaign.purchases(bob, address(fot)), 97e18);
-        assertEq(fot.balanceOf(address(campaign)), 192e18, "shortfall: 2 on buy-in + 0.06 on fee transfer burned by FoT");
+        assertEq(
+            fot.balanceOf(address(campaign)), 192e18, "shortfall: 2 on buy-in + 0.06 on fee transfer burned by FoT"
+        );
 
         // Force Buyback.
         vm.warp(block.timestamp + 91 days);

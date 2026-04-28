@@ -216,11 +216,7 @@ contract E2ETest is Test {
         assertEq(campaignToken.balanceOf(eve), 5_000e18, "eve gets 5k");
         // Bob receives the queue-fill payment NET of the 3% funding fee.
         uint256 eveFee = evePay * 300 / 10_000;
-        assertEq(
-            usdc.balanceOf(bob) - bobUsdcBefore,
-            evePay - eveFee,
-            "bob receives eve payment (net of funding fee)"
-        );
+        assertEq(usdc.balanceOf(bob) - bobUsdcBefore, evePay - eveFee, "bob receives eve payment (net of funding fee)");
         assertEq(campaign.getSellBackQueueDepth(), 5_000e18, "5k left in queue");
         assertEq(campaign.currentSupply(), 70_000e18, "supply unchanged (burn+mint net zero)");
 
