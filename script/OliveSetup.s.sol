@@ -57,8 +57,8 @@ contract OliveSetup is Script {
                 seasonDuration: 30 minutes,
                 minProductClaim: 1e18,
                 expectedYearlyReturnBps: 1000,
-                expectedFirstYearHarvest: 1e18,
-                coverageHarvests: 0
+                expectedFirstYearHarvest: 5_000e18,
+                coverageHarvests: 3
             })
         );
         Campaign campaign = Campaign(campaignAddr);
@@ -90,6 +90,13 @@ contract OliveSetup is Script {
         campaign.buy(address(usdc), 100_800_000);
         require(uint8(campaign.state()) == uint8(Campaign.State.Active), "Alice buy didn't activate");
         console.log("alice bought     : 700 OLIVE (state=Active)");
+
+        // v3 — Lock USDC as a 3-harvest yield reserve.
+        // expectedYearlyUsdc ≈ totalRaised * 10% ≈ 14.4 USDC after both buys;
+        // 3 harvests ≈ 43.2 USDC. Lock 50 USDC to over-cover and leave a
+        // visible residual so the UI shows non-zero free balance.
+        campaign.lockCollateral(50_000_000);
+        console.log("collateral lock  : 50 mUSDC for 3 harvests");
 
         // Start season.
         campaign.startSeason(1);
