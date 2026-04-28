@@ -42,8 +42,8 @@ GROSS=$(view "$OLIVE_HARVEST_MANAGER" "remainingDepositGross(uint256)(uint256)" 
 echo "gross deposit needed: $GROSS (6-dec USDC)"
 
 echo "approve + depositUSDC"
-run "$USDC_ADDRESS" "approve(address,uint256)" "$OLIVE_HARVEST_MANAGER" "$GROSS"
-run "$OLIVE_HARVEST_MANAGER" "depositUSDC(uint256,uint256)" 1 "$GROSS"
+run "$USDC_ADDRESS" "approve(address,uint256)" "$OLIVE_CAMPAIGN" "$GROSS"
+run "$OLIVE_CAMPAIGN" "depositUSDC(uint256,uint256)" 1 "$GROSS"
 
 USDC_BEFORE=$(view "$USDC_ADDRESS" "balanceOf(address)(uint256)" "$ALICE" | awk '{print $1}')
 echo "claimUSDC"

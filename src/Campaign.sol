@@ -256,6 +256,9 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
     error SeasonNotReported();
     error DeadlineNotReached();
     error NoCollateralAvailable();
+    error CollateralCapExceeded();
+    error AlreadyFunded();
+    error DepositWindowClosed();
 
     // --- Modifiers ---
 
@@ -387,23 +390,100 @@ contract Campaign is Initializable, ReentrancyGuard, PausableUpgradeable {
 
     // --- Producer Collateral (Pre-Paid Yield Reserve) ---
 
+    /// @notice Maximum collateral the producer can lock — exactly the gross
+    ///         commitment for the coverage window: `expectedAnnualHarvestUsd ×
+    ///         coverageHarvests`, rescaled from 18-dec USD to 6-dec USDC.
+    ///         Calibrating the cap to the commitment means the pot drains
+    ///         cleanly across the coverage period (each season's deposit
+    ///         draws from collateral first, see `depositUSDC`) with no
+    ///         residual — no end-of-coverage flush required.
+    function maxCollateral() public view returns (uint256) {
+        // 18-dec × counter, then rescale to 6-dec → divide by 1e12.
+        return (expectedAnnualHarvestUsd * coverageHarvests) / 1e12;
+    }
+
     /// @notice Lock additional USDC into the campaign's pre-paid yield reserve.
-    ///         Cumulative; producer can call this multiple times. There is NO
-    ///         early-withdrawal path — the lock is one-way until the
-    ///         `coverageHarvests` window's settlements run their course (and
-    ///         even then, residuals stay in the contract per the v3 commitment
-    ///         model). State guard: Funding (so collateral is visible to buyers
-    ///         pre-activation) or Active. Disallowed in Buyback / Ended.
+    ///         Cumulative; producer can call this multiple times up to
+    ///         `maxCollateral()`. There is NO early-withdrawal path — the
+    ///         lock is one-way and is exhausted by per-season `depositUSDC`
+    ///         calls during the coverage window. State guard: Funding (so
+    ///         collateral is visible to buyers pre-activation) or Active.
+    ///         Disallowed in Buyback / Ended.
     /// @param amount Native-decimals USDC (6-dec on mainnet; 6-dec MockUSDC).
     function lockCollateral(uint256 amount) external onlyProducer nonReentrant whenNotPaused {
         if (amount == 0) revert ZeroAmount();
         if (state != State.Funding && state != State.Active) revert InvalidState(State.Active, state);
         if (address(usdc) == address(0)) revert AlreadySet(); // pre-v3 campaign — must reinitialize first
+        if (collateralLocked + amount > maxCollateral()) revert CollateralCapExceeded();
 
         usdc.safeTransferFrom(msg.sender, address(this), amount);
         collateralLocked += amount;
 
         emit CollateralLocked(msg.sender, amount, collateralLocked);
+    }
+
+    /// @notice Producer settles a reported season's USDC obligation. Single
+    ///         entry point: collateral is drained first up to the obligation,
+    ///         and only the residual (capped at `walletCap`) is pulled from
+    ///         the producer's wallet. If `collateralLocked - collateralDrawn
+    ///         ≥ obligation`, the producer pays nothing this season — that's
+    ///         the entire point of the lockCollateral commitment.
+    ///
+    ///         Replaces the pre-v3.4 producer-facing
+    ///         `HarvestManager.depositUSDC` path. The HarvestManager's
+    ///         matching entry (`depositFromCollateral`) is `onlyCampaign`,
+    ///         so direct producer calls to it always revert.
+    ///
+    /// @param  seasonId   Reported harvest season to fund.
+    /// @param  walletCap  Maximum USDC the producer is willing to spend from
+    ///                    their wallet this call. Pass `type(uint256).max` to
+    ///                    fully close the gap with whatever the collateral
+    ///                    doesn't cover; pass `0` to deposit ONLY from
+    ///                    collateral (leaves a gap if collateral < obligation,
+    ///                    which can later be covered by another `depositUSDC`
+    ///                    call or by `settleSeasonShortfall` after the
+    ///                    `usdcDeadline` lapses).
+    ///
+    /// @dev    Producer must `approve(usdc, address(this), walletAmount)` for
+    ///         the wallet portion before calling. The Campaign then
+    ///         `approve(usdc, harvestManager, total)` and forwards.
+    ///         `usdcDeadline` enforced here (not on HM side, which keeps
+    ///         the post-deadline collateral safety net of
+    ///         `settleSeasonShortfall` working).
+    function depositUSDC(uint256 seasonId, uint256 walletCap) external onlyProducer nonReentrant whenNotPaused {
+        if (address(harvestManager) == address(0)) revert AlreadySet();
+
+        // Read deadline + reported flag from HM. Tuple shape mirrors the
+        // SeasonHarvest struct — see `settleSeasonShortfall` for the same
+        // destructure with field comments.
+        (,,,,,, uint256 deadline,,,,, bool reported) = harvestManager.seasonHarvests(seasonId);
+        if (!reported) revert SeasonNotReported();
+        if (block.timestamp > deadline) revert DepositWindowClosed();
+
+        uint256 obligation = harvestManager.remainingDepositGross(seasonId);
+        if (obligation == 0) revert AlreadyFunded();
+
+        uint256 available = collateralLocked - collateralDrawn;
+        uint256 fromCollateral = obligation < available ? obligation : available;
+        uint256 gap = obligation - fromCollateral;
+        uint256 fromWallet = gap < walletCap ? gap : walletCap;
+        uint256 total = fromCollateral + fromWallet;
+        if (total == 0) revert ZeroAmount();
+
+        if (fromWallet > 0) {
+            usdc.safeTransferFrom(msg.sender, address(this), fromWallet);
+        }
+        if (fromCollateral > 0) {
+            collateralDrawn += fromCollateral;
+            // Subgraph picks up the draw via the existing CollateralShortfallSettled
+            // event used by settleSeasonShortfall; emit the same shape here so
+            // both paths produce identical analytics. Using a dedicated event
+            // would be cleaner but adds churn in the subgraph schema.
+            emit CollateralShortfallSettled(seasonId, fromCollateral, collateralDrawn);
+        }
+
+        usdc.safeIncreaseAllowance(address(harvestManager), total);
+        harvestManager.depositFromCollateral(seasonId, total);
     }
 
     /// @notice Permissionless settlement of a covered season's shortfall.

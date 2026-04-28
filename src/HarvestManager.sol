@@ -332,41 +332,29 @@ contract HarvestManager is Initializable, ReentrancyGuard, PausableUpgradeable {
         emit USDCRedeemed(msg.sender, seasonId, usdcToTransfer);
     }
 
-    // --- Producer USDC Deposit ---
+    // --- USDC Deposit ---
 
-    /// @notice Producer deposits USDC to cover USDC redemption claims.
-    /// @dev    Each deposit is split: `protocolFeeBps` (2%) is forwarded directly
-    ///         to `protocolFeeRecipient`; the remainder credits the holder pool.
-    ///         Producer therefore must deposit `usdcOwed/1e12 * 10000/(10000-feeBps)`
-    ///         native USDC to fully cover claims.
-    function depositUSDC(uint256 seasonId, uint256 amount) external onlyProducer nonReentrant whenNotPaused {
-        // Producer's deposit must happen INSIDE the 90-day window.
-        if (block.timestamp > seasonHarvests[seasonId].usdcDeadline) revert DepositWindowClosed();
-        _doDeposit(seasonId, amount);
-    }
-
-    /// @notice Out-of-collateral top-up entry point. Called by the owning
-    ///         Campaign during `settleSeasonShortfall` to cover holder claims
-    ///         when the producer's deposit falls short of `usdcOwed`. Same
-    ///         98/2 split as the producer's own `depositUSDC`.
+    /// @notice Single deposit entry point — only the owning Campaign may
+    ///         call. Both producer-funded deposits (via `Campaign.depositUSDC`,
+    ///         pre-deadline) and post-deadline collateral settlements (via
+    ///         `Campaign.settleSeasonShortfall`) route through here. The
+    ///         Campaign side decides where the USDC came from (wallet vs
+    ///         collateral) and forwards a single net amount; this contract
+    ///         just splits it 98/2 into the season pool and the protocol fee.
     /// @dev    Intentionally NOT `whenNotPaused` — holder-protection path
     ///         must remain available even if the protocol pauses the
     ///         contract for an unrelated emergency.
-    /// @dev    Intentionally does NOT enforce the producer's `usdcDeadline`
-    ///         window: the Campaign only ever calls this AFTER the deadline
-    ///         has lapsed (that's what `Campaign.settleSeasonShortfall`
-    ///         requires before it draws from collateral).
+    /// @dev    `usdcDeadline` is enforced by `Campaign.depositUSDC` (producer
+    ///         path) and skipped on `Campaign.settleSeasonShortfall` (post-
+    ///         deadline by construction). Either way the check has been
+    ///         performed before this function is reached.
     function depositFromCollateral(uint256 seasonId, uint256 amount) external onlyCampaign nonReentrant {
         _doDeposit(seasonId, amount);
     }
 
-    /// @dev    Shared deposit logic for both producer-funded
-    ///         (`depositUSDC`) and Campaign-funded (`depositFromCollateral`)
-    ///         paths. Pulls `amount` USDC from `msg.sender` and splits it
-    ///         98/2 into the season pool and the protocol fee. The
-    ///         `usdcDeadline` check is enforced by the producer-facing
-    ///         entry point only — the collateral path is post-deadline by
-    ///         construction.
+    /// @dev    Shared deposit logic. Pulls `amount` USDC from `msg.sender`
+    ///         (= the owning Campaign) and splits it 98/2 into the season
+    ///         pool and the protocol fee.
     function _doDeposit(uint256 seasonId, uint256 amount) internal {
         SeasonHarvest storage harvest = seasonHarvests[seasonId];
         if (!harvest.reported) revert NotReported();

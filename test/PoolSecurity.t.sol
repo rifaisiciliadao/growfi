@@ -98,7 +98,7 @@ contract PoolSecurityTest is Test {
     function _approveAll(address who) internal {
         vm.startPrank(who);
         usdc.approve(address(campaign), type(uint256).max);
-        usdc.approve(address(harvestManager), type(uint256).max);
+        usdc.approve(address(campaign), type(uint256).max);
         campaignToken.approve(address(stakingVault), type(uint256).max);
         campaignToken.approve(address(campaign), type(uint256).max);
         vm.stopPrank();
@@ -224,7 +224,7 @@ contract PoolSecurityTest is Test {
         assertTrue(active);
     }
 
-    /// HarvestManager.depositUSDC: if the USDC token were hostile, could the
+    /// Campaign.depositUSDC: if the USDC token were hostile, could the
     /// producer be tricked into double-accounting? ReentrantGuard should
     /// block even theoretical re-entry. We can't whitelist a different USDC
     /// (it's fixed at factory init), so we build an isolated campaign with
@@ -260,9 +260,12 @@ contract PoolSecurityTest is Test {
         // Arm the token to try reentering depositUSDC during safeTransferFrom.
         rog.mint(producer, 1_000e6);
         vm.prank(producer);
-        rog.approve(address(hm), type(uint256).max);
+        rog.approve(address(campaign), type(uint256).max);
 
-        bytes memory payload = abi.encodeCall(HarvestManager.depositUSDC, (1, 1e6));
+        // depositFromCollateral is onlyCampaign so the rogue token's reentry
+        // would revert anyway — but the outer NotReported check trips first
+        // and we never reach the transferFrom that triggers the hook.
+        bytes memory payload = abi.encodeCall(HarvestManager.depositFromCollateral, (1, 1e6));
         rog.arm(address(hm), payload);
 
         // reportHarvest is onlyStakingVault — we can't easily trigger deposit,
@@ -272,7 +275,7 @@ contract PoolSecurityTest is Test {
         // to the inner reentry (which nonReentrant would also block).
         vm.prank(producer);
         vm.expectRevert(); // NotReported() — outer guard trips before our hook
-        hm.depositUSDC(1, 1e6);
+        campaign.depositUSDC(1, 1e6);
     }
 
     // =========================================================================

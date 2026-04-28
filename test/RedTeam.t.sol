@@ -94,7 +94,7 @@ contract RedTeamTest is Test {
     function _approveAll(address who) internal {
         vm.startPrank(who);
         usdc.approve(address(campaign), type(uint256).max);
-        usdc.approve(address(harvestManager), type(uint256).max);
+        usdc.approve(address(campaign), type(uint256).max);
         weth.approve(address(campaign), type(uint256).max);
         campaignToken.approve(address(stakingVault), type(uint256).max);
         campaignToken.approve(address(campaign), type(uint256).max);
@@ -292,7 +292,7 @@ contract RedTeamTest is Test {
         usdc.mint(producer, 1000e6);
         vm.prank(producer);
         vm.expectRevert(HarvestManager.DepositWindowClosed.selector);
-        harvestManager.depositUSDC(1, 1000e6);
+        campaign.depositUSDC(1, 1000e6);
     }
 
     // =========================================================================

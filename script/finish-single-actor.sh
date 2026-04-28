@@ -61,8 +61,8 @@ GROSS=$(view "$HM" "remainingDepositGross(uint256)(uint256)" 1 | awk '{print $1}
 echo "       gross deposit needed: $GROSS (6-dec USDC)"
 
 echo "[5/6] approve + depositUSDC($GROSS)"
-run "$USDC_ADDRESS" "approve(address,uint256)" "$HM" "$GROSS"
-run "$HM" "depositUSDC(uint256,uint256)" 1 "$GROSS"
+run "$USDC_ADDRESS" "approve(address,uint256)" "$CAMPAIGN" "$GROSS"
+run "$CAMPAIGN" "depositUSDC(uint256,uint256)" 1 "$GROSS"
 
 USDC_BEFORE=$(view "$USDC_ADDRESS" "balanceOf(address)(uint256)" "$ME" | awk '{print $1}')
 echo "[6/6] claimUSDC(1)"

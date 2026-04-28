@@ -334,8 +334,8 @@ contract E2ETest is Test {
         uint256 firstDeposit = harvestManager.remainingDepositGross(1) / 2;
         usdc.mint(producer, firstDeposit);
         vm.startPrank(producer);
-        usdc.approve(address(harvestManager), type(uint256).max);
-        harvestManager.depositUSDC(1, firstDeposit);
+        usdc.approve(address(campaign), type(uint256).max);
+        campaign.depositUSDC(1, firstDeposit);
         vm.stopPrank();
 
         // Charlie claims → gets ~50% of entitlement
@@ -349,7 +349,7 @@ contract E2ETest is Test {
         uint256 secondDeposit = harvestManager.remainingDepositGross(1);
         usdc.mint(producer, secondDeposit);
         vm.prank(producer);
-        harvestManager.depositUSDC(1, secondDeposit);
+        campaign.depositUSDC(1, secondDeposit);
 
         // Charlie claims remainder
         vm.prank(charlie);

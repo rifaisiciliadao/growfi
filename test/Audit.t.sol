@@ -218,9 +218,9 @@ contract AuditTest is Test {
         uint256 halfDeposit = harvestManager.remainingDepositGross(1) / 2;
         usdc.mint(producer, halfDeposit * 2);
         vm.prank(producer);
-        usdc.approve(address(harvestManager), type(uint256).max);
+        usdc.approve(address(campaign), type(uint256).max);
         vm.prank(producer);
-        harvestManager.depositUSDC(1, halfDeposit);
+        campaign.depositUSDC(1, halfDeposit);
 
         // Alice claims partial
         uint256 aliceBefore = usdc.balanceOf(alice);
@@ -233,7 +233,7 @@ contract AuditTest is Test {
         uint256 secondDeposit = harvestManager.remainingDepositGross(1);
         usdc.mint(producer, secondDeposit);
         vm.prank(producer);
-        harvestManager.depositUSDC(1, secondDeposit);
+        campaign.depositUSDC(1, secondDeposit);
 
         // Alice claims remainder
         aliceBefore = usdc.balanceOf(alice);

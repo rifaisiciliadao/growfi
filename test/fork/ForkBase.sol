@@ -156,8 +156,8 @@ abstract contract ForkBase is Test {
         uint256 owed6 = owed18 / 1e12;
         deal(_usdc(), producer, owed6);
         vm.startPrank(producer);
-        IERC20(_usdc()).approve(address(harvestManager), type(uint256).max);
-        harvestManager.depositUSDC(1, owed6);
+        IERC20(_usdc()).approve(address(campaign), type(uint256).max);
+        campaign.depositUSDC(1, owed6);
         vm.stopPrank();
 
         uint256 aliceUsdcBefore = IERC20(_usdc()).balanceOf(alice);

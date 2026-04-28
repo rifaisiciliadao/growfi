@@ -272,8 +272,8 @@ contract FuzzTest is Test {
 
         usdc.mint(producer, deposit);
         vm.startPrank(producer);
-        usdc.approve(address(harvestManager), type(uint256).max);
-        harvestManager.depositUSDC(1, deposit);
+        usdc.approve(address(campaign), type(uint256).max);
+        campaign.depositUSDC(1, deposit);
         vm.stopPrank();
 
         uint256 aliceBefore = usdc.balanceOf(alice);

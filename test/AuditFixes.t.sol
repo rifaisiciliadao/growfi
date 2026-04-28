@@ -577,9 +577,9 @@ contract AuditFixesTest is Test {
 
         usdc.mint(producer, depositAmount);
         vm.prank(producer);
-        usdc.approve(address(hm), type(uint256).max);
+        usdc.approve(address(campaign), type(uint256).max);
         vm.prank(producer);
-        hm.depositUSDC(1, depositAmount);
+        campaign.depositUSDC(1, depositAmount);
 
         uint256 feeAfter = usdc.balanceOf(feeRecipient);
         uint256 expectedFee = depositAmount * 200 / 10_000; // 2%
@@ -713,18 +713,27 @@ contract AuditFixesTest is Test {
     }
 
     // ===================================================================
-    // L-02: depositUSDC caps the pool at usdcOwed — no over-deposit lock-in.
+    // L-02: depositUSDC caps at usdcOwed — over-cap walletCap is silently
+    // floored to the obligation, no revert. Pre-v3.4 the producer-facing
+    // entry was HarvestManager.depositUSDC which reverted with
+    // DepositExceedsOwed; v3.4 routes through Campaign.depositUSDC which
+    // computes `total = min(obligation, fromCollateral + walletCap)` and
+    // never overshoots, so a `walletCap = 2 × obligation` deposit just
+    // closes the gap exactly.
     // ===================================================================
 
-    function test_L02_depositUSDC_revertsOnOverDeposit() public {
-        (, HarvestManager hm,, uint256 cap) = _runToHarvest();
-        uint256 tooMuch = cap * 2; // way above what's needed
+    function test_L02_depositUSDC_capsAtObligation() public {
+        (,,, uint256 expected) = _runToHarvest();
+        uint256 tooMuch = expected * 2; // generous cap
         usdc.mint(producer, tooMuch);
         vm.prank(producer);
-        usdc.approve(address(hm), type(uint256).max);
+        usdc.approve(address(campaign), type(uint256).max);
+        uint256 before = usdc.balanceOf(producer);
         vm.prank(producer);
-        vm.expectRevert(HarvestManager.DepositExceedsOwed.selector);
-        hm.depositUSDC(1, tooMuch);
+        campaign.depositUSDC(1, tooMuch);
+        uint256 charged = before - usdc.balanceOf(producer);
+        // Producer's wallet was charged exactly `expected`, not `tooMuch`.
+        assertEq(charged, expected, "campaign over-pulled from wallet");
     }
 
     /// @notice Fee is routed across multiple partial deposits, not only once.
@@ -733,18 +742,18 @@ contract AuditFixesTest is Test {
 
         usdc.mint(producer, depositAmount);
         vm.prank(producer);
-        usdc.approve(address(hm), type(uint256).max);
+        usdc.approve(address(campaign), type(uint256).max);
 
         uint256 half = depositAmount / 2;
         uint256 rem = depositAmount - half;
         uint256 feeBefore = usdc.balanceOf(feeRecipient);
         vm.prank(producer);
-        hm.depositUSDC(1, half);
+        campaign.depositUSDC(1, half);
         uint256 afterFirst = usdc.balanceOf(feeRecipient);
         assertEq(afterFirst - feeBefore, half * 200 / 10_000, "first deposit fee");
 
         vm.prank(producer);
-        hm.depositUSDC(1, rem);
+        campaign.depositUSDC(1, rem);
         uint256 afterSecond = usdc.balanceOf(feeRecipient);
         assertEq(afterSecond - afterFirst, rem * 200 / 10_000, "second deposit fee");
     }

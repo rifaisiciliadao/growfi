@@ -202,6 +202,24 @@
   },
   {
     "type": "function",
+    "name": "depositUSDC",
+    "inputs": [
+      {
+        "name": "seasonId",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "walletCap",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "emergencyPause",
     "inputs": [],
     "outputs": [],
@@ -526,6 +544,19 @@
   {
     "type": "function",
     "name": "maxCap",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "maxCollateral",
     "inputs": [],
     "outputs": [
       {
@@ -1533,12 +1564,22 @@
   },
   {
     "type": "error",
+    "name": "AlreadyFunded",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "AlreadySet",
     "inputs": []
   },
   {
     "type": "error",
     "name": "AlreadySettled",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CollateralCapExceeded",
     "inputs": []
   },
   {
@@ -1554,6 +1595,11 @@
   {
     "type": "error",
     "name": "DeadlineNotReached",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DepositWindowClosed",
     "inputs": []
   },
   {

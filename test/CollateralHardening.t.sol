@@ -64,7 +64,12 @@ contract CollateralHardeningTest is Test {
                 fundingDeadline: block.timestamp + 90 days,
                 seasonDuration: SEASON_DURATION,
                 minProductClaim: 5e18,
-                expectedAnnualHarvestUsd: 5_000e18,
+                // Hardening tests use 18-dec misconfigured "USDC" mocks (FoT,
+                // Rogue), so the lock amounts are e18-scaled. Bump the
+                // commitment so the cap (expectedAnnualHarvestUsd ×
+                // coverageHarvests / 1e12) is large enough to accommodate
+                // the e18 locks without tripping CollateralCapExceeded.
+                expectedAnnualHarvestUsd: 1e36,
                 expectedAnnualHarvest: 1_000e18,
                 firstHarvestYear: 2030,
                 coverageHarvests: COVERAGE
@@ -271,7 +276,7 @@ contract CollateralHardeningTest is Test {
         assertEq(campaign.fundingFeeBps(), 300, "v2: fundingFeeBps appended slot stable");
 
         // v3 fields (appended)
-        assertEq(campaign.expectedAnnualHarvestUsd(), 5_000e18, "v3: expectedAnnualHarvestUsd slot");
+        assertEq(campaign.expectedAnnualHarvestUsd(), 1e36, "v3: expectedAnnualHarvestUsd slot");
         assertEq(campaign.firstHarvestYear(), 2030, "v3: firstHarvestYear slot");
         assertEq(campaign.coverageHarvests(), COVERAGE, "v3: coverageHarvests slot");
         assertEq(address(campaign.usdc()), address(usdc), "v3: usdc slot");

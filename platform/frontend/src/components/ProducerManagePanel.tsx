@@ -146,6 +146,7 @@ export function ProducerManagePanel({
               <ObligationCard
                 key={season.id}
                 season={season}
+                campaignAddress={campaignAddress}
                 harvestManager={harvestManager}
               />
             ))}
@@ -971,9 +972,11 @@ function ReportHarvestCard({
 
 function ObligationCard({
   season,
+  campaignAddress,
   harvestManager,
 }: {
   season: SubgraphSeason;
+  campaignAddress: Address;
   harvestManager: Address;
 }) {
   const t = useTranslations("detail.manage");
@@ -1048,24 +1051,29 @@ function ObligationCard({
 
   const handleDeposit = async () => {
     try {
-      // 1. Approve the HarvestManager to pull `parsedAmount` of USDC
+      // v3.4: deposit goes through the Campaign contract (not HarvestManager
+      // directly). Campaign.depositUSDC auto-drains collateral first up to
+      // the obligation, then pulls only the gap from the producer's wallet.
+      // Producer must approve the Campaign for the wallet portion.
+      // 1. Approve the Campaign to pull `parsedAmount` of USDC.
       setStage({ kind: "approving-sig" });
       const approveHash = await writeContractAsync({
         address: usdcAddress,
         abi: erc20Abi,
         functionName: "approve",
-        args: [harvestManager, parsedAmount],
+        args: [campaignAddress, parsedAmount],
       });
       setStage({ kind: "approving-chain" });
       const ar = await waitForTx(approveHash);
       if (ar.status !== "success") throw new Error("Approve reverted");
       notify.success(tx("approvalConfirmed"), approveHash);
 
-      // 2. depositUSDC
+      // 2. Campaign.depositUSDC(seasonId, walletCap = parsedAmount).
+      //    walletCap caps the wallet pull; collateral is drawn first regardless.
       setStage({ kind: "depositing-sig" });
       const depositHash = await writeContractAsync({
-        address: harvestManager,
-        abi: harvestAbi,
+        address: campaignAddress,
+        abi: campaignAbi,
         functionName: "depositUSDC",
         args: [BigInt(season.seasonId), parsedAmount],
       });

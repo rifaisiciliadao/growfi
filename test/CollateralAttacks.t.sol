@@ -332,8 +332,8 @@ contract CollateralAttacksTest is Test {
         uint256 gross = harvestManager.remainingDepositGross(1);
         if (gross > 0) {
             vm.startPrank(producer);
-            usdc.approve(address(harvestManager), gross);
-            harvestManager.depositUSDC(1, gross);
+            usdc.approve(address(campaign), gross);
+            campaign.depositUSDC(1, gross);
             vm.stopPrank();
         }
 
@@ -414,9 +414,12 @@ contract CollateralAttacksTest is Test {
     // =========================================================================
     function test_fullCoverage_drawsExactlyShortfall() public {
         _activate();
-        // Over-fund the reserve.
+        // Lock the full commitment cap. The new model caps lockCollateral
+        // at expectedAnnualHarvestUsd * coverageHarvests / 1e12, so we can
+        // no longer "over-fund" — but with a single season's deposit the
+        // remainder is still positive (covers the other 2 seasons).
         vm.prank(producer);
-        campaign.lockCollateral(1_000_000e6);
+        campaign.lockCollateral(15_000e6);
 
         _startSeason(1);
         uint256 posId = _stake(alice, campaignToken.balanceOf(alice));
