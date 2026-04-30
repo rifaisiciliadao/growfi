@@ -3,6 +3,7 @@
 import { usePathname } from "next/navigation";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
+import { InviteGate } from "./InviteGate";
 
 export function ConditionalChrome({
   children,
@@ -19,7 +20,9 @@ export function ConditionalChrome({
   return (
     <>
       <Header />
-      <main className="flex-grow pt-16">{children}</main>
+      <main className="flex-grow pt-16">
+        <InviteGate>{children}</InviteGate>
+      </main>
       <Footer />
     </>
   );

@@ -148,6 +148,53 @@ export async function generateMerkleTree(input: {
   return res.json();
 }
 
+export interface InviteRequestInput {
+  email: string;
+  ethAddress: string;
+  telegram: string;
+}
+
+export interface InviteRequestResult {
+  ok: boolean;
+  status: "pending" | "approved" | "rejected";
+  address: string;
+  emailDelivered: boolean;
+}
+
+export async function requestInvite(
+  input: InviteRequestInput,
+): Promise<InviteRequestResult> {
+  const res = await fetch(`${BACKEND_URL}/api/invite/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: "Invite request failed" }));
+    throw new Error(err.error || "Invite request failed");
+  }
+  return res.json();
+}
+
+export type InviteCheckStatus = "none" | "pending" | "approved" | "rejected";
+
+export interface InviteCheckResult {
+  status: InviteCheckStatus;
+  address?: string;
+  email?: string;
+  telegram?: string;
+}
+
+export async function checkInvite(address: string): Promise<InviteCheckResult> {
+  const res = await fetch(
+    `${BACKEND_URL}/api/invite/check?address=${encodeURIComponent(address)}`,
+  );
+  if (!res.ok) {
+    return { status: "none" };
+  }
+  return (await res.json()) as InviteCheckResult;
+}
+
 export async function uploadProducerProfile(input: {
   name: string;
   bio: string;

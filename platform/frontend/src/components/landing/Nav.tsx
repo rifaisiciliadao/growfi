@@ -5,10 +5,14 @@ import { useTranslations } from "next-intl";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { LanguageSwitcher } from "../LanguageSwitcher";
 import { LandingLogo } from "./LandingLogo";
+import { useInviteGate } from "@/lib/inviteGate";
 
 export function Nav() {
   const t = useTranslations("landing.nav");
   const tNav = useTranslations("nav");
+  const tInvite = useTranslations("landing.invite");
+  const { state } = useInviteGate();
+  const approved = state === "approved";
 
   return (
     <nav className="relative z-20 w-full">
@@ -21,27 +25,39 @@ export function Nav() {
         </a>
 
         <div className="hidden items-center gap-8 md:flex">
-          <a
-            href="#campaigns"
-            className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
-            style={{ fontFamily: "var(--font-header)" }}
-          >
-            {tNav("explore")}
-          </a>
-          <Link
-            href="/create"
-            className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
-            style={{ fontFamily: "var(--font-header)" }}
-          >
-            {tNav("create")}
-          </Link>
-          <Link
-            href="/portfolio"
-            className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
-            style={{ fontFamily: "var(--font-header)" }}
-          >
-            {tNav("portfolio")}
-          </Link>
+          {approved ? (
+            <>
+              <a
+                href="#campaigns"
+                className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
+                style={{ fontFamily: "var(--font-header)" }}
+              >
+                {tNav("explore")}
+              </a>
+              <Link
+                href="/create"
+                className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
+                style={{ fontFamily: "var(--font-header)" }}
+              >
+                {tNav("create")}
+              </Link>
+              <Link
+                href="/portfolio"
+                className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
+                style={{ fontFamily: "var(--font-header)" }}
+              >
+                {tNav("portfolio")}
+              </Link>
+            </>
+          ) : (
+            <a
+              href="#invite"
+              className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
+              style={{ fontFamily: "var(--font-header)" }}
+            >
+              {tInvite("requestSubmit")}
+            </a>
+          )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">

@@ -75,9 +75,30 @@ services:
       - key: DO_SPACES_PUBLIC_BASE
         value: https://growfi-media.fra1.digitaloceanspaces.com
         scope: RUN_TIME
+      # --- Invite gate (per-eth JSON on growfi-media, Resend mail) ---
+      - key: INVITES_OBJECT_PREFIX
+        value: invites
+        scope: RUN_TIME
+      - key: APP_URL
+        value: https://growfi-test-m9s8u.ondigitalocean.app
+        scope: RUN_TIME
+      - key: ADMIN_NOTIFY_EMAIL
+        value: hey@growfi.dev
+        scope: RUN_TIME
+      - key: RESEND_FROM
+        value: GrowFi <hello@notifications.growfi.dev>
+        scope: RUN_TIME
+      - key: INVITE_RATE_WINDOW_MS
+        value: "3600000"
+        scope: RUN_TIME
+      - key: INVITE_RATE_MAX
+        value: "5"
+        scope: RUN_TIME
       # Secrets (set via dashboard, not committed here):
       #   DO_SPACES_KEY     (SECRET, RUN_TIME)
       #   DO_SPACES_SECRET  (SECRET, RUN_TIME)
+      #   ADMIN_API_KEY     (SECRET, RUN_TIME)  — shared with the local admin dashboard
+      #   RESEND_API_KEY    (SECRET, RUN_TIME)
       #   BASE_SEPOLIA_RPC  (optional override for the snapshot multicall)
       #   SUBGRAPH_URL      (optional; defaults to growfi/prod in code)
 

@@ -6,6 +6,13 @@ import { nanoid } from "nanoid";
 import { getAddress, type Address } from "viem";
 import { buildTree } from "./merkle.js";
 import { snapshotSeasonYield, type SnapshotResult } from "./snapshot.js";
+import { buildSpacesStore, type InviteStore } from "./store.js";
+import {
+  buildNoopSender,
+  buildResendSender,
+  type EmailSender,
+} from "./email.js";
+import { registerInviteRoutes } from "./invite.js";
 
 export interface AppConfig {
   spacesBucket: string;
@@ -18,6 +25,12 @@ export interface AppDeps {
   putObject: (cmd: PutObjectCommand) => Promise<unknown>;
   fetchJson?: (url: string) => Promise<Response>;
   snapshot?: (campaign: Address, seasonId: bigint) => Promise<SnapshotResult>;
+  inviteStore?: InviteStore;
+  email?: EmailSender;
+  adminKey?: string | null;
+  adminNotifyEmail?: string | null;
+  appUrl?: string;
+  rateLimit?: { windowMs: number; max: number };
 }
 
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
@@ -48,6 +61,21 @@ export function buildDefaultDeps(): AppDeps {
     forcePathStyle: false,
   });
 
+  const inviteStore = buildSpacesStore({
+    s3,
+    bucket,
+    prefix: process.env.INVITES_OBJECT_PREFIX || "invites",
+  });
+
+  const resendKey = process.env.RESEND_API_KEY;
+  const fromAddr = process.env.RESEND_FROM || "GrowFi <hello@growfi.app>";
+  const appUrl = process.env.APP_URL || "https://growfi.app";
+  const email: EmailSender = resendKey
+    ? buildResendSender({ apiKey: resendKey, from: fromAddr, appUrl })
+    : buildNoopSender((p) =>
+        console.log(`[email noop] to=${p.to} kind=${p.kind} data=${JSON.stringify(p.data)}`),
+      );
+
   return {
     config: {
       spacesBucket: bucket,
@@ -58,6 +86,15 @@ export function buildDefaultDeps(): AppDeps {
     },
     putObject: (cmd) => s3.send(cmd),
     snapshot: snapshotSeasonYield,
+    inviteStore,
+    email,
+    adminKey: process.env.ADMIN_API_KEY || null,
+    adminNotifyEmail: process.env.ADMIN_NOTIFY_EMAIL || "hey@growfi.dev",
+    appUrl,
+    rateLimit: {
+      windowMs: Number(process.env.INVITE_RATE_WINDOW_MS || 60 * 60 * 1000),
+      max: Number(process.env.INVITE_RATE_MAX || 5),
+    },
   };
 }
 
@@ -79,6 +116,17 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
 
   app.get("/health", async () => ({ status: "ok", ts: Date.now() }));
+
+  if (deps.inviteStore && deps.email) {
+    registerInviteRoutes(app, {
+      store: deps.inviteStore,
+      email: deps.email,
+      adminKey: deps.adminKey ?? null,
+      adminNotifyEmail: deps.adminNotifyEmail ?? null,
+      appUrl: deps.appUrl ?? "https://growfi.app",
+      rateLimit: deps.rateLimit ?? { windowMs: 60 * 60 * 1000, max: 5 },
+    });
+  }
 
   app.post("/api/upload", async (req, reply) => {
     if (!config.hasCredentials) {
