@@ -5,9 +5,13 @@ import { useTranslations } from "next-intl";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Logo } from "./Logo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { useInviteGate } from "@/lib/inviteGate";
 
 export function Header() {
   const t = useTranslations("nav");
+  const tInvite = useTranslations("landing.invite");
+  const { state } = useInviteGate();
+  const approved = state === "approved";
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl border-b border-outline-variant/15">
@@ -24,17 +28,26 @@ export function Header() {
             {t("explore")}
           </Link>
           <Link
-            href="/create"
-            className="text-sm font-medium tracking-wide text-on-surface-variant hover:text-on-surface transition-colors"
-          >
-            {t("create")}
-          </Link>
-          <Link
             href="/portfolio"
             className="text-sm font-medium tracking-wide text-on-surface-variant hover:text-on-surface transition-colors"
           >
             {t("portfolio")}
           </Link>
+          {approved ? (
+            <Link
+              href="/create"
+              className="text-sm font-medium tracking-wide text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              {t("create")}
+            </Link>
+          ) : (
+            <Link
+              href="/#invite"
+              className="text-sm font-medium tracking-wide text-on-surface-variant hover:text-on-surface transition-colors"
+            >
+              {tInvite("requestSubmit")}
+            </Link>
+          )}
         </div>
 
         <div className="flex items-center gap-2 shrink-0">

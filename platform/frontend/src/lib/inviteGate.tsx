@@ -109,7 +109,9 @@ export function useInviteGate(): InviteGateValue {
   return ctx;
 }
 
-const GATED_PATH_PREFIXES = ["/create", "/portfolio", "/campaign", "/producer"];
+// Only campaign creation is invite-gated. Browsing, investing, staking, harvest
+// claims and producer profiles stay open — anyone can see and participate.
+const GATED_PATH_PREFIXES = ["/create"];
 
 export function isGatedPath(pathname: string): boolean {
   return GATED_PATH_PREFIXES.some(

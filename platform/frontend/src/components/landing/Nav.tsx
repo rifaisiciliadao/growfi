@@ -25,30 +25,28 @@ export function Nav() {
         </a>
 
         <div className="hidden items-center gap-8 md:flex">
+          <a
+            href="#campaigns"
+            className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
+            style={{ fontFamily: "var(--font-header)" }}
+          >
+            {tNav("explore")}
+          </a>
+          <Link
+            href="/portfolio"
+            className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
+            style={{ fontFamily: "var(--font-header)" }}
+          >
+            {tNav("portfolio")}
+          </Link>
           {approved ? (
-            <>
-              <a
-                href="#campaigns"
-                className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
-                style={{ fontFamily: "var(--font-header)" }}
-              >
-                {tNav("explore")}
-              </a>
-              <Link
-                href="/create"
-                className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
-                style={{ fontFamily: "var(--font-header)" }}
-              >
-                {tNav("create")}
-              </Link>
-              <Link
-                href="/portfolio"
-                className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
-                style={{ fontFamily: "var(--font-header)" }}
-              >
-                {tNav("portfolio")}
-              </Link>
-            </>
+            <Link
+              href="/create"
+              className="relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black"
+              style={{ fontFamily: "var(--font-header)" }}
+            >
+              {tNav("create")}
+            </Link>
           ) : (
             <a
               href="#invite"
