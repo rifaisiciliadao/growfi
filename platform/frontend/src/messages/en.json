@@ -648,6 +648,19 @@
       "awaitingSignature": "Awaiting signature…",
       "confirmingTx": "Confirming on-chain…",
       "indexing": "Syncing with indexer…"
+    },
+    "notifications": {
+      "title": "Receive notifications",
+      "description": "Get an email when something happens on your campaigns or positions — new buys, season ends, harvests, USDC commitments. Off-chain only, never published to the blockchain.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "emailPlaceholderOnFile": "Enter a new email to replace the current one",
+      "emailOnFile": "An email is already on file. Type a new one above to replace it.",
+      "frequencyHint": "We send at most one digest every 10–15 minutes — never one email per event.",
+      "save": "Save preferences",
+      "saving": "Saving…",
+      "awaitingSignature": "Awaiting signature…",
+      "saved": "Preferences saved."
     }
   },
   "portfolio": {

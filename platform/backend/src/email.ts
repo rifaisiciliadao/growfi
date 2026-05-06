@@ -4,7 +4,17 @@ export type EmailKind =
   | "request_received"
   | "approved"
   | "rejected"
-  | "admin_notify";
+  | "admin_notify"
+  | "notifications_digest";
+
+export interface DigestItem {
+  /** Short single-line summary, e.g. "New buy on Olive IGP Sicily". */
+  headline: string;
+  /** Detail line, e.g. "0xabcd…1234 bought 1,000 $oOLIVE for 144 $mUSDC". */
+  body: string;
+  /** Action link that lands the recipient on the relevant tab. */
+  link: string;
+}
 
 export interface EmailPayload {
   to: string;
@@ -16,6 +26,11 @@ export interface EmailPayload {
     /** Set on `admin_notify` to surface the requester's email + telegram. */
     requesterEmail?: string;
     telegram?: string;
+    /** Set on `notifications_digest`. */
+    digest?: {
+      items: DigestItem[];
+      unsubscribeUrl: string;
+    };
   };
 }
 
@@ -164,6 +179,49 @@ export function renderEmail(payload: EmailPayload): RenderedEmail {
           `Wallet:   ${addr}`,
           `Telegram: ${tgDisplay}`,
         ].join("\n"),
+      };
+    }
+    case "notifications_digest": {
+      const digest = payload.data.digest ?? { items: [], unsubscribeUrl: "" };
+      const count = digest.items.length;
+      const subject =
+        count === 1
+          ? `1 update on your GrowFi activity`
+          : `${count} updates on your GrowFi activity`;
+      const itemsHtml = digest.items
+        .map(
+          (it) => `
+            <tr><td style="padding:14px 0;border-top:1px solid #eef0ec;">
+              <div style="font-weight:600;color:#1a2e1f;font-size:15px;">${escapeHtml(it.headline)}</div>
+              <div style="color:#5a6a5d;font-size:13px;margin-top:4px;line-height:1.5;">${escapeHtml(it.body)}</div>
+              <a href="${escapeHtml(it.link)}" style="display:inline-block;margin-top:10px;font-size:13px;color:#2e6b3a;text-decoration:none;">Open in GrowFi →</a>
+            </td></tr>`,
+        )
+        .join("");
+      const itemsText = digest.items
+        .map((it) => `• ${it.headline}\n  ${it.body}\n  ${it.link}`)
+        .join("\n\n");
+      const body = `
+        <h1 style="font-size:22px;margin:0 0 6px 0;font-weight:700;">Your GrowFi digest</h1>
+        <p style="color:#5a6a5d;margin:0 0 14px 0;font-size:13px;">Activity from your campaigns and positions over the last cycle.</p>
+        <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;">
+          ${itemsHtml || `<tr><td style="padding:14px 0;color:#6b7d6f;">No new activity.</td></tr>`}
+        </table>
+        <p style="color:#6b7d6f;font-size:12px;margin-top:28px;">
+          You're receiving this because you opted in to GrowFi notifications.
+          <a href="${escapeHtml(digest.unsubscribeUrl)}" style="color:#2e6b3a;">Unsubscribe</a>
+          — one click, no wallet needed.
+        </p>
+      `;
+      return {
+        subject,
+        html: shellHtml(subject, body),
+        text: [
+          "Your GrowFi digest",
+          itemsText || "No new activity.",
+          "",
+          `Unsubscribe: ${digest.unsubscribeUrl}`,
+        ].join("\n\n"),
       };
     }
     case "rejected": {

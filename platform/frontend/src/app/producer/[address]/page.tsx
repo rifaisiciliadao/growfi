@@ -21,6 +21,7 @@ import { uploadImage, uploadProducerProfile } from "@/lib/api";
 import { abis, getAddresses } from "@/contracts";
 import { Spinner } from "@/components/Spinner";
 import { ProducerAggregateDashboard } from "@/components/ProducerAggregateDashboard";
+import { NotificationsSection } from "@/components/NotificationsSection";
 import { KycBadge } from "@/components/KycBadge";
 import { useEnsName } from "@/lib/ens";
 import { waitForTx } from "@/lib/waitForTx";
@@ -175,6 +176,8 @@ export default function ProducerPage({
           previousVersion={producer?.version}
         />
       )}
+
+      {isOwner && <NotificationsSection address={producerAddress} />}
 
       <section>
         <h2 className="text-xl font-bold text-on-surface mb-4">

@@ -648,6 +648,19 @@
       "awaitingSignature": "In attesa di firma…",
       "confirmingTx": "Confermo on-chain…",
       "indexing": "Sincronizzazione con l'indexer…"
+    },
+    "notifications": {
+      "title": "Ricevi notifiche",
+      "description": "Ricevi un'email quando succede qualcosa sulle tue campagne o posizioni — nuovi acquisti, fine stagione, raccolti, impegni in USDC. Solo off-chain, mai pubblicate sulla blockchain.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "tu@esempio.com",
+      "emailPlaceholderOnFile": "Inserisci una nuova email per sostituire quella attuale",
+      "emailOnFile": "Un'email è già registrata. Scrivine una nuova sopra per sostituirla.",
+      "frequencyHint": "Inviamo al massimo un riepilogo ogni 10–15 minuti — mai un'email per ogni evento.",
+      "save": "Salva preferenze",
+      "saving": "Salvataggio…",
+      "awaitingSignature": "In attesa di firma…",
+      "saved": "Preferenze salvate."
     }
   },
   "portfolio": {

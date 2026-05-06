@@ -13,6 +13,11 @@ import {
   type EmailSender,
 } from "./email.js";
 import { registerInviteRoutes } from "./invite.js";
+import {
+  buildSpacesNotificationStore,
+  type NotificationStore,
+} from "./notifications-store.js";
+import { registerNotificationRoutes } from "./notifications.js";
 
 export interface AppConfig {
   spacesBucket: string;
@@ -26,11 +31,15 @@ export interface AppDeps {
   fetchJson?: (url: string) => Promise<Response>;
   snapshot?: (campaign: Address, seasonId: bigint) => Promise<SnapshotResult>;
   inviteStore?: InviteStore;
+  notificationStore?: NotificationStore;
   email?: EmailSender;
   adminKey?: string | null;
   adminNotifyEmail?: string | null;
   appUrl?: string;
   rateLimit?: { windowMs: number; max: number };
+  notificationsUnsubSecret?: string;
+  /** Override the signed-message max age (default 10 min). */
+  signatureMaxAgeMs?: number;
 }
 
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
@@ -67,6 +76,12 @@ export function buildDefaultDeps(): AppDeps {
     prefix: process.env.INVITES_OBJECT_PREFIX || "invites",
   });
 
+  const notificationStore = buildSpacesNotificationStore({
+    s3,
+    bucket,
+    prefix: process.env.NOTIFICATIONS_OBJECT_PREFIX || "notifications",
+  });
+
   const resendKey = process.env.RESEND_API_KEY;
   const fromAddr = process.env.RESEND_FROM || "GrowFi <hello@growfi.app>";
   const appUrl = process.env.APP_URL || "https://growfi.app";
@@ -87,6 +102,7 @@ export function buildDefaultDeps(): AppDeps {
     putObject: (cmd) => s3.send(cmd),
     snapshot: snapshotSeasonYield,
     inviteStore,
+    notificationStore,
     email,
     adminKey: process.env.ADMIN_API_KEY || null,
     adminNotifyEmail: process.env.ADMIN_NOTIFY_EMAIL || "hey@growfi.dev",
@@ -95,6 +111,11 @@ export function buildDefaultDeps(): AppDeps {
       windowMs: Number(process.env.INVITE_RATE_WINDOW_MS || 60 * 60 * 1000),
       max: Number(process.env.INVITE_RATE_MAX || 5),
     },
+    notificationsUnsubSecret:
+      process.env.NOTIFICATIONS_UNSUB_SECRET ||
+      // Dev-only fallback so local boots work without env. Logs a warning at
+      // build time. NEVER rely on this in prod — set the env explicitly.
+      "growfi-dev-unsub-secret-do-not-use-in-prod",
   };
 }
 
@@ -125,6 +146,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       adminNotifyEmail: deps.adminNotifyEmail ?? null,
       appUrl: deps.appUrl ?? "https://growfi.app",
       rateLimit: deps.rateLimit ?? { windowMs: 60 * 60 * 1000, max: 5 },
+    });
+  }
+
+  if (deps.notificationStore && deps.notificationsUnsubSecret) {
+    registerNotificationRoutes(app, {
+      store: deps.notificationStore,
+      unsubSecret: deps.notificationsUnsubSecret,
+      appUrl: deps.appUrl ?? "https://growfi.app",
+      signatureMaxAgeMs: deps.signatureMaxAgeMs,
     });
   }
 

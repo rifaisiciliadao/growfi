@@ -648,6 +648,19 @@
       "awaitingSignature": "En attente de signature…",
       "confirmingTx": "Confirmation on-chain…",
       "indexing": "Synchronisation avec l'indexeur…"
+    },
+    "notifications": {
+      "title": "Recevoir des notifications",
+      "description": "Reçois un email quand quelque chose se passe sur tes campagnes ou positions — nouveaux achats, fin de saison, récoltes, engagements en USDC. Hors chaîne uniquement, jamais publié on-chain.",
+      "emailLabel": "Email",
+      "emailPlaceholder": "toi@exemple.com",
+      "emailPlaceholderOnFile": "Saisis un nouvel email pour remplacer l'actuel",
+      "emailOnFile": "Un email est déjà enregistré. Saisis-en un nouveau ci-dessus pour le remplacer.",
+      "frequencyHint": "Nous envoyons au maximum un récapitulatif toutes les 10–15 minutes — jamais un email par événement.",
+      "save": "Enregistrer les préférences",
+      "saving": "Enregistrement…",
+      "awaitingSignature": "En attente de signature…",
+      "saved": "Préférences enregistrées."
     }
   },
   "portfolio": {

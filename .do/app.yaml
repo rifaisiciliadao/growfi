@@ -94,13 +94,18 @@ services:
       - key: INVITE_RATE_MAX
         value: "5"
         scope: RUN_TIME
-      # Secrets (set via dashboard, not committed here):
-      #   DO_SPACES_KEY     (SECRET, RUN_TIME)
-      #   DO_SPACES_SECRET  (SECRET, RUN_TIME)
-      #   ADMIN_API_KEY     (SECRET, RUN_TIME)  — shared with the local admin dashboard
-      #   RESEND_API_KEY    (SECRET, RUN_TIME)
-      #   BASE_SEPOLIA_RPC  (optional override for the snapshot multicall)
-      #   SUBGRAPH_URL      (optional; defaults to growfi/prod in code)
+      - key: NOTIFIER_INTERVAL_MS
+        value: "600000"
+        scope: RUN_TIME
+      # Secrets (set via dashboard / `doctl apps update --spec ...`, not committed here):
+      #   DO_SPACES_KEY                (SECRET, RUN_TIME)
+      #   DO_SPACES_SECRET             (SECRET, RUN_TIME)
+      #   ADMIN_API_KEY                (SECRET, RUN_TIME)  — shared with the local admin dashboard
+      #   RESEND_API_KEY               (SECRET, RUN_TIME)
+      #   NOTIFICATIONS_UNSUB_SECRET   (SECRET, RUN_TIME)  — HMAC key for digest unsubscribe links; rotate to invalidate all live links
+      #   BASE_SEPOLIA_RPC             (optional override for the snapshot multicall)
+      #   SUBGRAPH_URL                 (optional; defaults to growfi/prod in code)
+      #   NOTIFIER_DISABLED            (optional; set to "1" to stop the digest worker without a redeploy)
 
   # -----------------------------------------------------------------------
   # Frontend: Next.js 16 standalone. All NEXT_PUBLIC_* are build-time,

@@ -195,6 +195,71 @@ export async function checkInvite(address: string): Promise<InviteCheckResult> {
   return (await res.json()) as InviteCheckResult;
 }
 
+export interface NotificationStatus {
+  optedIn: boolean;
+  hasEmail: boolean;
+  address?: string;
+  updatedAt?: number;
+}
+
+export async function getNotificationStatus(
+  address: string,
+): Promise<NotificationStatus> {
+  const res = await fetch(
+    `${BACKEND_URL}/api/notifications/me?address=${encodeURIComponent(address)}`,
+  );
+  if (!res.ok) return { optedIn: false, hasEmail: false };
+  return res.json();
+}
+
+export interface SaveNotificationInput {
+  address: string;
+  email: string;
+  optedIn: boolean;
+  issuedAt: string;
+  nonce: string;
+  signature: `0x${string}`;
+}
+
+export async function saveNotificationSettings(
+  input: SaveNotificationInput,
+): Promise<NotificationStatus> {
+  const res = await fetch(`${BACKEND_URL}/api/notifications/me`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ error: "Failed to save notification settings" }));
+    throw new Error(err.error || "Failed to save notification settings");
+  }
+  return res.json();
+}
+
+/**
+ * Canonical signed message — MUST match the backend's `buildSignedMessage`
+ * line-for-line, otherwise viem's signature recovery yields a different
+ * address and the PUT bounces with 401.
+ */
+export function buildNotificationMessage(p: {
+  address: string;
+  email: string;
+  optedIn: boolean;
+  issuedAt: string;
+  nonce: string;
+}): string {
+  return [
+    "GrowFi notifications",
+    `Address: ${p.address.toLowerCase()}`,
+    `Email: ${p.email}`,
+    `Opted in: ${p.optedIn ? "true" : "false"}`,
+    `Issued: ${p.issuedAt}`,
+    `Nonce: ${p.nonce}`,
+  ].join("\n");
+}
+
 export async function uploadProducerProfile(input: {
   name: string;
   bio: string;
