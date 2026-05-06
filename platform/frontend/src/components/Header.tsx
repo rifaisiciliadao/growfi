@@ -88,7 +88,7 @@ export function Header() {
                   ) : (
                     <>
                       <Link
-                        href={`/producer/${account.address}`}
+                        href={`/grower/${account.address}`}
                         className={pillBase}
                         title={t("profile")}
                       >

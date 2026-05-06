@@ -117,7 +117,7 @@ export function InvestorList({
               className="border-b border-outline-variant/10 last:border-0"
             >
               <Link
-                href={`/producer/${inv.buyer}`}
+                href={`/grower/${inv.buyer}`}
                 className="flex items-center gap-3 py-3 -mx-2 px-2 rounded-lg hover:bg-surface-container-low transition-colors"
               >
                 <div className="text-xs font-mono text-on-surface-variant w-6 shrink-0 text-right">

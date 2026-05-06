@@ -35,7 +35,7 @@
     "empty": "No hay campañas en esta categoría.",
     "loading": "Cargando campañas…",
     "emptyTitle": "Aún no hay campañas",
-    "emptyBody": "Sé el primer productor en lanzar una campaña regenerativa en GrowFi.",
+    "emptyBody": "Sé el primer cultivador en lanzar una campaña regenerativa en GrowFi.",
     "card": {
       "progress": "Progreso",
       "expectedYield": "Yield Previsto",
@@ -104,7 +104,7 @@
       "minProduct": "Min Product Claim",
       "minProductHint": "Unidades mínimas para retiro físico (ej. litros)",
       "expectedAnnualHarvestUsd": "Cosecha Anual Esperada (USD)",
-      "expectedAnnualHarvestUsdHint": "Valor USD que el productor se compromete a entregar cada año (ej. 5000 = $5,000/año)",
+      "expectedAnnualHarvestUsdHint": "Valor USD que el cultivador se compromete a entregar cada año (ej. 5000 = $5,000/año)",
       "expectedAnnualHarvestQty": "Cosecha Anual Esperada ({unit})",
       "expectedAnnualHarvestQtyHint": "Cantidad física por año (ej. 250 {unit}/año — junto al valor USD da el precio implícito por unidad)",
       "firstHarvestYear": "Año Primera Cosecha",
@@ -288,7 +288,7 @@
       "viewTx": "Ver transacción",
       "escrow": "Fondos en escrow hasta la activación de la campaña",
       "escrowFunding": "Fondos en escrow hasta alcanzar el mínimo. Reembolsables si la campaña no llega al objetivo.",
-      "escrowActive": "Campaña activa — los pagos van directamente al productor.",
+      "escrowActive": "Campaña activa — los pagos van directamente al cultivador.",
       "demoNotice": "Datos de demo. Despliega el factory y visita la dirección de una campaña real para comprar on-chain."
     },
     "investors": {
@@ -339,7 +339,7 @@
       "newStakeAmount": "Importe a stakear",
       "availableBalance": "Saldo: {amount} ${symbol}",
       "noActiveSeason": "Ninguna temporada activa",
-      "noActiveSeasonHint": "El staking está deshabilitado hasta que el productor inicie una nueva temporada.",
+      "noActiveSeasonHint": "El staking está deshabilitado hasta que el cultivador inicie una nueva temporada.",
       "approveToStake": "Aprobar ${symbol}",
       "approving": "Aprobando…",
       "staking": "Staking…",
@@ -397,7 +397,7 @@
       "subtitle": "Elige cómo recibir tu $YIELD.",
       "yourBalance": "Tu saldo $YIELD",
       "noSeasons": "Ninguna temporada aún en esta campaña.",
-      "noReportedYet": "Aún no hay cosechas reportadas. Cuando el productor cierre una temporada aparecerá aquí.",
+      "noReportedYet": "Aún no hay cosechas reportadas. Cuando el cultivador cierre una temporada aparecerá aquí.",
       "seasonLabel": "Temporada #{id}",
       "units": "unidades producto",
       "holderPool": "Pool holders (USD)",
@@ -424,17 +424,17 @@
       "productClaimed": "Redención de producto confirmada — esperando envío off-chain.",
       "awaitingReport": "Esperando el reporte de cosecha",
       "awaitingReportBadge": "Sin reportar",
-      "awaitingReportHint": "El productor aún no ha reportado la cosecha. Podrás canjear tu $YIELD en cuanto lo haga.",
-      "awaitingReportEnded": "Temporada cerrada el {date}. El productor aún no reportó la cosecha.",
+      "awaitingReportHint": "El cultivador aún no ha reportado la cosecha. Podrás canjear tu $YIELD en cuanto lo haga.",
+      "awaitingReportEnded": "Temporada cerrada el {date}. El cultivador aún no reportó la cosecha.",
       "timeline": {
         "yourEntitlement": "Tu derecho",
         "fulfilled": "Pagado completamente",
         "claimedSoFar": "Recibidos ${amount} de ${total} hasta ahora",
         "phase1": "Commit",
-        "phase2": "Depósito productor",
+        "phase2": "Depósito cultivador",
         "phase3": "Reclamable",
         "phase4": "Completado",
-        "producerDeposit": "Depósito del productor",
+        "producerDeposit": "Depósito del cultivador",
         "depositDeadline": "Debe depositar antes del {date} ({days} días)",
         "depositDeadlinePassed": "Fecha límite de depósito pasada: {date}",
         "claimableNow": "Reclamable ahora",
@@ -442,7 +442,7 @@
         "fullyPaid": "Recibidos ${amount} — liquidado",
         "shortfall": "Ventana de depósito cerrada con el pool infra-financiado. Puedes reclamar tu pro-rata de lo depositado.",
         "statusCommitted": "Committed",
-        "statusAwaitingDeposit": "Esperando productor",
+        "statusAwaitingDeposit": "Esperando cultivador",
         "statusClaimable": "Listo",
         "statusFulfilled": "Completado"
       }
@@ -456,7 +456,7 @@
       "dmrv": "Ver reporte dMRV en Silvi.earth →"
     },
     "manage": {
-      "title": "Gestión del productor",
+      "title": "Gestión del cultivador",
       "subtitle": "Dirige el ciclo de vida de la campaña, reporta cosechas y salda las obligaciones USDC hacia los stakers.",
       "campaignState": "Estado de la campaña",
       "viewOnScan": "Ver en Basescan",
@@ -597,8 +597,8 @@
       "yieldCurveEnd": "100% staked · 1x",
       "acceptedTokens": "Tokens Aceptados",
       "noTokens": "Aún no hay tokens de pago en whitelist.",
-      "producer": "El Productor",
-      "verified": "Productor verificado",
+      "producer": "El Cultivador",
+      "verified": "Cultivador verificado",
       "viewReport": "Ver reporte dMRV →",
       "viewProfile": "Ver perfil",
       "live": "Live"
@@ -608,15 +608,15 @@
     "verified": "KYC verificado — identidad atestiguada onchain por un admin del registry"
   },
   "producer": {
-    "invalidAddress": "Dirección de productor no válida.",
+    "invalidAddress": "Dirección de cultivador no válida.",
     "anonymous": "Anon grower",
     "editProfile": "Editar perfil",
     "createProfile": "Crear perfil",
     "noProfileYet": "Este wallet aún no ha publicado un perfil.",
     "campaignsTitle": "Campañas",
-    "noCampaigns": "Este productor aún no tiene campañas.",
+    "noCampaigns": "Este cultivador aún no tiene campañas.",
     "dashboard": {
-      "title": "Dashboard del productor",
+      "title": "Dashboard del cultivador",
       "refresh": "Actualizar",
       "campaigns": "Campañas",
       "activeOf": "{active} activas",
@@ -696,10 +696,10 @@
       "yourEntitlement": "Tu derecho",
       "fulfilledLabel": "Recibido completamente",
       "receivedSoFar": "Recibidos ${amount} hasta ahora",
-      "producerDeposit": "Depósito productor",
+      "producerDeposit": "Depósito cultivador",
       "status": {
         "committed": "Committed",
-        "awaiting": "Esperando productor",
+        "awaiting": "Esperando cultivador",
         "claimable": "Listo",
         "fulfilled": "Completado"
       }
@@ -810,7 +810,7 @@
       "titleLand": "tierra.",
       "titleB": "Cosecha el",
       "titleYield": "rendimiento.",
-      "lead": "Conectamos inversores, productores y consumidores para financiar la economía regenerativa.",
+      "lead": "Conectamos inversores, cultivadores y consumidores para financiar la economía regenerativa.",
       "subtitle1": "Financia cosechas reales de agroforestería sintrópica onchain:",
       "subtitleHighlight": "invierte en olivos, cosecha aceite",
       "examples": [
@@ -840,8 +840,8 @@
       "intro": "Cada campaña es una state machine onchain. ¿Soft cap no alcanzado? Reembolso automático en un bloque. ¿Cosecha falla? El protocolo abre la ventana buyback USDC. Sin votos DAO, sin comités — el código es ley.",
       "steps": [
         {
-          "title": "El productor lanza la campaña",
-          "body": "Un productor tokeniza la próxima cosecha como $CAMPAIGN. Fija soft cap, hard cap, deadline. Todos los parámetros inmutables onchain desde el minuto cero."
+          "title": "El cultivador lanza la campaña",
+          "body": "Un cultivador tokeniza la próxima cosecha como $CAMPAIGN. Fija soft cap, hard cap, deadline. Todos los parámetros inmutables onchain desde el minuto cero."
         },
         {
           "title": "Tú financias en USDC",
@@ -860,7 +860,7 @@
           "body": "Restake para la próxima cosecha, o unstake sin penalidad al final de la temporada. ¿Necesitas liquidez antes? Encola un sell-back — nuevos buyers te rellenan primero al precio actual, FIFO."
         }
       ],
-      "tail": "Protocolo agnóstico sobre el producto — aceite, cacao, café, vino, miel. Cualquier productor lanza su campaña, sin permiso. Para campañas de alta confianza, el productor puede conectar dMRV (monitoreo digital) vía partners como Silvi.",
+      "tail": "Protocolo agnóstico sobre el producto — aceite, cacao, café, vino, miel. Cualquier cultivador lanza su campaña, sin permiso. Para campañas de alta confianza, el cultivador puede conectar dMRV (monitoreo digital) vía partners como Silvi.",
       "ctaSee": "Ver campañas live"
     },
     "campaigns": {
@@ -883,7 +883,7 @@
       "expectedYield": "Rendimiento esperado",
       "ctaFund": "Financia esta cosecha",
       "ctaView": "Ver",
-      "createTitle": "¿Eres productor sintrópico?",
+      "createTitle": "¿Eres cultivador sintrópico?",
       "createBody": "Tokeniza tu próxima cosecha en minutos. Abre tu campaña a inversores alineados con la regeneración.",
       "createCta": "Crear campaña"
     },
@@ -891,7 +891,7 @@
       "kicker": "Confianza",
       "title1": "No confíes.",
       "title2": "Verifica.",
-      "intro": "Código open-source en GitHub. Contratos deployados y verificados en Base. Subgraph público. Si algo se ve raro, lo ves tú primero. Si el productor no entrega, el protocolo abre ventana buyback USDC de 90 días — el productor debe depositar o los holders reclaman pro-rata.",
+      "intro": "Código open-source en GitHub. Contratos deployados y verificados en Base. Subgraph público. Si algo se ve raro, lo ves tú primero. Si el cultivador no entrega, el protocolo abre ventana buyback USDC de 90 días — el cultivador debe depositar o los holders reclaman pro-rata.",
       "ghBtn": "GitHub",
       "items": [
         {
@@ -907,7 +907,7 @@
         {
           "label": "dMRV opcional",
           "value": "vía Silvi",
-          "detail": "Monitoreo satelital y verificación en campo. El productor puede conectar dMRV para elevar la confianza de la campaña — transparencia pública, subgraph-indexed."
+          "detail": "Monitoreo satelital y verificación en campo. El cultivador puede conectar dMRV para elevar la confianza de la campaña — transparencia pública, subgraph-indexed."
         },
         {
           "label": "Fee protocolo",
@@ -924,7 +924,7 @@
       "title1": "Construido con",
       "title2": "partners regenerativos.",
       "intro": "GrowFi es el rail onchain. La credibilidad de las cosechas viene de las DAOs y protocolos que monitorean el campo y verifican la práctica.",
-      "rifaiRole": "DAO host · asociación cultural registrada en Italia. Steward de productores sicilianos y la primera campaña live.",
+      "rifaiRole": "DAO host · asociación cultural registrada en Italia. Steward de cultivadores sicilianos y la primera campaña live.",
       "silviRole": "Partner dMRV · monitoreo satelital y verificación en campo para árboles plantados y cosechas. Conectable a cualquier campaña.",
       "visit": "Visitar"
     },
@@ -932,15 +932,15 @@
       "kicker": "Lanzar campañas",
       "title1": "Crear una campaña",
       "title2": "requiere invitación.",
-      "intro": "Explorar y financiar cosechas está abierto a todos. Para tokenizar tu propia cosecha y lanzar una campaña, estamos incorporando a un grupo pequeño de productores — conecta el wallet que quieras usar, luego déjanos email y Telegram y te escribimos en cuanto sea tu turno.",
+      "intro": "Explorar y financiar cosechas está abierto a todos. Para tokenizar tu propia cosecha y lanzar una campaña, estamos incorporando a un grupo pequeño de cultivadores — conecta el wallet que quieras usar, luego déjanos email y Telegram y te escribimos en cuanto sea tu turno.",
       "bannerConnect": "Crear una campaña requiere invitación. Conecta tu wallet para solicitarla.",
       "bannerNeeded": "Crear una campaña requiere invitación. Rellena los datos abajo.",
       "bannerPending": "Tu solicitud está en revisión. Te avisaremos por email cuando se apruebe.",
-      "bannerRejected": "Tu solicitud como productor no fue aprobada. Escríbenos si crees que es un error.",
+      "bannerRejected": "Tu solicitud como cultivador no fue aprobada. Escríbenos si crees que es un error.",
       "connectTitle": "Conecta tu wallet",
-      "connectBody": "Usaremos esta dirección como tu identidad de productor. Si ya la hemos aprobado, puedes crear campañas al instante.",
+      "connectBody": "Usaremos esta dirección como tu identidad de cultivador. Si ya la hemos aprobado, puedes crear campañas al instante.",
       "connectCta": "Conectar wallet",
-      "requestTitle": "Solicitar acceso productor",
+      "requestTitle": "Solicitar acceso cultivador",
       "requestBody": "Déjanos email y Telegram — te escribimos en cuanto sea tu turno.",
       "fieldEmail": "Email",
       "fieldEth": "Wallet",
@@ -953,24 +953,24 @@
       "requestErr": "El envío falló, vuelve a intentarlo.",
       "pendingKicker": "En revisión",
       "pendingTitle": "Solicitud en revisión.",
-      "pendingBody": "Estamos mirando tu solicitud como productor. Mientras tanto puedes explorar y financiar cualquier campaña abierta.",
+      "pendingBody": "Estamos mirando tu solicitud como cultivador. Mientras tanto puedes explorar y financiar cualquier campaña abierta.",
       "rejectedKicker": "No aprobada",
-      "rejectedTitle": "Sin acceso productor por ahora.",
-      "rejectedBody": "No podemos aprobarte como productor ahora mismo. Explorar y financiar campañas sigue abierto. Escríbenos si crees que es un error.",
-      "activeKicker": "Productor activo",
+      "rejectedTitle": "Sin acceso cultivador por ahora.",
+      "rejectedBody": "No podemos aprobarte como cultivador ahora mismo. Explorar y financiar campañas sigue abierto. Escríbenos si crees que es un error.",
+      "activeKicker": "Cultivador activo",
       "activeTitle": "Puedes crear campañas.",
-      "activeBody": "Tu wallet está aprobado como productor. Tokeniza tu próxima cosecha y lanza tu campaña."
+      "activeBody": "Tu wallet está aprobado como cultivador. Tokeniza tu próxima cosecha y lanza tu campaña."
     },
     "footer": {
       "tagline1": "Finanza regenerativa",
       "tagline2": "para un planeta vivo.",
-      "about": "GrowFi está construido por Rifai Sicilia DAO. Commodity-agnostic, chain-agnostic, permissionless. Cualquier productor, cualquier cosecha, cualquier chain — sin aprobación requerida.",
+      "about": "GrowFi está construido por Rifai Sicilia DAO. Commodity-agnostic, chain-agnostic, permissionless. Cualquier cultivador, cualquier cosecha, cualquier chain — sin aprobación requerida.",
       "colProduct": "Producto",
       "colProtocol": "Protocolo",
       "colCommunity": "Comunidad",
       "linkHow": "Cómo funciona",
       "linkCampaigns": "Campañas",
-      "linkProducers": "Para productores",
+      "linkProducers": "Para cultivadores",
       "linkPortfolio": "Portfolio",
       "linkDocs": "Documentación",
       "linkContracts": "Smart contracts",
@@ -981,5 +981,12 @@
       "linkInstagram": "Instagram",
       "copy": "© {year} Rifai Sicilia DAO. Todo el código open-source bajo licencia MIT."
     }
+  },
+  "notFound": {
+    "title": "Aquí no creció nada.",
+    "body": "Esta parcela está vacía — la página que buscabas se mudó a otro campo.",
+    "aside": "Incluso los mejores cultivadores dejan algún surco en barbecho.",
+    "ctaHome": "Volver al inicio",
+    "ctaExplore": "Explorar campañas"
   }
 }

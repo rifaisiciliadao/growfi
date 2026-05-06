@@ -1244,7 +1244,7 @@ function ProducerCard({ producer }: { producer?: Address }) {
       </div>
       {producer && (
         <Link
-          href={`/producer/${producer}`}
+          href={`/grower/${producer}`}
           className="w-full py-2 flex items-center justify-center gap-2 text-primary text-sm font-semibold hover:bg-surface-container-low rounded-lg transition"
         >
           {t("viewProfile")} →

@@ -35,7 +35,7 @@
     "empty": "No campaigns in this category.",
     "loading": "Loading campaigns…",
     "emptyTitle": "No campaigns yet",
-    "emptyBody": "Be the first producer to launch a regenerative campaign on GrowFi.",
+    "emptyBody": "Be the first grower to launch a regenerative campaign on GrowFi.",
     "card": {
       "progress": "Progress",
       "expectedYield": "Expected Yield",
@@ -104,7 +104,7 @@
       "minProduct": "Min Product Claim",
       "minProductHint": "Minimum units for physical pickup (e.g. liters)",
       "expectedAnnualHarvestUsd": "Expected Annual Harvest (USD)",
-      "expectedAnnualHarvestUsdHint": "USD value the producer commits to deliver each year (e.g. 5000 = $5,000/yr)",
+      "expectedAnnualHarvestUsdHint": "USD value the grower commits to deliver each year (e.g. 5000 = $5,000/yr)",
       "expectedAnnualHarvestQty": "Expected Annual Harvest ({unit})",
       "expectedAnnualHarvestQtyHint": "Physical quantity per year (e.g. 250 {unit}/yr — sets implied $/unit when paired with the USD value above)",
       "firstHarvestYear": "First Harvest Year",
@@ -288,7 +288,7 @@
       "viewTx": "View transaction",
       "escrow": "Funds held in escrow until campaign activation",
       "escrowFunding": "Funds held in escrow until the min cap is reached. Refundable if the campaign fails.",
-      "escrowActive": "Campaign is active — payments go directly to the producer.",
+      "escrowActive": "Campaign is active — payments go directly to the grower.",
       "demoNotice": "This is demo data. Deploy the factory and visit a real campaign address to buy on-chain."
     },
     "investors": {
@@ -339,7 +339,7 @@
       "newStakeAmount": "Amount to stake",
       "availableBalance": "Balance: {amount} ${symbol}",
       "noActiveSeason": "No active season",
-      "noActiveSeasonHint": "Staking is disabled until the producer starts a new season.",
+      "noActiveSeasonHint": "Staking is disabled until the grower starts a new season.",
       "approveToStake": "Approve ${symbol}",
       "approving": "Approving…",
       "staking": "Staking…",
@@ -397,7 +397,7 @@
       "subtitle": "Choose how to receive your $YIELD.",
       "yourBalance": "Your $YIELD balance",
       "noSeasons": "No seasons on this campaign yet.",
-      "noReportedYet": "No harvests reported yet. When the producer reports a season, it shows up here.",
+      "noReportedYet": "No harvests reported yet. When the grower reports a season, it shows up here.",
       "seasonLabel": "Season #{id}",
       "units": "product units",
       "holderPool": "Holder pool (USD)",
@@ -424,17 +424,17 @@
       "productClaimed": "Product redemption committed — waiting for off-chain shipping.",
       "awaitingReport": "Waiting for harvest report",
       "awaitingReportBadge": "Not reported",
-      "awaitingReportHint": "The producer hasn't reported the harvest for this season yet. Your $YIELD will be redeemable once they do.",
-      "awaitingReportEnded": "Season ended {date}. Producer hasn't reported the harvest yet.",
+      "awaitingReportHint": "The grower hasn't reported the harvest for this season yet. Your $YIELD will be redeemable once they do.",
+      "awaitingReportEnded": "Season ended {date}. Grower hasn't reported the harvest yet.",
       "timeline": {
         "yourEntitlement": "Your entitlement",
         "fulfilled": "Fully paid",
         "claimedSoFar": "Received ${amount} of ${total} so far",
         "phase1": "Committed",
-        "phase2": "Producer deposit",
+        "phase2": "Grower deposit",
         "phase3": "Claimable",
         "phase4": "Fulfilled",
-        "producerDeposit": "Producer deposit",
+        "producerDeposit": "Grower deposit",
         "depositDeadline": "Must deposit by {date} ({days} days left)",
         "depositDeadlinePassed": "Deposit deadline passed: {date}",
         "claimableNow": "Claimable now",
@@ -442,7 +442,7 @@
         "fullyPaid": "Received ${amount} — fully settled",
         "shortfall": "Deposit window closed with the pool under-funded. You can still claim your pro-rata of what was deposited.",
         "statusCommitted": "Committed",
-        "statusAwaitingDeposit": "Awaiting producer",
+        "statusAwaitingDeposit": "Awaiting grower",
         "statusClaimable": "Ready to claim",
         "statusFulfilled": "Fulfilled"
       }
@@ -456,7 +456,7 @@
       "dmrv": "See dMRV report on Silvi.earth →"
     },
     "manage": {
-      "title": "Producer management",
+      "title": "Grower management",
       "subtitle": "Drive the campaign lifecycle, report harvests, and settle USDC obligations to holders.",
       "campaignState": "Campaign state",
       "viewOnScan": "View on Basescan",
@@ -513,7 +513,7 @@
       "acceptedTokensTitle": "Payment tokens",
       "parametersTitle": "Campaign parameters",
       "parameters": {
-        "subtitle": "Tune the campaign after launch. Each change is a separate on-chain tx with producer-only guard-rails (deadline extend-only, caps stay ≥ committed supply).",
+        "subtitle": "Tune the campaign after launch. Each change is a separate on-chain tx with grower-only guard-rails (deadline extend-only, caps stay ≥ committed supply).",
         "fundingDeadline": "Funding deadline",
         "deadlineHint": "Funding-only. The new date must be later than the current one.",
         "deadlineDisabledHint": "Campaign already {state}: the funding deadline is editable only during Funding.",
@@ -597,8 +597,8 @@
       "yieldCurveEnd": "100% staked · 1x",
       "acceptedTokens": "Accepted Tokens",
       "noTokens": "No payment tokens whitelisted yet.",
-      "producer": "The Producer",
-      "verified": "Verified producer",
+      "grower": "The Grower",
+      "verified": "Verified grower",
       "viewReport": "See dMRV report →",
       "viewProfile": "View profile",
       "live": "Live"
@@ -607,16 +607,16 @@
   "kyc": {
     "verified": "KYC verified — identity attested onchain by a registry admin"
   },
-  "producer": {
-    "invalidAddress": "Invalid producer address.",
+  "grower": {
+    "invalidAddress": "Invalid grower address.",
     "anonymous": "Anon grower",
     "editProfile": "Edit profile",
     "createProfile": "Create profile",
     "noProfileYet": "This wallet hasn't published a profile yet.",
     "campaignsTitle": "Campaigns",
-    "noCampaigns": "No campaigns from this producer yet.",
+    "noCampaigns": "No campaigns from this grower yet.",
     "dashboard": {
-      "title": "Producer dashboard",
+      "title": "Grower dashboard",
       "refresh": "Refresh",
       "campaigns": "Campaigns",
       "activeOf": "{active} active",
@@ -696,10 +696,10 @@
       "yourEntitlement": "Your entitlement",
       "fulfilledLabel": "Fully received",
       "receivedSoFar": "Received ${amount} so far",
-      "producerDeposit": "Producer deposit",
+      "producerDeposit": "Grower deposit",
       "status": {
         "committed": "Committed",
-        "awaiting": "Awaiting producer",
+        "awaiting": "Awaiting grower",
         "claimable": "Ready to claim",
         "fulfilled": "Fulfilled"
       }
@@ -810,7 +810,7 @@
       "titleLand": "land.",
       "titleB": "Harvest the",
       "titleYield": "yield.",
-      "lead": "We connect investors, producers and consumers to fund the regenerative economy.",
+      "lead": "We connect investors, growers and consumers to fund the regenerative economy.",
       "subtitle1": "Fund real syntropic agroforestry harvests onchain:",
       "subtitleHighlight": "invest in olives, harvest oil",
       "examples": [
@@ -840,8 +840,8 @@
       "intro": "Every campaign is an onchain state machine. Soft cap missed? Automatic refund in one block. Harvest fails? Protocol triggers the USDC buyback window. No DAO votes, no committees — code is law.",
       "steps": [
         {
-          "title": "Producer launches the campaign",
-          "body": "A producer tokenizes next season's harvest as $CAMPAIGN. Sets soft cap, hard cap, funding deadline. All parameters immutable onchain from minute one."
+          "title": "Grower launches the campaign",
+          "body": "A grower tokenizes next season's harvest as $CAMPAIGN. Sets soft cap, hard cap, funding deadline. All parameters immutable onchain from minute one."
         },
         {
           "title": "You fund in USDC",
@@ -860,7 +860,7 @@
           "body": "Restake for the next harvest, or unstake with zero penalty once the season ends. Need liquidity early? Queue a sell-back — new buyers fill you first at the current price, FIFO."
         }
       ],
-      "tail": "Protocol is commodity-agnostic — olive oil, cacao, coffee, wine, honey. Any producer launches a campaign, no permission. For higher-trust campaigns, producers can plug in dMRV (digital monitoring) via partners like Silvi.",
+      "tail": "Protocol is commodity-agnostic — olive oil, cacao, coffee, wine, honey. Any grower launches a campaign, no permission. For higher-trust campaigns, growers can plug in dMRV (digital monitoring) via partners like Silvi.",
       "ctaSee": "See live campaigns"
     },
     "campaigns": {
@@ -883,7 +883,7 @@
       "expectedYield": "Expected yield",
       "ctaFund": "Fund this harvest",
       "ctaView": "View",
-      "createTitle": "Are you a syntropic producer?",
+      "createTitle": "Are you a syntropic grower?",
       "createBody": "Tokenise your next harvest in minutes. Open your campaign to investors aligned with regeneration.",
       "createCta": "Create campaign"
     },
@@ -891,7 +891,7 @@
       "kicker": "Trust",
       "title1": "Don't trust.",
       "title2": "Verify.",
-      "intro": "Code is open-source on GitHub. Contracts are deployed and verified on Base. The subgraph is public. If something looks off, you see it first. If the producer doesn't deliver the harvest, the protocol opens a 90-day USDC buyback window — producer must deposit or holders claim pro-rata.",
+      "intro": "Code is open-source on GitHub. Contracts are deployed and verified on Base. The subgraph is public. If something looks off, you see it first. If the grower doesn't deliver the harvest, the protocol opens a 90-day USDC buyback window — grower must deposit or holders claim pro-rata.",
       "ghBtn": "GitHub",
       "items": [
         {
@@ -907,7 +907,7 @@
         {
           "label": "Optional dMRV",
           "value": "via Silvi",
-          "detail": "Satellite monitoring + ground-truth verification. Producers can plug in dMRV to raise campaign trust — public, subgraph-indexed."
+          "detail": "Satellite monitoring + ground-truth verification. Growers can plug in dMRV to raise campaign trust — public, subgraph-indexed."
         },
         {
           "label": "Protocol fee",
@@ -924,7 +924,7 @@
       "title1": "Built with",
       "title2": "regeneration partners.",
       "intro": "GrowFi is the onchain rail. Harvest credibility comes from the DAOs and protocols monitoring the ground and verifying the practice.",
-      "rifaiRole": "Host DAO · registered cultural association in Italy. Steward of Sicilian producers and the first live campaign.",
+      "rifaiRole": "Host DAO · registered cultural association in Italy. Steward of Sicilian growers and the first live campaign.",
       "silviRole": "dMRV partner · satellite monitoring and ground-truth verification for planted trees and harvests. Pluggable into any campaign.",
       "visit": "Visit"
     },
@@ -932,15 +932,15 @@
       "kicker": "Launching campaigns",
       "title1": "Creating a campaign",
       "title2": "needs an invite.",
-      "intro": "Browsing and funding harvests is open to everyone. To tokenize your own harvest and launch a campaign, we're onboarding a small group of producers — connect the wallet you want to use, then leave your email + Telegram and we'll reach out when it's your turn.",
+      "intro": "Browsing and funding harvests is open to everyone. To tokenize your own harvest and launch a campaign, we're onboarding a small group of growers — connect the wallet you want to use, then leave your email + Telegram and we'll reach out when it's your turn.",
       "bannerConnect": "Creating a campaign needs an invite. Connect your wallet to request one.",
       "bannerNeeded": "Creating a campaign needs an invite. Fill in the details below.",
       "bannerPending": "Your request is under review. We'll email you the moment it's approved.",
-      "bannerRejected": "Your producer request wasn't approved. Reach out if you think it's a mistake.",
+      "bannerRejected": "Your grower request wasn't approved. Reach out if you think it's a mistake.",
       "connectTitle": "Connect your wallet",
-      "connectBody": "We use this address as your producer identity. If we've already approved it, you can create campaigns right away.",
+      "connectBody": "We use this address as your grower identity. If we've already approved it, you can create campaigns right away.",
       "connectCta": "Connect wallet",
-      "requestTitle": "Request producer access",
+      "requestTitle": "Request grower access",
       "requestBody": "Drop your email and Telegram — we'll email you when it's your turn.",
       "fieldEmail": "Email",
       "fieldEth": "Wallet",
@@ -953,24 +953,24 @@
       "requestErr": "Submission failed, please retry later.",
       "pendingKicker": "Under review",
       "pendingTitle": "Request under review.",
-      "pendingBody": "We're looking at your producer request. In the meantime you can already browse and fund any open campaign.",
+      "pendingBody": "We're looking at your grower request. In the meantime you can already browse and fund any open campaign.",
       "rejectedKicker": "Not approved",
-      "rejectedTitle": "No producer access for now.",
-      "rejectedBody": "We can't approve you as a producer right now. Browsing and funding campaigns is still open. Reach out if you think it's a mistake.",
-      "activeKicker": "Producer active",
+      "rejectedTitle": "No grower access for now.",
+      "rejectedBody": "We can't approve you as a grower right now. Browsing and funding campaigns is still open. Reach out if you think it's a mistake.",
+      "activeKicker": "Grower active",
       "activeTitle": "You can create campaigns.",
-      "activeBody": "Your wallet is approved as a producer. Tokenize your next harvest and open your campaign."
+      "activeBody": "Your wallet is approved as a grower. Tokenize your next harvest and open your campaign."
     },
     "footer": {
       "tagline1": "Regenerative finance",
       "tagline2": "for a living planet.",
-      "about": "GrowFi is built by Rifai Sicilia DAO. Commodity-agnostic, chain-agnostic, permissionless. Any producer, any harvest, any chain — no approval required.",
+      "about": "GrowFi is built by Rifai Sicilia DAO. Commodity-agnostic, chain-agnostic, permissionless. Any grower, any harvest, any chain — no approval required.",
       "colProduct": "Product",
       "colProtocol": "Protocol",
       "colCommunity": "Community",
       "linkHow": "How it works",
       "linkCampaigns": "Campaigns",
-      "linkProducers": "For producers",
+      "linkProducers": "For growers",
       "linkPortfolio": "Portfolio",
       "linkDocs": "Documentation",
       "linkContracts": "Smart contracts",
@@ -981,5 +981,12 @@
       "linkInstagram": "Instagram",
       "copy": "© {year} Rifai Sicilia DAO. All code open-source under MIT license."
     }
+  },
+  "notFound": {
+    "title": "Nothing grew here.",
+    "body": "This patch of land is empty — the page you were looking for moved to another field.",
+    "aside": "Even the best growers leave a few rows fallow.",
+    "ctaHome": "Back to landing",
+    "ctaExplore": "Browse campaigns"
   }
 }

@@ -75,7 +75,7 @@ export function ProductiveAssetCard({
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 space-y-5">
       <h3 className="text-sm font-semibold text-on-surface">
-        Producer commitment
+        Grower commitment
       </h3>
 
       <div className="grid grid-cols-2 gap-3">
@@ -133,7 +133,7 @@ export function ProductiveAssetCard({
         <p className="text-[11px] text-on-surface-variant">
           {coverage > 0 && coverageEnd !== null ? (
             <>
-              Producer pre-funded harvests <b>{firstYear}–{coverageEnd}</b> with
+              Grower pre-funded harvests <b>{firstYear}–{coverageEnd}</b> with
               USDC collateral.{" "}
               {tail !== null && tail > 0 && paybackEnd !== null && (
                 <>
@@ -145,7 +145,7 @@ export function ProductiveAssetCard({
             </>
           ) : (
             <>
-              Producer published targets but did not pre-fund any harvest.
+              Grower published targets but did not pre-fund any harvest.
               Holders carry the full delivery risk.
             </>
           )}
