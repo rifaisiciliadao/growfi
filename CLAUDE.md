@@ -211,8 +211,12 @@ Fastify on **port 4001** (4000 was taken locally). Uses `@aws-sdk/client-s3` aga
 | `POST /api/admin/invites/:address/approve` | (X-Admin-Key) flips status, sends `approved` email (no code — the wallet is the credential). Idempotent: re-approving re-sends the email. |
 | `POST /api/admin/invites/:address/reject` | (X-Admin-Key) body `{ notes?, notify? }`. `notify=false` skips the rejection email. |
 | `DELETE /api/admin/invites/:address` | (X-Admin-Key) hard-deletes the record + the index entry. |
+| `GET /api/notifications/me?address=` | Public read of opt-in status — returns `{ optedIn, hasEmail, address?, updatedAt? }`. The email itself is **never** returned (privacy: anyone can query any address); the form re-collects on change. |
+| `PUT /api/notifications/me` | Body `{ address, email, optedIn, issuedAt, nonce, signature }`. Verifies EIP-191 signature via `viem.recoverMessageAddress` against the canonical message in `buildSignedMessage`; rejects if recovered ≠ claimed address (401), if the email is invalid while `optedIn=true` (400), or if `issuedAt` is more than 10 min old / in the future (400, anti-replay). Upserts `notifications/<address>.json`. |
+| `DELETE /api/notifications/me` | Body `{ address, issuedAt, nonce, signature }` over a fixed `Action: delete` message. Hard-deletes the record. |
+| `GET /api/notifications/unsubscribe?token=` | One-click opt-out from a digest email. Token is `<address>.<hmac>` keyed on `NOTIFICATIONS_UNSUB_SECRET`; flips `optedIn=false` and renders a confirmation HTML page. Idempotent. No wallet popup needed because the user just received the email — that's enough proof of ownership for an opt-out (it can never escalate privileges). |
 
-Env: `PORT`, `HOST`, `DO_SPACES_*`, plus invite-gate envs `INVITES_OBJECT_PREFIX` (default `invites`), `APP_URL` (embedded in approval emails), `ADMIN_API_KEY` (shared with `platform/admin`), `ADMIN_NOTIFY_EMAIL` (default `hey@growfi.dev`, set to empty to disable fan-out), `RESEND_API_KEY`, `RESEND_FROM`, `INVITE_RATE_WINDOW_MS`, `INVITE_RATE_MAX`.
+Env: `PORT`, `HOST`, `DO_SPACES_*`, plus invite-gate envs `INVITES_OBJECT_PREFIX` (default `invites`), `APP_URL` (embedded in approval emails), `ADMIN_API_KEY` (shared with `platform/admin`), `ADMIN_NOTIFY_EMAIL` (default `hey@growfi.dev`, set to empty to disable fan-out), `RESEND_API_KEY`, `RESEND_FROM`, `INVITE_RATE_WINDOW_MS`, `INVITE_RATE_MAX`, plus notification envs `NOTIFICATIONS_OBJECT_PREFIX` (default `notifications`), `NOTIFICATIONS_UNSUB_SECRET` (HMAC key for unsubscribe links — rotate to invalidate all live links), `NOTIFIER_INTERVAL_MS` (default `600000` = 10min), `NOTIFIER_DISABLED` (set to `1` to stop the digest worker without a redeploy), `SUBGRAPH_URL` (optional; defaults to growfi/prod in code).
 
 File constraints (5 MB, `image/{jpeg,png,webp,avif,gif}`) enforced in-route.
 
@@ -231,6 +235,39 @@ Wallet-based private beta gate — **one JSON per ETH address on `growfi-media`*
 - **Gate is UX-only** — the on-chain factory stays permissionless. A determined user can still call `createCampaign` from Etherscan. The gate's job is to keep the private-beta UI focused, not to enforce on-chain access control. Keep this in mind when discussing it as "security".
 
 Tests: 75 cases across `src/store.test.ts` (in-memory store CRUD + index consistency), `src/invite.test.ts` (every endpoint × every gating branch + duplicates + rate limit + admin notify fan-out + email failure isolation + optional-telegram path), `src/email.test.ts` (template rendering for all 4 kinds + HTML escape + telegram-empty admin notify). End-to-end smoke: `scripts/smoke-invite.sh` with `BACKEND_URL` + `ADMIN_API_KEY` envs.
+
+### Notifications digest (`platform/backend/src/notifications*.ts` + `notifier.ts` + frontend `components/NotificationsSection.tsx`)
+
+Opt-in email digest of campaign + position activity. Off-chain only — emails never touch the blockchain. Mirrors the invite-gate storage pattern (private DO Spaces, address-keyed JSON), but the auth model is **wallet-signature-gated** instead of trust-the-claimed-address: the email is private data, so anyone setting / changing / deleting a record must sign an EIP-191 message that recovers to the claimed address.
+
+- **Storage**: `notifications/<lowercase-address>.json` (full record: address, email, optedIn, signedMessage, signature, signedAt, createdAt, updatedAt — `signedMessage` + `signature` retained for audit) + `notifications/_index.json` (compact summaries — only `address`, `email`, `optedIn`, `updatedAt` — used by the worker to fan out without scanning the bucket) + `notifications/_cursor.json` (per-event-type cursors so we don't re-notify on restart). All `ACL=private`. `buildSpacesNotificationStore({ s3, bucket, prefix })` in `notifications-store.ts` is the prod impl, `buildInMemoryNotificationStore()` is the test variant. Same `writeChain` serialisation as the invite store because DO App Platform runs `instance_count: 1`.
+- **Signed message** — canonical, deterministic, line order matters (recovery yields a different address otherwise):
+  ```
+  GrowFi notifications
+  Address: 0x<lower>
+  Email: <email-or-empty>
+  Opted in: <true|false>
+  Issued: <iso8601-utc>
+  Nonce: <random>
+  ```
+  Frontend `buildNotificationMessage` in `lib/api.ts` MUST stay byte-identical to backend `buildSignedMessage` in `notifications.ts`. The DELETE endpoint uses a separate sentinel message (`Action: delete`) so a save-firing-twice can't accidentally delete a record.
+- **Anti-replay** — `issuedAt` must be within `signatureMaxAgeMs` (default 10 min) of server time. `nonce` is included in the canonical message so identical PUTs produce different signatures (defence in depth — anti-replay on age would already catch it).
+- **Email-leak guard** — `GET /api/notifications/me` deliberately returns only `{ optedIn, hasEmail }`, NEVER the email itself. Anyone can query any address; surfacing the email would be a privacy regression. The form on `/producer/[address]` re-collects the email on change (placeholder shows "An email is on file. Type a new one above to replace it." when `hasEmail`).
+- **Worker (`notifier.ts`)** — `runDigestCycle` polls the subgraph every 10 min (configurable via `NOTIFIER_INTERVAL_MS`), maps events to recipients, aggregates per address, and sends one digest per address with an unsubscribe link. Mapping table:
+
+  | Event | Subgraph cursor | Recipients |
+  |---|---|---|
+  | `Purchase` | `block_gt: lastPurchaseBlock` | `campaign.producer` |
+  | `Season ended` | `endTime_gt: lastSeasonEndedTs, active: false` | all `Position.user` for that `(campaign, seasonId)` |
+  | `Season reported` | `reportedAt_gt: lastSeasonReportedTs, reported: true` | all `Position.user` for that `(campaign, seasonId)` (yield holders) |
+  | `Claim` USDC commit | `claimedAt_gt: lastClaimCommittedTs, redemptionType: "usdc"` | `campaign.producer` (must top up the pool) |
+
+  Cursors are stored as `{ lastPurchaseBlock, lastSeasonEndedTs, lastSeasonReportedTs, lastClaimCommittedTs }`. The block-vs-timestamp split is forced by the subgraph: `Purchase` is immutable with a `block` field; `Season` is mutable so we use the per-transition timestamps the handlers set (verified — `staking.ts::handleSeasonEnded` sets `endTime` only at end, `harvest.ts::handleHarvestReported` sets `reportedAt` only on report). Filtering `endTime_gt: 0` excludes still-active null-`endTime` seasons, so the filter is correct. Position fan-out for ended/reported seasons uses one `seasonId_in: [...]` query then client-filters by campaign — single round-trip regardless of how many seasons fired.
+- **First-boot seeding** — on the very first run (`lastPurchaseBlock === 0`) the worker reads the subgraph head block from `_meta`, seeds all four cursors, and **skips sending**. Without this, day-1 boot would dump the entire indexed history into every producer's inbox. Tests assert `seeded: true` and `notified: 0` on the first cycle.
+- **Loop wiring** — `startNotifierLoop` returns a `NotifierLoopHandle` whose `stop()` cancels the next tick. Cycles never overlap — a still-in-flight run is awaited before the next setTimeout fires. `server.ts` registers SIGTERM/SIGINT handlers that call `handle.stop()` then `app.close()` for clean shutdown.
+- **Unsubscribe link** — `<address>.<hmac>` token signed with `NOTIFICATIONS_UNSUB_SECRET`, no expiry. Idempotent (re-clicking returns the same confirmation page). Footer of every digest email. The HMAC verification uses `timingSafeEqual` against the recomputed expected MAC — don't simplify to `===`. **Rotating `NOTIFICATIONS_UNSUB_SECRET` invalidates all live links** — useful if the secret leaks but otherwise leave it stable.
+- **Frontend** — `<NotificationsSection address={producerAddress}>` mounts on `/producer/[address]` only when `isOwner`. Toggle + email input + `useSignMessage()` from wagmi → PUT. Polls status via React Query (`["notifications", "status", lower]`, 30s staleTime). Localized EN/IT/ES/FR under `producer.notifications`.
+- **Tests**: 26 new cases across `src/notifications-store.test.ts` (CRUD, case-insensitive lookup, opt-out filtering, cursor roundtrip), `src/notifications.test.ts` (signature good-path + tampered-address + tampered-email + expired-signature + email-required-when-opt-in + opt-out-with-empty-email + email-never-leaked + unsubscribe HMAC good/tampered/wrong-secret), `src/notifier.test.ts` (first-boot seeds and skips sending, Purchase → producer, opt-out skip, HarvestReported fan-out to all stakers + cross-campaign filter, multi-event aggregation into single digest, monotonic cursor advance).
 
 ### Subgraph (`platform/subgraph/`)
 
@@ -288,7 +325,7 @@ Three layers, all runnable in CI:
 | Layer | Command | Coverage |
 |---|---|---|
 | Contracts | `forge test --no-match-path "test/fork/*"` | 188 unit + 11 invariants + 1 full-lifecycle E2E (`test/E2E.t.sol::test_E2E_fullLifecycle`) + 10 pool-security PoCs (`test/PoolSecurity.t.sol`) for buy-path reentrancy / cross-proxy reentry / fee-on-transfer blast-radius + 18 collateral PoCs (`test/CollateralAttacks.t.sol`) covering lock/settle access control, state machine, double-settle, partial vs full draw + 22 KYC PoCs (`test/ProducerRegistryKyc.t.sol`) for role gating + 5 collateral hardening PoCs (`test/CollateralHardening.t.sol`) for FoT-as-collateral misconfig drift, reentrancy on `lockCollateral` and `settleSeasonShortfall`, and a v1/v2/v3 storage-layout regression assertion. |
-| Backend | `cd platform/backend && npm test` | 75 Node `node:test` cases: merkle packing + OZ-compatibility proof verification, Fastify `inject()` integration for every upload/snapshot/merkle route, plus the full invite-gate suite (in-memory store CRUD + index, every `/api/invite/*` and `/api/admin/invites/*` branch, rate limit, admin notify fan-out, all 4 email templates, optional-telegram path). Uses injected S3 / snapshot / store / email stubs — no network, no AWS. |
+| Backend | `cd platform/backend && npm test` | 101 Node `node:test` cases: merkle packing + OZ-compatibility proof verification, Fastify `inject()` integration for every upload/snapshot/merkle route, the full invite-gate suite (in-memory store CRUD + index, every `/api/invite/*` and `/api/admin/invites/*` branch, rate limit, admin notify fan-out, all 4 email templates, optional-telegram path), plus the notifications digest suite (signature verify good/tampered/expired, email-leak guard, unsubscribe HMAC, worker fan-out + first-boot seeding + cursor advance). Uses injected S3 / snapshot / store / email stubs — no network, no AWS. |
 | Frontend | `cd platform/frontend && npm run build` | Type-safe build (Next.js + tsc). Manual UI smoke in Chrome for the post-harvest timeline. |
 
 Testnet smoke (manual, needs 2 funded keys):
