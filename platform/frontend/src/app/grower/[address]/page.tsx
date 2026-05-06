@@ -32,7 +32,7 @@ export default function ProducerPage({
   params: Promise<{ address: string }>;
 }) {
   const { address: raw } = use(params);
-  const t = useTranslations("producer");
+  const t = useTranslations("grower");
   const { address: connected } = useAccount();
 
   const producerAddress = (raw?.toLowerCase() ?? "") as Address;
@@ -254,7 +254,7 @@ function ProfileForm({
   /** Subgraph version at the moment the form opened. Undefined if the producer has no profile yet. */
   previousVersion: string | undefined;
 }) {
-  const t = useTranslations("producer.form");
+  const t = useTranslations("grower.form");
   const { producerRegistry } = getAddresses();
   const queryClient = useQueryClient();
 

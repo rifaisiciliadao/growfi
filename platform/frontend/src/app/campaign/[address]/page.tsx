@@ -1214,7 +1214,7 @@ function ProducerCard({ producer }: { producer?: Address }) {
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15">
       <h3 className="text-sm font-semibold text-on-surface mb-4">
-        {t("producer")}
+        {t("grower")}
       </h3>
       <div className="flex items-center gap-4 mb-4">
         {avatar ? (

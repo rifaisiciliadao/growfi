@@ -15,7 +15,7 @@ import { Spinner } from "@/components/Spinner";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function NotificationsSection({ address }: { address: Address }) {
-  const t = useTranslations("producer.notifications");
+  const t = useTranslations("grower.notifications");
   const queryClient = useQueryClient();
   const lower = address.toLowerCase();
   const queryKey = ["notifications", "status", lower] as const;

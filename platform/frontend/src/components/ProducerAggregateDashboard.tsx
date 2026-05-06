@@ -27,7 +27,7 @@ export function ProducerAggregateDashboard({
 }: {
   producerAddress: string;
 }) {
-  const t = useTranslations("producer.dashboard");
+  const t = useTranslations("grower.dashboard");
   const { data, isLoading, refetch } = useProducerAggregate(producerAddress);
 
   const stats = useMemo(() => {

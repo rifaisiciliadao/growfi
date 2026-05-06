@@ -39,7 +39,7 @@ export function InvestorList({
   });
   const campaignSymbol = (symbolRaw as string | undefined) ?? "CAMP";
   const t = useTranslations("detail.investors");
-  const tProducer = useTranslations("producer");
+  const tProducer = useTranslations("grower");
   const { data: investors, isLoading } = useCampaignInvestors(campaignAddress);
   const addresses = (investors ?? []).map((i) => i.buyer);
   const { data: profiles } = useBatchProducerProfiles(addresses);
