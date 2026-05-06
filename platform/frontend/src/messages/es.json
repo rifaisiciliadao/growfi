@@ -597,7 +597,7 @@
       "yieldCurveEnd": "100% staked · 1x",
       "acceptedTokens": "Tokens Aceptados",
       "noTokens": "Aún no hay tokens de pago en whitelist.",
-      "producer": "El Cultivador",
+      "grower": "El Cultivador",
       "verified": "Cultivador verificado",
       "viewReport": "Ver reporte dMRV →",
       "viewProfile": "Ver perfil",
@@ -607,7 +607,7 @@
   "kyc": {
     "verified": "KYC verificado — identidad atestiguada onchain por un admin del registry"
   },
-  "producer": {
+  "grower": {
     "invalidAddress": "Dirección de cultivador no válida.",
     "anonymous": "Anon grower",
     "editProfile": "Editar perfil",
@@ -661,7 +661,8 @@
       "saving": "Guardando…",
       "awaitingSignature": "Esperando firma…",
       "saved": "Preferencias guardadas."
-    }
+    },
+    "disconnect": "Desconectar wallet"
   },
   "portfolio": {
     "title": "Mi Portfolio",

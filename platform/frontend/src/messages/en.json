@@ -661,7 +661,8 @@
       "saving": "Saving…",
       "awaitingSignature": "Awaiting signature…",
       "saved": "Preferences saved."
-    }
+    },
+    "disconnect": "Disconnect wallet"
   },
   "portfolio": {
     "title": "My Portfolio",

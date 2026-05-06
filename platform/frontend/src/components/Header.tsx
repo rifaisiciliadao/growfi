@@ -56,7 +56,6 @@ export function Header() {
             {({
               account,
               chain,
-              openAccountModal,
               openChainModal,
               openConnectModal,
               mounted,
@@ -86,30 +85,18 @@ export function Header() {
                       Wrong network
                     </button>
                   ) : (
-                    <>
-                      <Link
-                        href={`/grower/${account.address}`}
-                        className={pillBase}
-                        title={t("profile")}
-                      >
-                        <svg
-                          width="16"
-                          height="16"
-                          viewBox="0 0 24 24"
-                          fill="currentColor"
-                        >
-                          <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
-                        </svg>
-                        <span className="hidden md:inline">{t("profile")}</span>
-                      </Link>
-                      <button
-                        onClick={openAccountModal}
-                        type="button"
-                        className={pillBase}
-                      >
-                        {account.displayName}
-                      </button>
-                    </>
+                    <Link
+                      href={`/grower/${account.address}`}
+                      className={pillBase}
+                      title={t("profile")}
+                    >
+                      <span className="w-6 h-6 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center text-[10px] font-bold shrink-0">
+                        {account.address.slice(2, 4).toUpperCase()}
+                      </span>
+                      <span className="hidden sm:inline font-mono text-xs">
+                        {account.address.slice(0, 6)}…{account.address.slice(-4)}
+                      </span>
+                    </Link>
                   )}
                 </div>
               );

@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useAccount, useWriteContract } from "wagmi";
+import { useAccount, useDisconnect, useWriteContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { useTxNotify } from "@/lib/useTxNotify";
@@ -179,6 +179,8 @@ export default function ProducerPage({
 
       {isOwner && <NotificationsSection address={producerAddress} />}
 
+      {isOwner && <DisconnectLink />}
+
       <section>
         <h2 className="text-xl font-bold text-on-surface mb-4">
           {t("campaignsTitle")}
@@ -210,6 +212,21 @@ export default function ProducerPage({
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function DisconnectLink() {
+  const t = useTranslations("grower");
+  const { disconnect } = useDisconnect();
+  return (
+    <div className="text-right mb-10 -mt-6">
+      <button
+        onClick={() => disconnect()}
+        className="text-xs text-on-surface-variant hover:text-error transition-colors underline-offset-4 hover:underline"
+      >
+        {t("disconnect")}
+      </button>
     </div>
   );
 }
