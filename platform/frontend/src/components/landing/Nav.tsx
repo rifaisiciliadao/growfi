@@ -61,7 +61,7 @@ export function Nav() {
         <div className="flex items-center gap-2 shrink-0">
           <LanguageSwitcher />
           <ConnectButton.Custom>
-            {({ account, chain, openAccountModal, openConnectModal, mounted }) => {
+            {({ account, chain, openConnectModal, mounted }) => {
               const ready = mounted;
               const connected = ready && account && chain;
               return !connected ? (
@@ -75,14 +75,18 @@ export function Nav() {
                   <span className="sm:hidden">{t("connect")}</span>
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={openAccountModal}
-                  className="inline-flex items-center rounded-full bg-white/85 border border-black/15 px-3 md:px-5 h-10 md:h-11 text-xs md:text-sm font-bold text-black backdrop-blur-md transition-all duration-300 hover:bg-white whitespace-nowrap"
+                <Link
+                  href={`/grower/${account.address}`}
+                  className="inline-flex items-center gap-2 rounded-full bg-white/85 border border-black/15 px-3 md:px-4 h-10 md:h-11 text-xs md:text-sm font-bold text-black backdrop-blur-md transition-all duration-300 hover:bg-white whitespace-nowrap"
                   style={{ fontFamily: "var(--font-header)" }}
                 >
-                  {account.displayName}
-                </button>
+                  <span className="w-6 h-6 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center text-[10px] font-bold shrink-0">
+                    {account.address.slice(2, 4).toUpperCase()}
+                  </span>
+                  <span className="font-mono text-xs">
+                    {account.address.slice(0, 6)}…{account.address.slice(-4)}
+                  </span>
+                </Link>
               );
             }}
           </ConnectButton.Custom>
