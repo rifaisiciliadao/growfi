@@ -612,7 +612,7 @@
     "anonymous": "Anon grower",
     "editProfile": "Modifica profilo",
     "createProfile": "Crea profilo",
-    "noProfileYet": "Questo produttore non ha ancora pubblicato un profilo.",
+    "noProfileYet": "Questo wallet non ha ancora pubblicato un profilo.",
     "campaignsTitle": "Campagne",
     "noCampaigns": "Nessuna campagna di questo produttore.",
     "dashboard": {
@@ -631,11 +631,11 @@
       "depositLink": "Deposita ${amount} USDC"
     },
     "form": {
-      "title": "Il tuo profilo produttore",
+      "title": "Il tuo profilo",
       "name": "Nome",
-      "namePlaceholder": "Nome dell'azienda",
+      "namePlaceholder": "Il tuo nome o il nome dell'azienda",
       "bio": "Bio",
-      "bioPlaceholder": "Racconta agli investitori la tua azienda, le pratiche, i valori…",
+      "bioPlaceholder": "Una breve presentazione: chi sei, cosa fai, valori…",
       "avatar": "Avatar",
       "cover": "Copertina",
       "location": "Localizzazione",

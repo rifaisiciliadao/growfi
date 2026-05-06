@@ -612,7 +612,7 @@
     "anonymous": "Anon grower",
     "editProfile": "Modifier le profil",
     "createProfile": "Créer un profil",
-    "noProfileYet": "Ce producteur n'a pas encore publié de profil.",
+    "noProfileYet": "Ce wallet n'a pas encore publié de profil.",
     "campaignsTitle": "Campagnes",
     "noCampaigns": "Pas encore de campagnes pour ce producteur.",
     "dashboard": {
@@ -631,11 +631,11 @@
       "depositLink": "Déposer ${amount} USDC"
     },
     "form": {
-      "title": "Ton profil producteur",
+      "title": "Ton profil",
       "name": "Nom",
-      "namePlaceholder": "Nom de la ferme",
+      "namePlaceholder": "Ton nom ou le nom de la ferme",
       "bio": "Bio",
-      "bioPlaceholder": "Raconte aux investisseurs ta ferme, tes pratiques, tes valeurs…",
+      "bioPlaceholder": "Une courte présentation : qui tu es, ce que tu fais, tes valeurs…",
       "avatar": "Avatar",
       "cover": "Couverture",
       "location": "Localisation",
