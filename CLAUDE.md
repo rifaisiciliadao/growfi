@@ -126,6 +126,61 @@ Example reference: `script/UpgradeFactoryV2.s.sol` (adds `minSeasonDuration`, re
 - `script/finish-olive.sh` — wraps `OliveFinish.s.sol` then executes `depositUSDC` + `claimUSDC` via cast reading live `remainingDepositGross`. Avoids forge-script double-simulation drift.
 - `script/finish-single-actor.sh` — pure-cast variant for single-actor campaigns (FAST-style). One cast per step; no forge simulation involved.
 - `script/seed-demo.sh` — **idempotent post-deploy bootstrap**. Run once after `DeployTestnet` + `OliveSetup` to finish the demo platform automatically: fetches the campaign cover (default = a Sicily olive-grove photo from `visitsicily.info`), uploads it via the live backend's `/api/upload`; uploads the Rifai Sicilia logo from `~/GIT/@rifaisicilia/website-2.0/public/rifailogo.jpg` as the producer avatar; uploads campaign metadata via `/api/metadata`, signs `CampaignRegistry.setMetadata` on the new campaign; uploads the producer profile via `/api/producer`, signs `ProducerRegistry.setProfile`; re-asserts the producer's KYC bit. Reads the campaign address from `factory.campaigns(0)` by default; safe to re-run. Override `CAMPAIGN_IMAGE_URL` / `PRODUCER_LOGO_PATH` for a different brand. **Both fetches are size-checked (<1 KB → abort)** because DO Spaces silently accepts whatever bytes you POST and a 29-byte HTML 404 stub will upload "successfully" as a broken JPG (regression we hit on the first run with an Unsplash hotlink). Don't walk a producer through the `LinkMetadataBanner` on a fresh redeploy — run this instead.
+- `script/seed-demo-multi.sh` — **multi-campaign variant** of `seed-demo.sh` for the v6 GROW deploy. Uploads two distinct covers + metadata pairs (Olive Sicily / Vineyard of Etna), signs `setMetadata` on both, plus producer profile + KYC (with `grantKycAdmin` first, since the new `ProducerRegistry` ctor takes an `owner` and the deployer doesn't auto-receive the role). Pinned to v6 addresses + the campaign addresses output by `MultiCampaignSetup.s.sol`.
+- `script/MultiCampaignSetup.s.sol` — **post-deploy demo seed** for the GROW v6 stack. Creates 2 demo campaigns (Olive Sicily $0.144 / Vineyard of Etna $0.10), pushes each past softcap with a $60 producer self-buy, tracks both in the Treasury, flips `automationEnabled=true`, then runs a $100 direct GROW buy that auto-spreads into the 2 tracked campaigns to demo the funding-bar split. Reads addresses from constants pinned to the v6 deploy.
+- `script/SepoliaSmoke.s.sol` / `script/AnvilSmoke.s.sol` — single-campaign smokes pinned to the v5/anvil GROW deploys. Variant of OliveSetup but targeting GROW Treasury + auto-alloc + escrow claim. Useful for end-to-end checks without spawning multiple campaigns.
+
+## GROW protocol-wide token (v4 layer)
+
+Five additional contracts wired alongside the per-campaign suite. Each is `Initializable` + behind a TUP, admin'd by the factory owner via forwarders.
+
+| Contract | Role |
+|---|---|
+| `GrowfiToken` | ERC20 + Burnable. Genesis (configurable, mints to *Treasury* not deployer in v6 — see `mintTreasuryGenesis`). Bonding-curve mint via Minter. Direct multi-stable buy at floor + markup, with auto-fired `Treasury.allocateAcrossTracked` hook in `buy()`. |
+| `GrowfiMinter` | 3-tier bonding curve over **cumulative** buy volume per campaign (defaults 1.0× / 0.7× / 0.4×). Pre-softcap escrow per `(campaign, buyer)`; voided permanently on `triggerBuyback`; claimable post-softcap via `claimEscrow`. `excludedFromMint` set keeps Treasury (and similar protocol-owned addresses) from earning GROW or advancing the curve on their own buys. |
+| `GrowfiTreasury` | Multi-stable basket (allowlist with per-token Chainlink USD feed + heartbeat + `minPriceBps`/`maxPriceBps` depeg bands) + tracked CampaignTokens. `intrinsicFloorPrice()` returns USD-18 per circulating GROW; **state-aware** — only Active campaign CTs count, depegged stables silently excluded. Manual `allocateToCampaign` + auto-fired `allocateAcrossTracked` (callable by factory OR by Token via the buy hook, gated by `automationEnabled`). `releaseGrow(to, amount)` is the ONLY exit for the team-reserve GROW the Treasury holds (rescue + redeem both forbid GROW). `claimUsdcAndDistribute` is permissionless and splits 80% to StakingPool / 20% retained per `stakerRewardBps`. |
+| `GrowfiFeeSplitter` | Sits in `factory.protocolFeeRecipient`. Permissionless `flushToken(addr)` / `flushMany(addrs[])` splits balances default 30% Treasury / 70% Operations (`MAX_TREASURY_BPS = 5000`). Multi-token by design — the campaign's accepted-stables decide the routed asset mix. |
+| `GrowfiStakingPool` | Stake $GROW, earn USDC. Rate × elapsed-time accumulator. Multiplier ramps **continuously** 1.0× → 2.0× over 365 days; **any** withdraw resets the streak; `claim()` preserves it. `notifyReward` from Treasury starts a fresh `rewardsDuration` (default 30d) period or folds leftover into a new schedule. `pendingForFirstStaker` accumulates notify amounts arriving while the pool is empty and flushes at the first stake. |
+
+**Floor formula** (`Treasury.intrinsicFloorPrice`):
+```
+totalValue = Σ_stable (balance × scale × livePriceUsd / 1e18)   [excluding depegged]
+           + Σ_camp   (CT × pricePerToken / 1e18)              [Active state only]
+circulating = totalSupply($GROW) − growToken.balanceOf(treasury)
+floor       = totalValue × 1e18 / circulating
+```
+
+**Bonding curve** (`Minter._computeGrowForBuy`):
+```
+T1 = softcap_USD                                     [tier 1: 1.0×]
+T2 = T1 + (maxcap-softcap) × thresholdBps/BPS × pricePerToken   [tier 2: 0.7×]
+T3 = ∞                                                [tier 3: 0.4×]
+growOut(buy) computed over (cumBefore → cumAfter) with each tier's rate.
+```
+`cumBuyVolumeUsd` is **monotonic** — sellback does not roll it back. Buy → sellback → buy loops earn less GROW each iteration.
+
+**Auto-allocation hook** (introduced 2026-05-07): `Token.buy()` ends with a try/catch around `Treasury.allocateAcrossTracked(paymentToken, paymentAmount)`. When `automationEnabled` is on the freshly-paid USDC spreads equally across all tracked Active campaigns with mintable room (`perCampaign = totalAmount / activeCount`, capped at remaining mintable USD/stable). All failure modes (automation off, no Active tracked, dust split, single rogue campaign reverting) leave the buy itself successful; USDC stays in the Treasury for a later manual call. Treasury now accepts both `factory` and `growToken` as authorized callers for `allocateAcrossTracked` (the multisig-trigger path is still there for manual flushes). Regression: `test/GrowfiAutoAlloc.t.sol`.
+
+**Treasury reserve** (v6, 2026-05-07): `Token.mintTreasuryGenesis(amount)` is a **one-shot** factory-only call that mints the team/DAO reserve directly into the Treasury (not the deployer). Treasury's own GROW is excluded from `circulating` in the floor calc, so this mint does NOT dilute the floor. Released later via `Treasury.releaseGrow(to, amount)` (also factory-only) — the only path out, since `redeem` would burn and `rescueToken` forbids GROW. DeployTestnet now mints **100k to Treasury** + **0 to deployer** (was 1M to deployer pre-v6, which was killing the displayed floor with dilution).
+
+**Chainlink depeg protection** (introduced same day): every accepted stablecoin in the Treasury allowlist requires a Chainlink USD feed + heartbeat + min/max price bands at allowlist time. Stale, negative, or out-of-band readings: silently exclude that stable from the floor calc (conservative — floor goes DOWN), and revert `Token.buy` if the user picked the depegged token (no minting GROW with "fake $1"). Sequencer-uptime check on L2 mirrors the Campaign.sol pattern. Tests: `test/GrowfiDepegProtection.t.sol` — 17 PoCs covering stale, negative, out-of-band, all-borked, and the live-price effect on `growOut`.
+
+**State-aware floor** (same change): floor calc skips `Buyback`/`Funding`/`Ended` campaigns. Buyback CT is recovered separately via `Treasury.buybackFromCampaign(campaign, paymentToken)` which routes through `Campaign.buyback`. Funding/Ended shouldn't normally hold Treasury CT but the safety property still holds.
+
+**Frontend `/grow` page** (full i18n EN/IT/ES/FR via `next-intl`, namespace `grow.*`):
+- `DirectBuyGrowPanel` — multi-stable selector + faucet button (chainId 31337/84532 only — both `MockUSDC` and `MockStablecoin` expose public `mint`), salePrice quote, depeg banner when Treasury.getStablecoinPriceUsd18 reverts, slippage cap +5%, two-step approve+buy.
+- `EscrowClaimPanel` — iterates subgraph campaigns, reads `Minter.getEscrow + campaignStates` per campaign, shows `Pending` / `ready to claim` / `voided` per row. Until subgraph indexes a `UserEscrow` entity, the iteration is client-side multicall (acceptable for ≤100 campaigns).
+- `GrowStakingPanel` — stake/withdraw tabs, multiplier live vs stored, countdown to 2.0× cap, pending USDC, dedicated claim button, withdraw-resets-streak warning.
+- `Flywheel` — 4-step 2×2 cyclic diagram explaining the flywheel (Buy → Treasury auto-allocates → Harvest yield flows back → Stakers earn / floor pumps → loop). Mounted below the 3 panels on `/grow`.
+- Stats strip on `/grow`: Floor + Circulating always; Treasury holds **only when > 0** (zero is noise).
+- `FundingProgressCard` on `/campaign/[address]` renders **two-segment funding bar** (direct backers + Treasury auto-alloc), sourcing the split from subgraph `treasuryRaised` / `treasuryTokensOut` with on-chain `CT.balanceOf(treasury)` fallback.
+
+**Subgraph extensions** (schema v3.x):
+- `Campaign.treasuryRaised: BigInt!` (USD-18 from buys where buyer == growfiTreasury) + `treasuryTokensOut: BigInt!` (raw CT minted to Treasury).
+- `Protocol` singleton populated by `factory.GrowfiContractsSet` event handler — holds the four GROW addresses; read by `handleTokensPurchased` to attribute buys.
+- `StablecoinAcceptance` enriched with `priceFeed` / `heartbeat` / `minPriceBps` / `maxPriceBps`.
+- GROW datasources (Token, Treasury, Minter, FeeSplitter) registered as proper `dataSources` (was wrongly under `templates:` in earlier scaffolds).
+- Versioned 3.0.0 → 3.1.0 → 3.2.0 etc per redeploy. **Do NOT promote `prod` tag** without explicit user request — see `feedback_subgraph_prod_tag.md` in memory.
 
 ## Deployments
 
