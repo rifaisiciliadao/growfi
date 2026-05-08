@@ -175,6 +175,11 @@ growOut(buy) computed over (cumBefore → cumAfter) with each tier's rate.
 - Stats strip on `/grow`: Floor + Circulating always; Treasury holds **only when > 0** (zero is noise).
 - `FundingProgressCard` on `/campaign/[address]` renders **two-segment funding bar** (direct backers + Treasury auto-alloc), sourcing the split from subgraph `treasuryRaised` / `treasuryTokensOut` with on-chain `CT.balanceOf(treasury)` fallback.
 
+**Frontend `/grow/admin` page** (multisig-only operations, namespace `grow.admin.*`):
+- Owner gate: reads `factory.owner()`, every write disabled when connected wallet ≠ owner. Anonymous visit shows connect prompt; non-owner sees a read-only banner with the expected owner address.
+- Sections: Treasury overview (floor / circulating / reserve / markup + state pills) · Auto-allocation toggle (`setGrowfiTreasuryAutomationEnabled`) · Tracked campaigns list with state + fill% + price + metadata ✓ badge + untrack/hide buttons + add-new form (`addGrowfiTreasuryTrackedCampaign` / `removeGrowfiTreasuryTrackedCampaign` / `setCampaignHidden`) · Allocate funds (manual `allocateGrowfiTreasury` + batch `allocateAcrossTrackedGrowfiTreasury`) · Release reserve (`releaseGrowFromTreasury`) · Direct sale controls (`setGrowfiTokenSaleActive` + `setGrowfiTokenMarkup`).
+- Every write goes through the existing `onlyOwner` forwarders on the factory — no direct calls to underlying GROW contracts. Same forwarders the smoke scripts already exercised.
+
 **Subgraph extensions** (schema v3.x):
 - `Campaign.treasuryRaised: BigInt!` (USD-18 from buys where buyer == growfiTreasury) + `treasuryTokensOut: BigInt!` (raw CT minted to Treasury).
 - `Protocol` singleton populated by `factory.GrowfiContractsSet` event handler — holds the four GROW addresses; read by `handleTokensPurchased` to attribute buys.
