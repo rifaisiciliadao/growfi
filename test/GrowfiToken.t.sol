@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {GrowfiToken} from "../src/GrowfiToken.sol";
 import {IGrowfiTreasury} from "../src/interfaces/IGrowfiTreasury.sol";
 import {MockERC20} from "./helpers/MockERC20.sol";
@@ -59,7 +58,13 @@ contract MockGrowfiTreasury is IGrowfiTreasury {
     /// @dev No-op stub. Treasury auto-alloc isn't exercised in the standalone Token tests;
     ///      the hook in `Token.buy` calls this and swallows any revert. Keeping it as a
     ///      no-op silently emits success.
-    function allocateAcrossTracked(address /*paymentToken*/, uint256 /*totalAmount*/) external pure {}
+    function allocateAcrossTracked(
+        address,
+        /*paymentToken*/
+        uint256 /*totalAmount*/
+    )
+        external
+        pure {}
 }
 
 contract GrowfiTokenTest is Test {
@@ -163,9 +168,7 @@ contract GrowfiTokenTest is Test {
     function test_initialize_cannotBeCalledOnImplementation() public {
         GrowfiToken impl = new GrowfiToken();
         vm.expectRevert();
-        impl.initialize(
-            "GrowFi", "GROW", FACTORY, DEPLOYER, GENESIS_AMOUNT, INITIAL_MARKUP_BPS, BOOT_PRICE
-        );
+        impl.initialize("GrowFi", "GROW", FACTORY, DEPLOYER, GENESIS_AMOUNT, INITIAL_MARKUP_BPS, BOOT_PRICE);
     }
 
     // ---------- factory admin ----------

@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {GrowfiCampaignFactory} from "../src/GrowfiCampaignFactory.sol";
 import {GrowfiCampaign} from "../src/GrowfiCampaign.sol";
@@ -60,10 +59,7 @@ contract GrowfiAutoAllocTest is Test {
 
         GrowfiMinter mImpl = new GrowfiMinter();
         GrowfiMinter.BondingCurveParams memory params = GrowfiMinter.BondingCurveParams({
-            tier1RateBps: 10_000,
-            tier2RateBps: 7_000,
-            tier3RateBps: 4_000,
-            tier2to3ThresholdBps: 5_000
+            tier1RateBps: 10_000, tier2RateBps: 7_000, tier3RateBps: 4_000, tier2to3ThresholdBps: 5_000
         });
         bytes memory mInit = abi.encodeCall(GrowfiMinter.initialize, (address(factory), address(growToken), params));
         growMinter = GrowfiMinter(address(new TransparentUpgradeableProxy(address(mImpl), OWNER, mInit)));
@@ -74,9 +70,7 @@ contract GrowfiAutoAllocTest is Test {
         feeSplitter = GrowfiFeeSplitter(address(new TransparentUpgradeableProxy(address(fsImpl), OWNER, fsInit)));
 
         vm.startPrank(OWNER);
-        factory.setGrowfiContracts(
-            address(growToken), address(growMinter), address(growTreasury), address(feeSplitter)
-        );
+        factory.setGrowfiContracts(address(growToken), address(growMinter), address(growTreasury), address(feeSplitter));
         factory.setProtocolFeeRecipient(address(feeSplitter));
         factory.setGrowfiTreasuryAutomationEnabled(true);
         vm.stopPrank();
@@ -84,9 +78,7 @@ contract GrowfiAutoAllocTest is Test {
         vm.startPrank(address(factory));
         growToken.setMinter(address(growMinter));
         growToken.setTreasury(address(growTreasury));
-        growTreasury.addAcceptedStablecoin(
-            address(usdc), 1e12, address(usdFeed), 24 hours, 9_500, 10_500
-        );
+        growTreasury.addAcceptedStablecoin(address(usdc), 1e12, address(usdFeed), 24 hours, 9_500, 10_500);
         growMinter.setExcludedFromMint(address(growTreasury), true);
         vm.stopPrank();
 
@@ -108,31 +100,29 @@ contract GrowfiAutoAllocTest is Test {
         // Use a generous 100 OLIVE minCap.
         uint256 minCap = 100e18;
 
-        GrowfiCampaignFactory.CreateCampaignParams memory p =
-            GrowfiCampaignFactory.CreateCampaignParams({
-                producer: producer,
-                tokenName: name,
-                tokenSymbol: "TKN",
-                yieldName: "Y",
-                yieldSymbol: "y",
-                pricePerToken: price,
-                minCap: minCap,
-                maxCap: maxCap,
-                fundingDeadline: block.timestamp + 30 days,
-                seasonDuration: 1 hours,
-                minProductClaim: 1e18,
-                expectedAnnualHarvestUsd: 1000e18,
-                expectedAnnualHarvest: 100e18,
-                firstHarvestYear: 2027,
-                coverageHarvests: 0
-            });
+        GrowfiCampaignFactory.CreateCampaignParams memory p = GrowfiCampaignFactory.CreateCampaignParams({
+            producer: producer,
+            tokenName: name,
+            tokenSymbol: "TKN",
+            yieldName: "Y",
+            yieldSymbol: "y",
+            pricePerToken: price,
+            minCap: minCap,
+            maxCap: maxCap,
+            fundingDeadline: block.timestamp + 30 days,
+            seasonDuration: 1 hours,
+            minProductClaim: 1e18,
+            expectedAnnualHarvestUsd: 1000e18,
+            expectedAnnualHarvest: 100e18,
+            firstHarvestYear: 2027,
+            coverageHarvests: 0
+        });
         vm.prank(producer);
         campaign = factory.createCampaign(p);
 
         vm.prank(producer);
-        GrowfiCampaign(campaign).addAcceptedToken(
-            address(usdc), GrowfiCampaign.PricingMode.Fixed, price / 1e12, address(0)
-        );
+        GrowfiCampaign(campaign)
+            .addAcceptedToken(address(usdc), GrowfiCampaign.PricingMode.Fixed, price / 1e12, address(0));
 
         // Push past softcap so state -> Active.
         usdc.mint(producer, 200 * ONE_USDC);
@@ -222,11 +212,7 @@ contract GrowfiAutoAllocTest is Test {
         uint256 usdcBefore = usdc.balanceOf(address(growTreasury));
         vm.prank(ALICE);
         growToken.buy(address(usdc), 100 * ONE_USDC, type(uint256).max);
-        assertEq(
-            usdc.balanceOf(address(growTreasury)),
-            usdcBefore + 100 * ONE_USDC,
-            "usdc kept (no spread targets)"
-        );
+        assertEq(usdc.balanceOf(address(growTreasury)), usdcBefore + 100 * ONE_USDC, "usdc kept (no spread targets)");
     }
 
     // ============================================================
@@ -235,7 +221,7 @@ contract GrowfiAutoAllocTest is Test {
 
     function test_autoAlloc_capsAtRemainingRoom() public {
         // Two campaigns: A has tiny room (room = 10 tokens), B has lots (10k tokens).
-        address campA = _spawnCampaign(PRODUCER_A, "TightA", 1e17, 510e18);  // already ~500 sold
+        address campA = _spawnCampaign(PRODUCER_A, "TightA", 1e17, 510e18); // already ~500 sold
         address campB = _spawnCampaign(PRODUCER_B, "RoomB", 1e17, 10_000e18);
 
         vm.startPrank(OWNER);
@@ -264,24 +250,23 @@ contract GrowfiAutoAllocTest is Test {
 
     function test_autoAlloc_fundingCampaignSkipped() public {
         // Spawn A but DON'T push past softcap.
-        GrowfiCampaignFactory.CreateCampaignParams memory p =
-            GrowfiCampaignFactory.CreateCampaignParams({
-                producer: PRODUCER_A,
-                tokenName: "Funding A",
-                tokenSymbol: "TKN",
-                yieldName: "Y",
-                yieldSymbol: "y",
-                pricePerToken: 1e17,
-                minCap: 100e18,
-                maxCap: 10_000e18,
-                fundingDeadline: block.timestamp + 30 days,
-                seasonDuration: 1 hours,
-                minProductClaim: 1e18,
-                expectedAnnualHarvestUsd: 1000e18,
-                expectedAnnualHarvest: 100e18,
-                firstHarvestYear: 2027,
-                coverageHarvests: 0
-            });
+        GrowfiCampaignFactory.CreateCampaignParams memory p = GrowfiCampaignFactory.CreateCampaignParams({
+            producer: PRODUCER_A,
+            tokenName: "Funding A",
+            tokenSymbol: "TKN",
+            yieldName: "Y",
+            yieldSymbol: "y",
+            pricePerToken: 1e17,
+            minCap: 100e18,
+            maxCap: 10_000e18,
+            fundingDeadline: block.timestamp + 30 days,
+            seasonDuration: 1 hours,
+            minProductClaim: 1e18,
+            expectedAnnualHarvestUsd: 1000e18,
+            expectedAnnualHarvest: 100e18,
+            firstHarvestYear: 2027,
+            coverageHarvests: 0
+        });
         vm.prank(PRODUCER_A);
         address campA = factory.createCampaign(p);
         vm.prank(OWNER);
@@ -334,10 +319,10 @@ contract GrowfiAutoAllocTest is Test {
     /// @dev 4 campaigns with prices $0.05, $0.10, $0.20, $0.50. Direct buy of $200.
     ///      perCampaign = $50 each. Tokens received = $50 / price → 1000, 500, 250, 100.
     function test_autoAlloc_mixedPrices_proportionalTokenQty() public {
-        address campA = _spawnCampaign(PRODUCER_A, "Cheap",  5e16, 100_000e18); // $0.05
-        address campB = _spawnCampaign(PRODUCER_B, "Mid",    1e17, 100_000e18); // $0.10
-        address campC = _spawnCampaign(PRODUCER_C, "Premium",2e17, 100_000e18); // $0.20
-        address campD = _spawnCampaign(PRODUCER_D, "Lux",    5e17, 100_000e18); // $0.50
+        address campA = _spawnCampaign(PRODUCER_A, "Cheap", 5e16, 100_000e18); // $0.05
+        address campB = _spawnCampaign(PRODUCER_B, "Mid", 1e17, 100_000e18); // $0.10
+        address campC = _spawnCampaign(PRODUCER_C, "Premium", 2e17, 100_000e18); // $0.20
+        address campD = _spawnCampaign(PRODUCER_D, "Lux", 5e17, 100_000e18); // $0.50
 
         vm.startPrank(OWNER);
         factory.addGrowfiTreasuryTrackedCampaign(campA);
@@ -361,9 +346,9 @@ contract GrowfiAutoAllocTest is Test {
 
         // tokensOut = $50 / pricePerToken (mint is on gross, fee already routed away)
         assertEq(ctA.balanceOf(address(growTreasury)) - a0, 1000e18, "Cheap   1000 tokens");
-        assertEq(ctB.balanceOf(address(growTreasury)) - b0,  500e18, "Mid      500 tokens");
-        assertEq(ctC.balanceOf(address(growTreasury)) - c0,  250e18, "Premium  250 tokens");
-        assertEq(ctD.balanceOf(address(growTreasury)) - d0,  100e18, "Lux      100 tokens");
+        assertEq(ctB.balanceOf(address(growTreasury)) - b0, 500e18, "Mid      500 tokens");
+        assertEq(ctC.balanceOf(address(growTreasury)) - c0, 250e18, "Premium  250 tokens");
+        assertEq(ctD.balanceOf(address(growTreasury)) - d0, 100e18, "Lux      100 tokens");
 
         // Sanity: $$ value into each campaign is identical (= $50). Multiply each
         // CT delta by its pricePerToken and confirm.

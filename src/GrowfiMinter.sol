@@ -135,10 +135,7 @@ contract GrowfiMinter is Initializable, IGrowfiMinter, ReentrancyGuard {
         _validateParams(newParams);
         params = newParams;
         emit BondingCurveUpdated(
-            newParams.tier1RateBps,
-            newParams.tier2RateBps,
-            newParams.tier3RateBps,
-            newParams.tier2to3ThresholdBps
+            newParams.tier1RateBps, newParams.tier2RateBps, newParams.tier3RateBps, newParams.tier2to3ThresholdBps
         );
     }
 
@@ -148,10 +145,9 @@ contract GrowfiMinter is Initializable, IGrowfiMinter, ReentrancyGuard {
     }
 
     function _validateParams(BondingCurveParams memory p) internal pure {
-        if (
-            p.tier1RateBps > BPS || p.tier2RateBps > BPS || p.tier3RateBps > BPS
-                || p.tier2to3ThresholdBps > BPS
-        ) revert InvalidParams();
+        if (p.tier1RateBps > BPS || p.tier2RateBps > BPS || p.tier3RateBps > BPS || p.tier2to3ThresholdBps > BPS) {
+            revert InvalidParams();
+        }
     }
 
     // ---------- hooks (called by GrowfiCampaign) ----------
@@ -175,8 +171,7 @@ contract GrowfiMinter is Initializable, IGrowfiMinter, ReentrancyGuard {
         uint256 usdValue = (amountBought * pricePerToken) / 1e18;
         if (usdValue == 0) return;
 
-        uint256 growAmount =
-            _computeGrowForBuy(cs.cumBuyVolumeUsd, usdValue, c.minCap(), c.maxCap(), pricePerToken);
+        uint256 growAmount = _computeGrowForBuy(cs.cumBuyVolumeUsd, usdValue, c.minCap(), c.maxCap(), pricePerToken);
         cs.cumBuyVolumeUsd += usdValue;
 
         if (growAmount == 0) return;

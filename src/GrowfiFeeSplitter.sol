@@ -54,7 +54,9 @@ contract GrowfiFeeSplitter is Initializable, ReentrancyGuard {
         external
         initializer
     {
-        if (factory_ == address(0) || treasury_ == address(0) || operations_ == address(0)) revert ZeroAddress();
+        if (factory_ == address(0) || treasury_ == address(0) || operations_ == address(0)) {
+            revert ZeroAddress();
+        }
         if (initialTreasuryBps > MAX_TREASURY_BPS) revert InvalidBps();
 
         factory = factory_;

@@ -98,10 +98,7 @@ contract GrowfiStakingPool is Initializable, ReentrancyGuard, IGrowfiStakingPool
         _disableInitializers();
     }
 
-    function initialize(address factory_, address growToken_, address usdc_, address treasury_)
-        external
-        initializer
-    {
+    function initialize(address factory_, address growToken_, address usdc_, address treasury_) external initializer {
         if (factory_ == address(0) || growToken_ == address(0) || usdc_ == address(0) || treasury_ == address(0)) {
             revert ZeroAddress();
         }
@@ -172,8 +169,7 @@ contract GrowfiStakingPool is Initializable, ReentrancyGuard, IGrowfiStakingPool
     /// @dev Uses the multiplier currently stored on-chain. To get the value AFTER a tier
     ///      cross has been refreshed, the user must call `stake`/`withdraw`/`claim`.
     function earned(address user) public view returns (uint256) {
-        return rewards[user]
-            + (effectiveBalanceOf[user] * (rewardPerToken() - userRewardPerTokenPaid[user])) / 1e18;
+        return rewards[user] + (effectiveBalanceOf[user] * (rewardPerToken() - userRewardPerTokenPaid[user])) / 1e18;
     }
 
     function _updateAccumulator() internal {

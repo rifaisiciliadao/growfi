@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {GrowfiCampaignFactory} from "../src/GrowfiCampaignFactory.sol";
 import {GrowfiCampaign} from "../src/GrowfiCampaign.sol";
@@ -60,10 +59,7 @@ contract GrowfiAllocationStressTest is Test {
 
         GrowfiMinter mImpl = new GrowfiMinter();
         GrowfiMinter.BondingCurveParams memory params = GrowfiMinter.BondingCurveParams({
-            tier1RateBps: 10_000,
-            tier2RateBps: 7_000,
-            tier3RateBps: 4_000,
-            tier2to3ThresholdBps: 5_000
+            tier1RateBps: 10_000, tier2RateBps: 7_000, tier3RateBps: 4_000, tier2to3ThresholdBps: 5_000
         });
         bytes memory mInit = abi.encodeCall(GrowfiMinter.initialize, (address(factory), address(growToken), params));
         growMinter = GrowfiMinter(address(new TransparentUpgradeableProxy(address(mImpl), OWNER, mInit)));

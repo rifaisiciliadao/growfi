@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {GrowfiToken} from "../src/GrowfiToken.sol";
 import {GrowfiTreasury} from "../src/GrowfiTreasury.sol";
@@ -204,7 +203,12 @@ contract GrowfiDepegProtectionTest is Test {
     // ============================================================
 
     function _trackedCampaignWithBalance(uint256 ctAmount, uint8 state) internal returns (MockCampaign) {
-        MockCampaign c = new MockCampaign(address(ctA), 1e18 /* $1/CT */, state);
+        MockCampaign c = new MockCampaign(
+            address(ctA),
+            1e18,
+            /* $1/CT */
+            state
+        );
         ctA.mint(address(treasury), ctAmount);
         vm.prank(FACTORY);
         treasury.addTrackedCampaign(address(c));

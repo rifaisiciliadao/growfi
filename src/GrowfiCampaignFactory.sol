@@ -181,7 +181,6 @@ contract GrowfiCampaignFactory is Initializable, Ownable2StepUpgradeable {
         _setImpls(impls);
     }
 
-
     // --- GrowfiCampaign Creation ---
 
     /// @notice Deploy a full upgradeable campaign suite. Permissionless — caller is producer.
@@ -288,7 +287,8 @@ contract GrowfiCampaignFactory is Initializable, Ownable2StepUpgradeable {
                 yieldTokenImpl,
                 params.producer,
                 abi.encodeCall(
-                    GrowfiYieldToken.initialize, (params.yieldName, params.yieldSymbol, stakingVaultAddr, harvestManagerAddr)
+                    GrowfiYieldToken.initialize,
+                    (params.yieldName, params.yieldSymbol, stakingVaultAddr, harvestManagerAddr)
                 )
             )
         );
@@ -467,9 +467,8 @@ contract GrowfiCampaignFactory is Initializable, Ownable2StepUpgradeable {
         uint16 minPriceBps,
         uint16 maxPriceBps
     ) external onlyOwner {
-        GrowfiTreasury(growfiTreasury).addAcceptedStablecoin(
-            token, scale, priceFeed, heartbeat, minPriceBps, maxPriceBps
-        );
+        GrowfiTreasury(growfiTreasury)
+            .addAcceptedStablecoin(token, scale, priceFeed, heartbeat, minPriceBps, maxPriceBps);
     }
 
     function removeGrowfiTreasuryStablecoin(address token) external onlyOwner {
@@ -512,10 +511,7 @@ contract GrowfiCampaignFactory is Initializable, Ownable2StepUpgradeable {
         GrowfiTreasury(growfiTreasury).setAutomationEnabled(enabled);
     }
 
-    function allocateAcrossTrackedGrowfiTreasury(address paymentToken, uint256 totalAmount)
-        external
-        onlyOwner
-    {
+    function allocateAcrossTrackedGrowfiTreasury(address paymentToken, uint256 totalAmount) external onlyOwner {
         GrowfiTreasury(growfiTreasury).allocateAcrossTracked(paymentToken, totalAmount);
     }
 

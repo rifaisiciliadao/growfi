@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {GrowfiToken} from "../src/GrowfiToken.sol";
 import {GrowfiMinter} from "../src/GrowfiMinter.sol";
 import {IGrowfiMinter} from "../src/interfaces/IGrowfiMinter.sol";
@@ -72,9 +71,8 @@ contract GrowfiMinterTest is Test {
 
         // Deploy GrowfiToken
         GrowfiToken tImpl = new GrowfiToken();
-        bytes memory tInit = abi.encodeCall(
-            GrowfiToken.initialize, ("GrowFi", "GROW", FACTORY, DEPLOYER, GENESIS_AMOUNT, 1_000, 1e17)
-        );
+        bytes memory tInit =
+            abi.encodeCall(GrowfiToken.initialize, ("GrowFi", "GROW", FACTORY, DEPLOYER, GENESIS_AMOUNT, 1_000, 1e17));
         token = GrowfiToken(address(new TransparentUpgradeableProxy(address(tImpl), FACTORY, tInit)));
 
         // Deploy GrowfiMinter
@@ -127,8 +125,9 @@ contract GrowfiMinterTest is Test {
     }
 
     function test_initialize_cannotBeCalledTwice() public {
-        GrowfiMinter.BondingCurveParams memory p =
-            GrowfiMinter.BondingCurveParams({tier1RateBps: 10_000, tier2RateBps: 7_000, tier3RateBps: 4_000, tier2to3ThresholdBps: 5_000});
+        GrowfiMinter.BondingCurveParams memory p = GrowfiMinter.BondingCurveParams({
+            tier1RateBps: 10_000, tier2RateBps: 7_000, tier3RateBps: 4_000, tier2to3ThresholdBps: 5_000
+        });
         vm.expectRevert();
         minter.initialize(FACTORY, address(token), p);
     }
@@ -401,10 +400,7 @@ contract GrowfiMinterTest is Test {
 
     function test_setBondingCurve_byFactorySucceeds() public {
         GrowfiMinter.BondingCurveParams memory newParams = GrowfiMinter.BondingCurveParams({
-            tier1RateBps: 8_000,
-            tier2RateBps: 5_000,
-            tier3RateBps: 2_000,
-            tier2to3ThresholdBps: 6_000
+            tier1RateBps: 8_000, tier2RateBps: 5_000, tier3RateBps: 2_000, tier2to3ThresholdBps: 6_000
         });
         vm.prank(FACTORY);
         minter.setBondingCurveParams(newParams);
@@ -414,16 +410,18 @@ contract GrowfiMinterTest is Test {
     }
 
     function test_setBondingCurve_revertsForNonFactory() public {
-        GrowfiMinter.BondingCurveParams memory p =
-            GrowfiMinter.BondingCurveParams({tier1RateBps: 8_000, tier2RateBps: 5_000, tier3RateBps: 2_000, tier2to3ThresholdBps: 6_000});
+        GrowfiMinter.BondingCurveParams memory p = GrowfiMinter.BondingCurveParams({
+            tier1RateBps: 8_000, tier2RateBps: 5_000, tier3RateBps: 2_000, tier2to3ThresholdBps: 6_000
+        });
         vm.expectRevert(GrowfiMinter.NotFactory.selector);
         vm.prank(ATTACKER);
         minter.setBondingCurveParams(p);
     }
 
     function test_setBondingCurve_revertsOnInvalidParams() public {
-        GrowfiMinter.BondingCurveParams memory bad =
-            GrowfiMinter.BondingCurveParams({tier1RateBps: 10_001, tier2RateBps: 5_000, tier3RateBps: 2_000, tier2to3ThresholdBps: 6_000});
+        GrowfiMinter.BondingCurveParams memory bad = GrowfiMinter.BondingCurveParams({
+            tier1RateBps: 10_001, tier2RateBps: 5_000, tier3RateBps: 2_000, tier2to3ThresholdBps: 6_000
+        });
         vm.expectRevert(GrowfiMinter.InvalidParams.selector);
         vm.prank(FACTORY);
         minter.setBondingCurveParams(bad);

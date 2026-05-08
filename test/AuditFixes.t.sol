@@ -417,7 +417,10 @@ contract AuditFixesTest is Test {
     // ===================================================================
 
     /// @dev Helper to deploy a campaign wired to a given sequencer feed.
-    function _deployCampaignWithSequencer(address sequencerFeed) internal returns (GrowfiCampaign, MockERC20, MockOracle) {
+    function _deployCampaignWithSequencer(address sequencerFeed)
+        internal
+        returns (GrowfiCampaign, MockERC20, MockOracle)
+    {
         GrowfiCampaignFactory f = Deployer.deployProtocol(owner, feeRecipient, address(usdc), sequencerFeed);
         address newProducer = makeAddr("producer2");
         vm.prank(newProducer);

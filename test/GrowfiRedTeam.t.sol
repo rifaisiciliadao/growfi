@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {GrowfiCampaignFactory} from "../src/GrowfiCampaignFactory.sol";
@@ -91,10 +90,7 @@ contract GrowfiRedTeamTest is Test {
 
         GrowfiMinter mImpl = new GrowfiMinter();
         GrowfiMinter.BondingCurveParams memory params = GrowfiMinter.BondingCurveParams({
-            tier1RateBps: 10_000,
-            tier2RateBps: 7_000,
-            tier3RateBps: 4_000,
-            tier2to3ThresholdBps: 5_000
+            tier1RateBps: 10_000, tier2RateBps: 7_000, tier3RateBps: 4_000, tier2to3ThresholdBps: 5_000
         });
         bytes memory mInit = abi.encodeCall(GrowfiMinter.initialize, (address(factory), address(growToken), params));
         growMinter = GrowfiMinter(address(new TransparentUpgradeableProxy(address(mImpl), OWNER, mInit)));
@@ -142,9 +138,8 @@ contract GrowfiRedTeamTest is Test {
             })
         );
         vm.prank(PRODUCER);
-        GrowfiCampaign(campaign).addAcceptedToken(
-            address(usdc), GrowfiCampaign.PricingMode.Fixed, pricePerToken / 1e12, address(0)
-        );
+        GrowfiCampaign(campaign)
+            .addAcceptedToken(address(usdc), GrowfiCampaign.PricingMode.Fixed, pricePerToken / 1e12, address(0));
     }
 
     // ---------- 1. Reentrancy on direct buy ----------
@@ -160,8 +155,7 @@ contract GrowfiRedTeamTest is Test {
         usdc.mint(address(growTreasury), 100 * ONE_USDC);
 
         // Configure malicious to reenter buy() during its transferFrom.
-        bytes memory reentry =
-            abi.encodeCall(GrowfiToken.buy, (address(malicious), 1 * ONE_USDC, type(uint256).max));
+        bytes memory reentry = abi.encodeCall(GrowfiToken.buy, (address(malicious), 1 * ONE_USDC, type(uint256).max));
         malicious.setReentry(address(growToken), reentry);
 
         // Attacker tries to buy with the malicious token.

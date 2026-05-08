@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {GrowfiFeeSplitter} from "../src/GrowfiFeeSplitter.sol";
 import {MockERC20} from "./helpers/MockERC20.sol";
 
@@ -29,8 +28,7 @@ contract GrowfiFeeSplitterTest is Test {
         dai = new MockERC20("Dai", "DAI", 18);
 
         GrowfiFeeSplitter impl = new GrowfiFeeSplitter();
-        bytes memory data =
-            abi.encodeCall(GrowfiFeeSplitter.initialize, (FACTORY, TREASURY, OPS, TREASURY_BPS));
+        bytes memory data = abi.encodeCall(GrowfiFeeSplitter.initialize, (FACTORY, TREASURY, OPS, TREASURY_BPS));
         splitter = GrowfiFeeSplitter(address(new TransparentUpgradeableProxy(address(impl), FACTORY, data)));
     }
 
@@ -45,16 +43,14 @@ contract GrowfiFeeSplitterTest is Test {
 
     function test_initialize_revertsOnZeroFactory() public {
         GrowfiFeeSplitter impl = new GrowfiFeeSplitter();
-        bytes memory data =
-            abi.encodeCall(GrowfiFeeSplitter.initialize, (address(0), TREASURY, OPS, TREASURY_BPS));
+        bytes memory data = abi.encodeCall(GrowfiFeeSplitter.initialize, (address(0), TREASURY, OPS, TREASURY_BPS));
         vm.expectRevert(GrowfiFeeSplitter.ZeroAddress.selector);
         new TransparentUpgradeableProxy(address(impl), FACTORY, data);
     }
 
     function test_initialize_revertsOnZeroTreasury() public {
         GrowfiFeeSplitter impl = new GrowfiFeeSplitter();
-        bytes memory data =
-            abi.encodeCall(GrowfiFeeSplitter.initialize, (FACTORY, address(0), OPS, TREASURY_BPS));
+        bytes memory data = abi.encodeCall(GrowfiFeeSplitter.initialize, (FACTORY, address(0), OPS, TREASURY_BPS));
         vm.expectRevert(GrowfiFeeSplitter.ZeroAddress.selector);
         new TransparentUpgradeableProxy(address(impl), FACTORY, data);
     }

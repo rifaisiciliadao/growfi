@@ -20,19 +20,13 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 ///   4. Direct GROW buy with mUSDC
 ///   5. Stake GROW into pool
 contract SepoliaSmoke is Script {
-    GrowfiCampaignFactory constant FACTORY =
-        GrowfiCampaignFactory(0x2632Faf990511E9013830F96C6511C706D075317);
+    GrowfiCampaignFactory constant FACTORY = GrowfiCampaignFactory(0x2632Faf990511E9013830F96C6511C706D075317);
     MockUSDC constant USDC = MockUSDC(0xbadED9957EAa9A30bA26f787Ac31Dad4bB41b56D);
-    GrowfiToken constant GROW =
-        GrowfiToken(0xF1f61bf29CCeCce190427300874Dd66c417Fd84d);
-    GrowfiTreasury constant TREASURY =
-        GrowfiTreasury(0x3D3a76F91DaeFDd7CF08E257924aEA452042cda7);
-    GrowfiMinter constant MINTER =
-        GrowfiMinter(0x182627Cb46E61f59645f6d7996F16ae1f9E112Ee);
-    GrowfiStakingPool constant POOL =
-        GrowfiStakingPool(0x06eCa4677398fA720552272B3C4a6321c4FA072b);
-    GrowfiCampaignRegistry constant REGISTRY =
-        GrowfiCampaignRegistry(0x5fd7E887266F3F38d8442ad846aa1813e6679a6e);
+    GrowfiToken constant GROW = GrowfiToken(0xF1f61bf29CCeCce190427300874Dd66c417Fd84d);
+    GrowfiTreasury constant TREASURY = GrowfiTreasury(0x3D3a76F91DaeFDd7CF08E257924aEA452042cda7);
+    GrowfiMinter constant MINTER = GrowfiMinter(0x182627Cb46E61f59645f6d7996F16ae1f9E112Ee);
+    GrowfiStakingPool constant POOL = GrowfiStakingPool(0x06eCa4677398fA720552272B3C4a6321c4FA072b);
+    GrowfiCampaignRegistry constant REGISTRY = GrowfiCampaignRegistry(0x5fd7E887266F3F38d8442ad846aa1813e6679a6e);
 
     uint256 constant ONE_USDC = 1e6;
 
@@ -43,38 +37,31 @@ contract SepoliaSmoke is Script {
 
         // 1. Create campaign
         vm.startBroadcast(pk);
-        GrowfiCampaignFactory.CreateCampaignParams memory params =
-            GrowfiCampaignFactory.CreateCampaignParams({
-                producer: me,
-                tokenName: "Olive Demo Sepolia v4",
-                tokenSymbol: "OLIVE",
-                yieldName: "Olive Yield",
-                yieldSymbol: "oYIELD",
-                pricePerToken: 0.144e18,
-                minCap: 347e18,           // ~$50
-                maxCap: 6_944e18,         // ~$1000
-                fundingDeadline: block.timestamp + 30 days,
-                seasonDuration: 1 hours,
-                minProductClaim: 5e18,
-                expectedAnnualHarvestUsd: 1000e18,
-                expectedAnnualHarvest: 50e18,
-                firstHarvestYear: 2027,
-                coverageHarvests: 0
-            });
+        GrowfiCampaignFactory.CreateCampaignParams memory params = GrowfiCampaignFactory.CreateCampaignParams({
+            producer: me,
+            tokenName: "Olive Demo Sepolia v4",
+            tokenSymbol: "OLIVE",
+            yieldName: "Olive Yield",
+            yieldSymbol: "oYIELD",
+            pricePerToken: 0.144e18,
+            minCap: 347e18, // ~$50
+            maxCap: 6_944e18, // ~$1000
+            fundingDeadline: block.timestamp + 30 days,
+            seasonDuration: 1 hours,
+            minProductClaim: 5e18,
+            expectedAnnualHarvestUsd: 1000e18,
+            expectedAnnualHarvest: 50e18,
+            firstHarvestYear: 2027,
+            coverageHarvests: 0
+        });
         address campaign = FACTORY.createCampaign(params);
 
         // mUSDC as fixed-rate payment token. raw rate for $0.144/token at 6 dec = 144_000.
-        GrowfiCampaign(campaign).addAcceptedToken(
-            address(USDC),
-            GrowfiCampaign.PricingMode.Fixed,
-            144_000,
-            address(0)
-        );
+        GrowfiCampaign(campaign).addAcceptedToken(address(USDC), GrowfiCampaign.PricingMode.Fixed, 144_000, address(0));
 
         // Register metadata so the subgraph + frontend pick the campaign up with a name.
         REGISTRY.setMetadata(
-            campaign,
-            "https://growfi-media.fra1.digitaloceanspaces.com/metadata/sepolia-olive-demo.json"
+            campaign, "https://growfi-media.fra1.digitaloceanspaces.com/metadata/sepolia-olive-demo.json"
         );
         vm.stopBroadcast();
         console.log("campaign      :", campaign);
@@ -101,10 +88,7 @@ contract SepoliaSmoke is Script {
         USDC.mint(address(TREASURY), 50 * ONE_USDC);
         FACTORY.allocateAcrossTrackedGrowfiTreasury(address(USDC), 30 * ONE_USDC);
         vm.stopBroadcast();
-        console.log(
-            "treasury CT   :",
-            IERC20(GrowfiCampaign(campaign).campaignToken()).balanceOf(address(TREASURY))
-        );
+        console.log("treasury CT   :", IERC20(GrowfiCampaign(campaign).campaignToken()).balanceOf(address(TREASURY)));
 
         // 5. Direct buy GROW with $25 mUSDC
         vm.startBroadcast(pk);

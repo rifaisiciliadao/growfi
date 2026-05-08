@@ -32,17 +32,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 ///     --broadcast --skip-simulation --slow
 contract AnvilSmoke is Script {
     // Pinned addresses from the previous DeployTestnet run on chainId 31337.
-    GrowfiCampaignFactory constant FACTORY =
-        GrowfiCampaignFactory(0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0);
+    GrowfiCampaignFactory constant FACTORY = GrowfiCampaignFactory(0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0);
     MockUSDC constant USDC = MockUSDC(0x5FbDB2315678afecb367f032d93F642f64180aa3);
-    GrowfiToken constant GROW =
-        GrowfiToken(0x0B306BF915C4d645ff596e518fAf3F9669b97016);
-    GrowfiTreasury constant TREASURY =
-        GrowfiTreasury(0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE);
-    GrowfiMinter constant MINTER =
-        GrowfiMinter(0x3Aa5ebB10DC797CAC828524e59A333d0A371443c);
-    GrowfiStakingPool constant POOL =
-        GrowfiStakingPool(0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44);
+    GrowfiToken constant GROW = GrowfiToken(0x0B306BF915C4d645ff596e518fAf3F9669b97016);
+    GrowfiTreasury constant TREASURY = GrowfiTreasury(0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE);
+    GrowfiMinter constant MINTER = GrowfiMinter(0x3Aa5ebB10DC797CAC828524e59A333d0A371443c);
+    GrowfiStakingPool constant POOL = GrowfiStakingPool(0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44);
 
     // Anvil default accounts (mnemonic = "test test test test test test test test test test test junk")
     uint256 constant PK_OWNER = 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80;
@@ -66,35 +61,35 @@ contract AnvilSmoke is Script {
 
         // 1. PRODUCER creates campaign
         vm.startBroadcast(PK_PRODUCER);
-        GrowfiCampaignFactory.CreateCampaignParams memory params =
-            GrowfiCampaignFactory.CreateCampaignParams({
-                producer: producer,
-                tokenName: "Olive Sicily Demo",
-                tokenSymbol: "OLIVE",
-                yieldName: "Olive Yield",
-                yieldSymbol: "oYIELD",
-                pricePerToken: 0.144e18, // $0.144
-                minCap: 347e18,           // ~$50  -> 50 / 0.144 = 347.22 tokens
-                maxCap: 6_944e18,         // ~$1000 -> 1000 / 0.144 = 6944.44 tokens
-                fundingDeadline: block.timestamp + 30 days,
-                seasonDuration: 1 hours,
-                minProductClaim: 5e18,
-                expectedAnnualHarvestUsd: 1000e18,
-                expectedAnnualHarvest: 50e18,
-                firstHarvestYear: 2027,
-                coverageHarvests: 0
-            });
+        GrowfiCampaignFactory.CreateCampaignParams memory params = GrowfiCampaignFactory.CreateCampaignParams({
+            producer: producer,
+            tokenName: "Olive Sicily Demo",
+            tokenSymbol: "OLIVE",
+            yieldName: "Olive Yield",
+            yieldSymbol: "oYIELD",
+            pricePerToken: 0.144e18, // $0.144
+            minCap: 347e18, // ~$50  -> 50 / 0.144 = 347.22 tokens
+            maxCap: 6_944e18, // ~$1000 -> 1000 / 0.144 = 6944.44 tokens
+            fundingDeadline: block.timestamp + 30 days,
+            seasonDuration: 1 hours,
+            minProductClaim: 5e18,
+            expectedAnnualHarvestUsd: 1000e18,
+            expectedAnnualHarvest: 50e18,
+            firstHarvestYear: 2027,
+            coverageHarvests: 0
+        });
         address campaign = FACTORY.createCampaign(params);
 
         // 2. Whitelist mUSDC on the campaign (fixed-rate, $0.144/token = 144000 raw / token-18)
         // For a 6-dec stable: rate = pricePerToken * 10^(decimals_of_token) / 1e18
         //                          = 0.144e18 * 1e6 / 1e18 = 144_000 (raw 6-dec / token-18)
-        GrowfiCampaign(campaign).addAcceptedToken(
-            address(USDC),
-            GrowfiCampaign.PricingMode.Fixed,
-            144_000,            // raw rate (1 token = $0.144 → 144000 raw mUSDC)
-            address(0)          // no oracle
-        );
+        GrowfiCampaign(campaign)
+            .addAcceptedToken(
+                address(USDC),
+                GrowfiCampaign.PricingMode.Fixed,
+                144_000, // raw rate (1 token = $0.144 → 144000 raw mUSDC)
+                address(0) // no oracle
+            );
         vm.stopBroadcast();
         console.log("campaign :", campaign);
 
@@ -134,8 +129,7 @@ contract AnvilSmoke is Script {
         vm.stopBroadcast();
         console.log("treasuryRaised reflected by CT balance:");
         console.log(
-            "  treasury holds CT:",
-            IERC20(GrowfiCampaign(campaign).campaignToken()).balanceOf(address(TREASURY))
+            "  treasury holds CT:", IERC20(GrowfiCampaign(campaign).campaignToken()).balanceOf(address(TREASURY))
         );
 
         // 8. ALICE direct-buys GROW for $25 USDC (uses live floor, +10% markup)

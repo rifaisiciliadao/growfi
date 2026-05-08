@@ -130,8 +130,12 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     event CampaignSkippedInFloor(address indexed campaign, uint8 state);
     event CampaignTracked(address indexed campaign);
     event CampaignUntracked(address indexed campaign);
-    event Allocated(address indexed campaign, address indexed paymentToken, uint256 amount, uint256 campaignTokensReceived);
-    event AcrossTrackedAllocated(address indexed paymentToken, uint256 totalAmount, uint256 perCampaign, uint256 campaignsReceived);
+    event Allocated(
+        address indexed campaign, address indexed paymentToken, uint256 amount, uint256 campaignTokensReceived
+    );
+    event AcrossTrackedAllocated(
+        address indexed paymentToken, uint256 totalAmount, uint256 perCampaign, uint256 campaignsReceived
+    );
     event AutomationEnabledSet(bool enabled);
     event Redeemed(address indexed redeemer, uint256 growBurned);
     event TokenRescued(address indexed token, address indexed to, uint256 amount);
@@ -141,7 +145,9 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     event Staked(address indexed campaign, uint256 amount, uint256 positionId);
     event YieldClaimed(address indexed campaign, uint256 positionId);
     event UsdcRedeemCommitted(address indexed campaign, uint256 indexed seasonId, uint256 yieldAmount);
-    event UsdcClaimed(address indexed campaign, uint256 indexed seasonId, uint256 received, uint256 toStakers, uint256 retained);
+    event UsdcClaimed(
+        address indexed campaign, uint256 indexed seasonId, uint256 received, uint256 toStakers, uint256 retained
+    );
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -199,11 +205,7 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
         }
         if (!_acceptedStablecoins.add(token)) revert AlreadyAccepted();
         stablecoinConfigs[token] = StablecoinConfig({
-            scale: scale,
-            priceFeed: priceFeed,
-            heartbeat: heartbeat,
-            minPriceBps: minPriceBps,
-            maxPriceBps: maxPriceBps
+            scale: scale, priceFeed: priceFeed, heartbeat: heartbeat, minPriceBps: minPriceBps, maxPriceBps: maxPriceBps
         });
         emit StablecoinAccepted(token, scale, priceFeed, heartbeat, minPriceBps, maxPriceBps);
     }
@@ -219,11 +221,7 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     /// @dev Read & validate a stablecoin's live Chainlink USD price. Returns `(0, false)` on
     ///      stale, negative, malformed or out-of-band readings — caller decides what to do
     ///      with that signal (exclude from floor, revert direct buy, etc.).
-    function _readStablecoinPrice(StablecoinConfig memory cfg)
-        internal
-        view
-        returns (uint256 priceUsd18, bool ok)
-    {
+    function _readStablecoinPrice(StablecoinConfig memory cfg) internal view returns (uint256 priceUsd18, bool ok) {
         if (cfg.priceFeed == address(0)) return (0, false);
 
         try AggregatorV3Interface(cfg.priceFeed).latestRoundData() returns (
@@ -414,10 +412,7 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     ///      Both gated by `automationEnabled`. Caller specifies the total budget; the function
     ///      counts qualifying campaigns and divides equally. Per-campaign share is capped by
     ///      remaining mintable room. Dust (totalAmount % activeCount) stays in Treasury.
-    function allocateAcrossTracked(address paymentToken, uint256 totalAmount)
-        external
-        nonReentrant
-    {
+    function allocateAcrossTracked(address paymentToken, uint256 totalAmount) external nonReentrant {
         if (msg.sender != factory && msg.sender != address(growToken)) revert NotFactory();
         if (!automationEnabled) revert AutomationDisabled();
         if (!_acceptedStablecoins.contains(paymentToken)) revert NotAccepted();
@@ -481,7 +476,12 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     // ---------- harvest claim flow (factory admin) ----------
 
     /// @notice Stake the Treasury's CampaignTokens of `campaign` into its StakingVault.
-    function stakeOnCampaign(address campaign, uint256 amount) external onlyFactory nonReentrant returns (uint256 positionId) {
+    function stakeOnCampaign(address campaign, uint256 amount)
+        external
+        onlyFactory
+        nonReentrant
+        returns (uint256 positionId)
+    {
         if (!_trackedCampaigns.contains(campaign)) revert NotTracked();
         if (amount == 0) revert ZeroAmount();
 

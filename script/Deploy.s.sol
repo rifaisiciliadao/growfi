@@ -87,10 +87,7 @@ contract DeployScript is Script {
         // -------- 4. GrowfiMinter --------
         GrowfiMinter mImpl = new GrowfiMinter();
         GrowfiMinter.BondingCurveParams memory params = GrowfiMinter.BondingCurveParams({
-            tier1RateBps: 10_000,
-            tier2RateBps: 7_000,
-            tier3RateBps: 4_000,
-            tier2to3ThresholdBps: 5_000
+            tier1RateBps: 10_000, tier2RateBps: 7_000, tier3RateBps: 4_000, tier2to3ThresholdBps: 5_000
         });
         bytes memory mInit = abi.encodeCall(GrowfiMinter.initialize, (address(factory), address(growToken), params));
         GrowfiMinter minter = GrowfiMinter(address(new TransparentUpgradeableProxy(address(mImpl), owner, mInit)));

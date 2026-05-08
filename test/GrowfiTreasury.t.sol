@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {GrowfiToken} from "../src/GrowfiToken.sol";
 import {GrowfiTreasury} from "../src/GrowfiTreasury.sol";
@@ -73,9 +72,8 @@ contract GrowfiTreasuryTest is Test {
 
         // Token (no usdc param anymore)
         GrowfiToken tImpl = new GrowfiToken();
-        bytes memory tInit = abi.encodeCall(
-            GrowfiToken.initialize, ("GrowFi", "GROW", FACTORY, DEPLOYER, GENESIS_AMOUNT, 1_000, 1e17)
-        );
+        bytes memory tInit =
+            abi.encodeCall(GrowfiToken.initialize, ("GrowFi", "GROW", FACTORY, DEPLOYER, GENESIS_AMOUNT, 1_000, 1e17));
         token = GrowfiToken(address(new TransparentUpgradeableProxy(address(tImpl), FACTORY, tInit)));
 
         // Treasury (no usdc param anymore)

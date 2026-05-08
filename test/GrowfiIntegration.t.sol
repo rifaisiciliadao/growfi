@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {GrowfiCampaignFactory} from "../src/GrowfiCampaignFactory.sol";
 import {GrowfiCampaign} from "../src/GrowfiCampaign.sol";
@@ -55,7 +54,13 @@ contract GrowfiIntegrationTest is Test {
         usdFeed = new MockOracle(int256(1e8), 8);
 
         // 1. Deploy the existing protocol via the standard helper.
-        factory = Deployer.deployProtocol(OWNER, OWNER /* placeholder feeRecipient, replaced below */, address(usdc), address(0));
+        factory = Deployer.deployProtocol(
+            OWNER,
+            OWNER,
+            /* placeholder feeRecipient, replaced below */
+            address(usdc),
+            address(0)
+        );
         // Relax season floor so tests don't have to wait 30 days.
         vm.prank(OWNER);
         factory.setMinSeasonDuration(1 hours);
@@ -69,8 +74,7 @@ contract GrowfiIntegrationTest is Test {
 
         // 3. Deploy GrowfiTreasury (factory_=factory, growToken_=growToken).
         GrowfiTreasury trImpl = new GrowfiTreasury();
-        bytes memory trInit =
-            abi.encodeCall(GrowfiTreasury.initialize, (address(factory), address(growToken)));
+        bytes memory trInit = abi.encodeCall(GrowfiTreasury.initialize, (address(factory), address(growToken)));
         growTreasury = GrowfiTreasury(address(new TransparentUpgradeableProxy(address(trImpl), OWNER, trInit)));
 
         // 4. Deploy GrowfiMinter (factory_=factory, growToken_=growToken, default 3-tier curve).
@@ -159,9 +163,8 @@ contract GrowfiIntegrationTest is Test {
 
         // Producer whitelists USDC as a payment token on the campaign.
         vm.prank(PRODUCER);
-        GrowfiCampaign(campaign).addAcceptedToken(
-            address(usdc), GrowfiCampaign.PricingMode.Fixed, pricePerToken / 1e12, address(0)
-        );
+        GrowfiCampaign(campaign)
+            .addAcceptedToken(address(usdc), GrowfiCampaign.PricingMode.Fixed, pricePerToken / 1e12, address(0));
     }
 
     function _approveAndFundUsdc(address user, uint256 amount, address spender) internal {

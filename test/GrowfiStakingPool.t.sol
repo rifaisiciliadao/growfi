@@ -2,8 +2,7 @@
 pragma solidity 0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {GrowfiStakingPool} from "../src/GrowfiStakingPool.sol";
 import {MockERC20} from "./helpers/MockERC20.sol";
@@ -28,9 +27,8 @@ contract GrowfiStakingPoolTest is Test {
         usdc = new MockERC20("USD Coin", "USDC", 6);
 
         GrowfiStakingPool impl = new GrowfiStakingPool();
-        bytes memory data = abi.encodeCall(
-            GrowfiStakingPool.initialize, (FACTORY, address(grow), address(usdc), TREASURY)
-        );
+        bytes memory data =
+            abi.encodeCall(GrowfiStakingPool.initialize, (FACTORY, address(grow), address(usdc), TREASURY));
         pool = GrowfiStakingPool(address(new TransparentUpgradeableProxy(address(impl), FACTORY, data)));
 
         grow.mint(ALICE, 1_000_000e18);
@@ -64,9 +62,8 @@ contract GrowfiStakingPoolTest is Test {
 
     function test_initialize_revertsOnZeroAddress() public {
         GrowfiStakingPool impl = new GrowfiStakingPool();
-        bytes memory bad = abi.encodeCall(
-            GrowfiStakingPool.initialize, (address(0), address(grow), address(usdc), TREASURY)
-        );
+        bytes memory bad =
+            abi.encodeCall(GrowfiStakingPool.initialize, (address(0), address(grow), address(usdc), TREASURY));
         vm.expectRevert(GrowfiStakingPool.ZeroAddress.selector);
         new TransparentUpgradeableProxy(address(impl), FACTORY, bad);
     }

@@ -94,7 +94,8 @@ contract DeployTestnet is Script {
         // per-campaign contracts). protocolFeeRecipient gets pointed to the FeeSplitter
         // after that contract is deployed (step 6 below).
         bytes memory factoryInit = abi.encodeCall(
-            GrowfiCampaignFactory.initialize, (owner, deployer /* placeholder feeRecipient */, address(usdc), address(0), impls)
+            GrowfiCampaignFactory.initialize,
+            (owner, deployer, /* placeholder feeRecipient */ address(usdc), address(0), impls)
         );
         TransparentUpgradeableProxy factoryProxy =
             new TransparentUpgradeableProxy(address(factoryImpl), owner, factoryInit);
@@ -117,7 +118,7 @@ contract DeployTestnet is Script {
                 "GROW",
                 address(factory),
                 deployer, // recipient is unused when amount == 0; pass deployer to satisfy the non-zero check
-                0,        // no deployer-side genesis
+                0, // no deployer-side genesis
                 1_000, // markup 10%
                 1e17 // reference $0.10
             )
@@ -180,7 +181,7 @@ contract DeployTestnet is Script {
             // for stablecoin/USD pairs on mainnet).
             factory.addGrowfiTreasuryStablecoin(address(usdc), 1e12, address(usdcFeed), 24 hours, 9_500, 10_500);
             factory.addGrowfiTreasuryStablecoin(address(usdt), 1e12, address(usdtFeed), 24 hours, 9_500, 10_500);
-            factory.addGrowfiTreasuryStablecoin(address(dai),  1,    address(daiFeed),  24 hours, 9_500, 10_500);
+            factory.addGrowfiTreasuryStablecoin(address(dai), 1, address(daiFeed), 24 hours, 9_500, 10_500);
 
             // Exclude Treasury from earning GROW on its own auto-allocations.
             factory.setGrowfiMinterExcluded(address(treasury), true);

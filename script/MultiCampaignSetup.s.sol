@@ -16,17 +16,12 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 ///
 /// Deploy addresses are pinned to the v6 (2026-05-07) Sepolia deploy with 100k Treasury reserve.
 contract MultiCampaignSetup is Script {
-    GrowfiCampaignFactory constant FACTORY =
-        GrowfiCampaignFactory(0x5d43e9B1835afDcb4c88f712e80D730B7890B31b);
+    GrowfiCampaignFactory constant FACTORY = GrowfiCampaignFactory(0x5d43e9B1835afDcb4c88f712e80D730B7890B31b);
     MockUSDC constant USDC = MockUSDC(0x57Fd40Bd9607CEb85B2c6c01C2ac34b8A0DcE66C);
-    GrowfiToken constant GROW =
-        GrowfiToken(0x6432D463B2264Bb8fD56DEC6bB119473c1e2b7B3);
-    GrowfiTreasury constant TREASURY =
-        GrowfiTreasury(0xC188324847dB525574A6FD26AD3A0B8f96421674);
-    GrowfiMinter constant MINTER =
-        GrowfiMinter(0xd11AcDAE626ffF50cf0BcB5C19D094a78feC7289);
-    GrowfiStakingPool constant POOL =
-        GrowfiStakingPool(0x605664f5861543656e4bfDb912C627025280b1Ee);
+    GrowfiToken constant GROW = GrowfiToken(0x6432D463B2264Bb8fD56DEC6bB119473c1e2b7B3);
+    GrowfiTreasury constant TREASURY = GrowfiTreasury(0xC188324847dB525574A6FD26AD3A0B8f96421674);
+    GrowfiMinter constant MINTER = GrowfiMinter(0xd11AcDAE626ffF50cf0BcB5C19D094a78feC7289);
+    GrowfiStakingPool constant POOL = GrowfiStakingPool(0x605664f5861543656e4bfDb912C627025280b1Ee);
 
     uint256 constant ONE_USDC = 1e6;
 
@@ -77,17 +72,15 @@ contract MultiCampaignSetup is Script {
             "OLIVE",
             "Olive Yield",
             "oOIL",
-            0.144e18,         // $0.144/token
-            347e18,           // softcap ~$50
-            6_944e18,         // hardcap ~$1000
-            5_000e18,         // $5,000/yr commitment
-            250e18,           // 250 L oil/yr → $20/L
+            0.144e18, // $0.144/token
+            347e18, // softcap ~$50
+            6_944e18, // hardcap ~$1000
+            5_000e18, // $5,000/yr commitment
+            250e18, // 250 L oil/yr → $20/L
             2027
         );
         // Whitelist mUSDC (Fixed): rate raw = 0.144e18 * 1e6 / 1e18 = 144_000
-        GrowfiCampaign(campA).addAcceptedToken(
-            address(USDC), GrowfiCampaign.PricingMode.Fixed, 144_000, address(0)
-        );
+        GrowfiCampaign(campA).addAcceptedToken(address(USDC), GrowfiCampaign.PricingMode.Fixed, 144_000, address(0));
         vm.stopBroadcast();
         console.log("campaign A:", campA, "Olive IGP Sicily");
 
@@ -99,16 +92,14 @@ contract MultiCampaignSetup is Script {
             "VINE",
             "Vineyard Yield",
             "oVINE",
-            0.10e18,          // $0.10/token
-            500e18,           // softcap = $50
-            10_000e18,        // hardcap = $1000
-            3_000e18,         // $3,000/yr
-            1_500e18,         // 1500 bottles/yr → $2/bottle
+            0.1e18, // $0.10/token
+            500e18, // softcap = $50
+            10_000e18, // hardcap = $1000
+            3_000e18, // $3,000/yr
+            1_500e18, // 1500 bottles/yr → $2/bottle
             2028
         );
-        GrowfiCampaign(campB).addAcceptedToken(
-            address(USDC), GrowfiCampaign.PricingMode.Fixed, 100_000, address(0)
-        );
+        GrowfiCampaign(campB).addAcceptedToken(address(USDC), GrowfiCampaign.PricingMode.Fixed, 100_000, address(0));
         vm.stopBroadcast();
         console.log("campaign B:", campB, "Vineyard of Etna");
 

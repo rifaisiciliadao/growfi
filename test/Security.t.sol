@@ -108,7 +108,9 @@ contract SecurityTest is Test {
     function test_cannotStartSeasonInFunding() public {
         vm.prank(producer);
         vm.expectRevert(
-            abi.encodeWithSelector(GrowfiCampaign.InvalidState.selector, GrowfiCampaign.State.Active, GrowfiCampaign.State.Funding)
+            abi.encodeWithSelector(
+                GrowfiCampaign.InvalidState.selector, GrowfiCampaign.State.Active, GrowfiCampaign.State.Funding
+            )
         );
         campaign.startSeason(1);
     }

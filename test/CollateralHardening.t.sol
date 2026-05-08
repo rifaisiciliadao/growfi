@@ -46,7 +46,12 @@ contract CollateralHardeningTest is Test {
 
     function _bootstrap(address tokenAddr)
         internal
-        returns (GrowfiCampaignFactory factory, GrowfiCampaign campaign, GrowfiCampaignToken ct, GrowfiHarvestManager hm)
+        returns (
+            GrowfiCampaignFactory factory,
+            GrowfiCampaign campaign,
+            GrowfiCampaignToken ct,
+            GrowfiHarvestManager hm
+        )
     {
         factory = Deployer.deployProtocol(protocolOwner, feeRecipient, tokenAddr, address(0));
 
