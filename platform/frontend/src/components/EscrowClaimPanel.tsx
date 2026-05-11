@@ -41,7 +41,7 @@ export function EscrowClaimPanel() {
   const a = getAddresses();
   const notify = useTxNotify();
   const { writeContractAsync } = useWriteContract();
-  const { data: campaigns } = useSubgraphCampaigns();
+  const { data: campaigns } = useSubgraphCampaigns({ includeHidden: true });
 
   const [claiming, setClaiming] = useState<Address | null>(null);
 

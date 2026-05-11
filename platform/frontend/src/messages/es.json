@@ -712,6 +712,8 @@
         "empty": "Aún no hay campañas tracked. Añade una dirección abajo para empezar.",
         "untrack": "Untrack",
         "hide": "Ocultar",
+        "unhide": "Mostrar",
+        "hiddenBadge": "oculta",
         "addLabel": "Añadir campaña",
         "add": "Track",
         "added": "Campaña añadida",

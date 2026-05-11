@@ -712,6 +712,8 @@
         "empty": "Nessuna campagna tracciata. Aggiungi un indirizzo qui sotto per iniziare.",
         "untrack": "Untrack",
         "hide": "Nascondi",
+        "unhide": "Mostra",
+        "hiddenBadge": "nascosta",
         "addLabel": "Aggiungi campagna",
         "add": "Tracka",
         "added": "Campagna tracciata",

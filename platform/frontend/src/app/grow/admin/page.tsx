@@ -373,13 +373,19 @@ function TrackedCampaigns({ isOwner }: { isOwner: boolean }) {
     ]),
   });
 
-  // Also load metadata via subgraph for human-friendly names.
-  const { data: sgCampaigns } = useSubgraphCampaigns();
+  // Also load metadata via subgraph for human-friendly names. Admin needs
+  // to see hidden ones too so the multisig can unhide.
+  const { data: sgCampaigns } = useSubgraphCampaigns({ includeHidden: true });
   const metadataByAddr = useMemo(() => {
     const map = new Map<string, string>();
     (sgCampaigns ?? []).forEach((c) => {
       if (c.metadataURI) map.set(c.id.toLowerCase(), c.metadataURI);
     });
+    return map;
+  }, [sgCampaigns]);
+  const hiddenByAddr = useMemo(() => {
+    const map = new Map<string, boolean>();
+    (sgCampaigns ?? []).forEach((c) => map.set(c.id.toLowerCase(), c.hidden));
     return map;
   }, [sgCampaigns]);
 
@@ -487,6 +493,7 @@ function TrackedCampaigns({ isOwner }: { isOwner: boolean }) {
               maxCap && maxCap > 0n && supply
                 ? Number((supply * 100n) / maxCap)
                 : 0;
+            const isHidden = hiddenByAddr.get(addr.toLowerCase()) ?? false;
             return (
               <li key={addr} className="py-3">
                 <div className="flex items-center justify-between gap-3">
@@ -508,17 +515,28 @@ function TrackedCampaigns({ isOwner }: { isOwner: boolean }) {
                       {metadataByAddr.has(addr.toLowerCase()) && (
                         <span className="text-emerald-600">metadata ✓</span>
                       )}
+                      {isHidden && (
+                        <span className="text-amber-700">{t("track.hiddenBadge")}</span>
+                      )}
                     </div>
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <button
                       type="button"
-                      onClick={() => setHidden(addr, true)}
+                      onClick={() => setHidden(addr, !isHidden)}
                       disabled={!isOwner || busy === addr + ":hide"}
-                      className="rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
-                      title="hide from public discovery"
+                      className={
+                        isHidden
+                          ? "rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-800 hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          : "rounded-md border border-zinc-300 px-2 py-1 text-xs text-zinc-700 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      }
+                      title={
+                        isHidden
+                          ? "restore to public discovery"
+                          : "hide from public discovery"
+                      }
                     >
-                      {t("track.hide")}
+                      {isHidden ? t("track.unhide") : t("track.hide")}
                     </button>
                     <button
                       type="button"

@@ -33,6 +33,8 @@ dataSources:
           handler: handleProtocolFeeRecipientUpdated
         - event: GrowfiContractsSet(indexed address,indexed address,indexed address,address)
           handler: handleGrowfiContractsSet
+        - event: CampaignHiddenSet(indexed address,bool)
+          handler: handleCampaignHiddenSet
 
   - kind: ethereum/contract
     name: CampaignRegistry

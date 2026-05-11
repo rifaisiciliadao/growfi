@@ -38,6 +38,11 @@ type Campaign @entity(immutable: false) {
   state: String!                          # "Funding" | "Active" | "Buyback" | "Ended"
   paused: Boolean!
 
+  # UI-only convention. Flipped by factory.setCampaignHidden(addr, true)
+  # (onlyOwner). Public discovery filters where hidden=false; admin surfaces
+  # still show hidden rows so the multisig can unhide.
+  hidden: Boolean!
+
   createdAt: BigInt!
   createdAtBlock: BigInt!
   activatedAt: BigInt

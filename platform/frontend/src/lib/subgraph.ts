@@ -51,6 +51,7 @@ export interface SubgraphCampaign {
   activatedAt: string | null;
   metadataURI: string | null;
   metadataVersion: string;
+  hidden: boolean;
 }
 
 const CAMPAIGN_FIELDS = `
@@ -85,15 +86,25 @@ const CAMPAIGN_FIELDS = `
   activatedAt
   metadataURI
   metadataVersion
+  hidden
 `;
 
-export function useSubgraphCampaigns() {
+/**
+ * Public discovery list. By default excludes campaigns the factory owner has
+ * flipped to hidden via `setCampaignHidden`. Admin surfaces pass
+ * `{ includeHidden: true }` so the multisig can still see them to unhide.
+ * EscrowClaimPanel also includes hidden so users with pending escrow on a
+ * hidden campaign can still claim.
+ */
+export function useSubgraphCampaigns(opts: { includeHidden?: boolean } = {}) {
+  const includeHidden = !!opts.includeHidden;
   return useQuery({
-    queryKey: ["subgraph", "campaigns"],
+    queryKey: ["subgraph", "campaigns", includeHidden ? "all" : "visible"],
     queryFn: async () => {
+      const whereClause = includeHidden ? "" : "where: { hidden: false }, ";
       const data = await gql<{ campaigns: SubgraphCampaign[] }>(`
         query Campaigns {
-          campaigns(first: 100, orderBy: createdAt, orderDirection: desc) {
+          campaigns(${whereClause}first: 100, orderBy: createdAt, orderDirection: desc) {
             ${CAMPAIGN_FIELDS}
           }
         }
@@ -636,7 +647,7 @@ export function useProducerCampaigns(producerAddress: string | undefined) {
         `
         query ProducerCampaigns($producer: Bytes!) {
           campaigns(
-            where: { producer: $producer }
+            where: { producer: $producer, hidden: false }
             orderBy: createdAt
             orderDirection: desc
             first: 100

@@ -3,6 +3,7 @@ import {
   CampaignCreated as CampaignCreatedEvent,
   ProtocolFeeRecipientUpdated as ProtocolFeeRecipientUpdatedEvent,
   GrowfiContractsSet as GrowfiContractsSetEvent,
+  CampaignHiddenSet as CampaignHiddenSetEvent,
 } from "../generated/CampaignFactory/CampaignFactory";
 import {
   Campaign as CampaignTemplate,
@@ -69,6 +70,7 @@ export function handleCampaignCreated(event: CampaignCreatedEvent): void {
   campaign.createdAt = event.params.createdAt;
   campaign.createdAtBlock = event.block.number;
   campaign.metadataVersion = BigInt.zero();
+  campaign.hidden = false;
   campaign.save();
 
   // Register reverse lookup indices for the template handlers
@@ -118,4 +120,16 @@ export function handleGrowfiContractsSet(event: GrowfiContractsSetEvent): void {
   log.info("Growfi contracts set, treasury={}", [
     event.params.growfiTreasury.toHexString(),
   ]);
+}
+
+export function handleCampaignHiddenSet(event: CampaignHiddenSetEvent): void {
+  const campaign = Campaign.load(event.params.campaign);
+  if (campaign == null) {
+    log.warning("CampaignHiddenSet for unknown campaign {}", [
+      event.params.campaign.toHexString(),
+    ]);
+    return;
+  }
+  campaign.hidden = event.params.hidden;
+  campaign.save();
 }
