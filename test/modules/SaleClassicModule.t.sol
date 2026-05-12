@@ -2,8 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {GrowfiCampaign} from "../../src/GrowfiCampaign.sol";
@@ -103,16 +102,12 @@ contract SaleClassicModuleTest is Test {
         // Deploy CT proxy with the predicted Campaign address
         bytes memory ctInit =
             abi.encodeCall(GrowfiCampaignToken.initialize, ("Olive Sicily", "OLIVE", predictedCampaign));
-        TransparentUpgradeableProxy ctProxy =
-            new TransparentUpgradeableProxy(address(ctImpl), protocolOwner, ctInit);
+        TransparentUpgradeableProxy ctProxy = new TransparentUpgradeableProxy(address(ctImpl), protocolOwner, ctInit);
         campaignToken = GrowfiCampaignToken(address(ctProxy));
 
         // Now deploy the Campaign proxy (this should land at predictedCampaign)
         GrowfiCampaign.InitParams memory cp = GrowfiCampaign.InitParams({
-            producer: producer,
-            factory: address(registry),
-            usdc: address(usdc),
-            protocolFeeRecipient: feeRecipient
+            producer: producer, factory: address(registry), usdc: address(usdc), protocolFeeRecipient: feeRecipient
         });
         bytes memory campInit = abi.encodeCall(GrowfiCampaign.initialize, (cp));
         TransparentUpgradeableProxy campaignProxy =
@@ -152,9 +147,8 @@ contract SaleClassicModuleTest is Test {
 
         // Producer registers USDC as an accepted payment token (fixed-rate)
         vm.prank(producer);
-        SaleClassicModule(payable(address(campaign))).addAcceptedToken(
-            address(usdc), SaleClassicModule.PricingMode.Fixed, FIXED_RATE, address(0)
-        );
+        SaleClassicModule(payable(address(campaign)))
+            .addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, FIXED_RATE, address(0));
 
         // Mint some USDC to buyers
         usdc.mint(alice, 10_000e6);

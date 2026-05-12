@@ -2,8 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {GrowfiCampaign} from "../../src/GrowfiCampaign.sol";
 import {CampaignStorage} from "../../src/host/CampaignStorage.sol";
@@ -26,8 +25,7 @@ contract RepaymentModuleTest is Test {
 
     /// @dev SaleClassicModule.Layout.pricePerToken sits at this slot
     ///      (offset 0 of the struct, namespace = keccak256("growfi.module.sale.classic.v1")).
-    bytes32 internal constant SALE_PRICE_SLOT =
-        0xd7250d23bb7bc8e93366cf6815d31bcb947e004baa702b9bb515d6082501a234;
+    bytes32 internal constant SALE_PRICE_SLOT = 0xd7250d23bb7bc8e93366cf6815d31bcb947e004baa702b9bb515d6082501a234;
 
     address internal protocolOwner = makeAddr("protocolOwner");
     address internal producer = makeAddr("producer");
@@ -73,15 +71,11 @@ contract RepaymentModuleTest is Test {
 
         bytes memory ctInit =
             abi.encodeCall(GrowfiCampaignToken.initialize, ("Olive Sicily", "OLIVE", predictedCampaign));
-        TransparentUpgradeableProxy ctProxy =
-            new TransparentUpgradeableProxy(address(ctImpl), protocolOwner, ctInit);
+        TransparentUpgradeableProxy ctProxy = new TransparentUpgradeableProxy(address(ctImpl), protocolOwner, ctInit);
         campaignToken = GrowfiCampaignToken(address(ctProxy));
 
         GrowfiCampaign.InitParams memory cp = GrowfiCampaign.InitParams({
-            producer: producer,
-            factory: address(registry),
-            usdc: address(usdc),
-            protocolFeeRecipient: feeRecipient
+            producer: producer, factory: address(registry), usdc: address(usdc), protocolFeeRecipient: feeRecipient
         });
         bytes memory campInit = abi.encodeCall(GrowfiCampaign.initialize, (cp));
         TransparentUpgradeableProxy campaignProxy =
@@ -303,12 +297,7 @@ contract RepaymentModuleTest is Test {
         vm.prank(alice);
         vm.expectEmit(true, true, true, true);
         emit RepaymentModule.Repaid(
-            alice,
-            amount,
-            expectedPrincipal,
-            expectedBonus,
-            INITIAL_POOL - expectedPayout,
-            expectedPayout
+            alice, amount, expectedPrincipal, expectedBonus, INITIAL_POOL - expectedPayout, expectedPayout
         );
         _r().redeem(amount, new uint256[](0));
     }

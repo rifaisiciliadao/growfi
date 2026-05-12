@@ -31,7 +31,12 @@ contract EchoModule2 {
         _s().pingCount += 1;
     }
 
-    function multi(uint256 n, bool /*flag*/ ) external {
+    function multi(
+        uint256 n,
+        bool /*flag*/
+    )
+        external
+    {
         _s().multiSum += n;
     }
 

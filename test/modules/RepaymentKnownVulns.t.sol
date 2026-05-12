@@ -161,7 +161,9 @@ contract RepaymentKnownVulnsTest is Test {
         assertEq(campaign.producer(), hostProducer, "host.producer untouched");
         assertEq(campaign.pricePerToken(), salePrice, "sale price untouched");
         // currentSupply intentionally NOT decremented by Repayment burn — see test below
-        assertEq(campaign.currentSupply(), saleCurrentSupply, "sale.currentSupply unchanged by Repayment burn (by design)");
+        assertEq(
+            campaign.currentSupply(), saleCurrentSupply, "sale.currentSupply unchanged by Repayment burn (by design)"
+        );
     }
 
     // ------------------------------------------------------------------
@@ -179,16 +181,14 @@ contract RepaymentKnownVulnsTest is Test {
         // Producer (legitimate) cannot attach a non-whitelisted impl
         vm.prank(producer);
         vm.expectRevert(GrowfiCampaign.ImplNotApproved.selector);
-        GrowfiCampaign(payable(campaignAddr)).attachModule(
-            keccak256("rogue.type"), keccak256("rogue.kind"), fakeImpl, ""
-        );
+        GrowfiCampaign(payable(campaignAddr))
+            .attachModule(keccak256("rogue.type"), keccak256("rogue.kind"), fakeImpl, "");
 
         // Stranger can't either
         vm.prank(mallory);
         vm.expectRevert(GrowfiCampaign.OnlyProducer.selector);
-        GrowfiCampaign(payable(campaignAddr)).attachModule(
-            keccak256("rogue.type"), keccak256("rogue.kind"), fakeImpl, ""
-        );
+        GrowfiCampaign(payable(campaignAddr))
+            .attachModule(keccak256("rogue.type"), keccak256("rogue.kind"), fakeImpl, "");
     }
 
     // ------------------------------------------------------------------
@@ -241,7 +241,10 @@ contract RepaymentKnownVulnsTest is Test {
     ///      NOT silently consume gas without progress.
     function test_vuln_dos_largeUnstakeFirst_failsFast() public {
         uint256[] memory positions = new uint256[](1_000);
-        for (uint256 i; i < 1_000; i++) positions[i] = i + 1; // ids 1..1000
+        // ids 1..1000 (all non-existent / not owned by alice)
+        for (uint256 i; i < 1_000; i++) {
+            positions[i] = i + 1;
+        }
 
         // Alice has 5_000 CT free, redeem 100 — but positions[] are all
         // someone else's / non-existent. The owner-check on the FIRST
@@ -362,9 +365,7 @@ contract RepaymentKnownVulnsTest is Test {
         badUsdc.mint(alice, 5_000e6);
         vm.prank(alice);
         badUsdc.approve(rogueCampaign, type(uint256).max);
-        bytes memory innerBuy = abi.encodeWithSelector(
-            SaleClassicModule.buy.selector, address(badUsdc), uint256(144e6)
-        );
+        bytes memory innerBuy = abi.encodeWithSelector(SaleClassicModule.buy.selector, address(badUsdc), uint256(144e6));
         badUsdc.arm(rogueCampaign, innerBuy);
 
         // Trigger: alice redeems → transfer payout → bad USDC reenters buy

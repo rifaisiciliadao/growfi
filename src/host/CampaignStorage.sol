@@ -25,8 +25,7 @@ pragma solidity ^0.8.24;
 library CampaignStorage {
     /// @dev `keccak256("growfi.campaign.core.v1")`. Computed off-chain and
     ///      asserted equal in tests so a typo here is caught immediately.
-    bytes32 internal constant SLOT =
-        0x97c54a0bf039447711bcab434c5a40b95f0e18b67d18363706a9ce32d1b0cc6f;
+    bytes32 internal constant SLOT = 0x97c54a0bf039447711bcab434c5a40b95f0e18b67d18363706a9ce32d1b0cc6f;
 
     /// @notice Campaign lifecycle phases.
     /// @dev    Persisted as `uint8` inside `Layout.state` so the enum can

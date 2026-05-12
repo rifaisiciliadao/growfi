@@ -2,6 +2,38 @@
 
 Permissionless RegenFi protocol: farmers/cooperatives tokenise a future harvest as $CAMPAIGN, stakers earn $YIELD, at harvest holders redeem $YIELD for physical product (Merkle proof) or pro-rata USDC.
 
+## Current target chain — Ethereum Sepolia (chain 11155111), pre-L1 mainnet
+
+The active testnet is **Ethereum Sepolia**, not Base Sepolia. The Base Sepolia v3.3 deploy is kept as archived legacy in `CONTRACTS.md` for reference but the production trajectory is L1: mainnet target is `chain 1` (Ethereum). Sequencer-uptime feed = `address(0)` on L1.
+
+Live v4 deploy (2026-05-12): factory `0xa4DEd8Ab35e89bCAF1f7DFeb7aB2c1ED533b3f05`, GROW Token `0x9bB4f9C41ed922282C181f2f3e01d8384c960b44`, subgraph `growfi/4.0.1` on Goldsky (NOT tagged `prod` — `prod` still points at Base Sepolia v3.3 / `growfi.dev`). Full address set in `CONTRACTS.md`.
+
+## v4 module architecture (Diamond-style host + delegatecall router)
+
+The pre-v4 monolithic `Campaign` is gone. The host `GrowfiCampaign` is now a minimal contract that owns the namespaced storage (`CampaignStorage` library, slot `keccak256("growfi.campaign.core.v1")`) and routes calls via a `fallback` that delegate-calls into per-type module impls.
+
+Three modules live today:
+- **`SaleClassicModule`** (default, auto-attached on `createCampaign`): buy/sellback/buyback/funding-fee/setMaxCap/setMinCap/setFundingDeadline/activate. Slot: `keccak256("growfi.module.sale.classic.v1")`. Storage `pricePerToken` is offset 0 — read by other modules via assembly.
+- **`CollateralModule`** (default, auto-attached): `lockCollateral`, `depositUSDC` (v3.4 pay-from-collateral-first), `settleSeasonShortfall`. Slot: `keccak256("growfi.module.collateral.v1")`.
+- **`RepaymentModule`** (whitelisted, producer-attaches post-create): producer-funded early-exit pool. Payout per CT = on-chain `pricePerToken` (immutable principal floor) + producer-set `bonusPerCt` (additive markup). `redeem(amount, unstakeFirst[])` force-unstakes the caller's own positions (owner-checked — would be a griefing vector otherwise), mints accrued YIELD to owner (no forfeit, no penalty), burns the redeemed CT, pays USDC from pool. Slot: `keccak256("growfi.module.repayment.v1")`.
+
+Lifecycle:
+- Factory bootstraps the campaign + auto-attaches `defaultModules[]` (sale + collateral). Window closes via `Campaign.closeBootstrap()` (one-shot, factory-only).
+- Producer can `attachModule(type, kind, impl, metadataURI)`, `detachModule(type)`, `setModuleEnabled(type, bool)` post-bootstrap. Impl must be whitelisted on the factory by the owner (`approveModuleImpl`); selectors registered per-kind by the owner (`setModuleKindSelectors`).
+- `setModuleEnabled(false)` is the emergency stop — host fallback short-circuits with `ModuleDisabled` before delegatecall, so the module is reachable for governance but no business logic runs.
+- Detach clears the slot AND all selectors mapped to that type; reattach restores routing AND the module's namespaced storage persists (keccak slot survives detach).
+- Whitelist revocation doesn't affect already-attached campaigns (producer-sovereign).
+
+**Cross-module reads**: a module can read another module's namespaced storage by computing its slot and using `sload`. `RepaymentModule._readPricePerToken()` does exactly this against `SaleClassicModule`'s slot 0. Keeps modules loosely coupled while avoiding ABI hops.
+
+**Storage namespacing is the security boundary**: all 4 namespaces are distinct keccak slots (verified by `test/modules/RepaymentKnownVulns.t.sol::test_vuln_storageSlots_allDistinct`); host's `CampaignStorage` is at `0x97c54a0b…`, never overlaps. Module impls are uninitialized so direct calls to them revert at the `onlyProducer` / `OnlyFactoryBootstrap` checks (`producer` reads zero from the impl's empty namespace).
+
+**ETH receive**: host has a `receive() external payable {}` placeholder for future payment modules. No exit path today → ETH sent is locked. Not a theft risk, but document for users.
+
+## v4 forceUnstake semantics change
+
+`GrowfiStakingVault.forceUnstake(positionId)` was rewritten in v4. Old (forfeit) semantics: subtract `_earned()` from `seasons[sid].totalYieldOwed`, return full CT principal. New (mint) semantics: mint `_earned()` as YIELD to the position owner (NO forfeit), still return full CT principal. Used by `RepaymentModule.redeem` as the producer-blessed exit — no penalty on principal AND no penalty on yield. The invariant `totalYieldMinted ≤ totalYieldOwed` per season still holds because `_earned()` caps at `season.rewardPerTokenAtEnd` for ended seasons (test: `test_systemic_redeemEndedSeasonPosition_capsAtSnapshot`).
+
 ## Contract suite (per-campaign proxies + protocol implementations)
 
 All 5 per-campaign contracts are `Initializable` and deployed as `TransparentUpgradeableProxy` (ERC-1967). Each campaign has its own 5-proxy set, whose `ProxyAdmin` is owned by the campaign's **producer** — producer has full unilateral upgrade authority over their campaign (bug fixes, features, even malicious rewrites). The `CampaignFactory` itself is also behind a TransparentUpgradeableProxy, admin = factory owner.
@@ -35,7 +67,7 @@ All 5 per-campaign contracts are `Initializable` and deployed as `TransparentUpg
 4. `openSellBackCount[user] ≤ MAX_OPEN_SELLBACK_ORDERS_PER_USER` (50)
 5. `yieldToken.totalSupply() ≤ Σ season.totalYieldOwed` (with O(positions) floor drift tolerance)
 
-Invariant config: `runs = 256, depth = 128, fail_on_revert = false` → ~33k random sequences per invariant. GitHub Actions sets `FOUNDRY_PROFILE=ci`, which drops invariants to `32×24` and fuzz to `64` runs so the full suite (17 invariants + ~50 fuzz tests after the GROW additions) fits inside the workflow's 40-min `timeout-minutes` cap. Local dev stays on the full profile.
+Invariant config: `runs = 256, depth = 128, fail_on_revert = false` → ~33k random sequences per invariant. The v4 `Handler` now includes 4 Repayment fuzz actions (`repay_fundPool`, `repay_setBonus`, `repay_withdrawPool`, `repay_redeem`) wired automatically once the Repayment module is attached in `Invariants.t.sol::setUp`; the existing 11 invariants hold across ~50 redeem random calls per cycle. The fuzz at first run sgamed an invariant bug (`invariant_escrowMatchesPurchasesInFunding` didn't account for Repayment pool USDC sitting on the campaign address) — now fixed by subtracting `RepaymentModule.poolBalance()` before comparing escrow vs purchases. GitHub Actions sets `FOUNDRY_PROFILE=ci`, which drops invariants to `32×24` and fuzz to `64` runs so the full suite fits inside the workflow's 40-min `timeout-minutes` cap. Local dev stays on the full profile.
 
 ## Gotchas (audit-era learnings + upgradeable refactor)
 
@@ -87,12 +119,20 @@ Invariant config: `runs = 256, depth = 128, fail_on_revert = false` → ~33k ran
 
 ```bash
 forge build                                       # compile (solc 0.8.24, via_ir)
-forge test --no-match-path "test/fork/*"          # 123 local tests, ~15s
-forge test --match-path "test/invariant/*"        # 11 invariants, ~7 min at 256×128
-forge test --match-path "test/fork/*"              # needs RPC; skips gracefully
-forge test --match-contract AuditFixesTest -vv    # audit regression suite
+forge test --no-match-path "test/fork/*"          # 703 local tests (v4: core+modules+invariants+red-team+systemic+SWC vulns)
+forge test --match-path "test/invariant/*"        # 18 invariants @ runs=256/depth=128 (full); CI profile drops to 32×24 + 64 fuzz runs
+forge test --match-path "test/fork/*"              # 9 fork tests across Arbitrum/Base mainnet/ETH mainnet — skips gracefully if RPC down
+forge test --match-path "test/modules/Repayment*"  # 88 tests covering the Repayment module specifically
+forge test --match-path "test/host/*"              # 35 tests covering the v4 host (Modules.t.sol + HostRedTeam.t.sol)
 forge snapshot                                     # gas baseline
 ```
+
+Test counts at the v4 launch: **712 tests across local + fork = all green**. Significant suites:
+- `test/modules/RepaymentRedTeam.t.sol` (28) — griefing, race, bonus extreme, storage isolation
+- `test/modules/RepaymentSystemic.t.sol` (11) — cross-module: Repayment ↔ HarvestManager, ↔ Buyback state, detach orphan recovery
+- `test/modules/RepaymentReentrancy.t.sol` (5) — adversarial USDC mock that calls back via `_update`
+- `test/modules/RepaymentKnownVulns.t.sol` (14) — SWC walkthrough (SWC-112, 126, 128, 133, slot collision, direct impl call)
+- `test/host/HostRedTeam.t.sol` (14) — selector collision across attach/detach cycles, impl revocation, bootstrap one-shot
 
 ## Conventions
 
@@ -115,9 +155,18 @@ Example reference: `script/UpgradeFactoryV2.s.sol` (adds `minSeasonDuration`, re
 
 ## Scripts reference
 
-- `script/Deploy.s.sol` — mainnet/arbitrum full deploy (5 impls + factory impl + proxy).
-- `script/DeployTestnet.s.sol` — testnet variant that additionally deploys MockUSDC and seeds the deployer with 1M mUSDC.
-- `script/UpgradeFactoryV2.s.sol` — example factory upgrade (adds `minSeasonDuration`, uses `initializeV2` reinitializer).
+### v4 Sepolia ETH (current)
+
+- `script/DeployTestnetSepolia.s.sol` — fresh full deploy: MockUSDC + 5 satellite impls + factory proxy + 3 module impls (Sale, Collateral, Repayment) + default-modules wiring + 2 registries. Requires `block.chainid == 11_155_111`. Run with `PRIVATE_KEY` + Sepolia RPC.
+- `script/DeployGrowSepolia.s.sol` — deploys the GROW system on top: Token + Treasury + Minter + FeeSplitter + StakingPool + MockOracle($1 peg). Wires factory via `setGrowfiContracts`, redirects `protocolFeeRecipient → FeeSplitter`, adds MockUSDC as accepted stable, enables automation, mints 100k Treasury reserve. Requires `FACTORY_ADDRESS` + `USDC_ADDRESS` env.
+- `script/DeployStablesSepolia.s.sol` — deploys MockUSDT (6-dec) + MockDAI (18-dec) + their oracle mocks, adds to Treasury allowlist. Run after `DeployGrowSepolia`.
+- `script/SmokeSepoliaMultiCampaign.s.sol` — 2-campaign demo seed (Olive Sicily + Vineyard of Etna). Producer self-buys $60 to cross softcap and auto-activate, then tracks both in Treasury, then a $100 direct GROW buy via `Token.buy` fires `Treasury.allocateAcrossTracked` for the funding-bar split demo.
+
+### Legacy (pre-v4)
+
+- `script/DeployRegistry.s.sol`, `script/DeployProducerRegistry.s.sol` — kept for standalone registry redeploys.
+- `script/seed-demo.sh`, `script/seed-demo-multi.sh` — bash post-deploy seed (image + metadata + producer profile + KYC). Hardcoded to v3.x Base Sepolia addresses; needs an update to point at the v4 Sepolia ETH addresses before reuse.
+- All other pre-v4 scripts (`Deploy.s.sol`, `DeployTestnet.s.sol`, `MultiCampaignSetup.s.sol`, `OliveSetup.s.sol`, `OliveFinish.s.sol`, `SmokeTest.s.sol`, `SepoliaSmoke.s.sol`, `AnvilSmoke.s.sol`, `UpgradeFactoryV2.s.sol`) were **removed at the v4 cut** — their flows don't match the module factory shape and broadcast paths now live under `broadcast/<NewScript>/11155111/`.
 - `script/UpgradeHarvestManager.s.sol` — deploys a new HarvestManager impl, points factory at it for future campaigns, and walks through every HM proxy listed in env (OLIVE/FAST/SMOKE) upgrading each via its own ProxyAdmin. Template for per-campaign impl upgrades.
 - `script/SmokeTest.s.sol` — single-buy happy-path assertion (fixed-rate mint math).
 - `script/SmokeTest1h.s.sol` — single-actor lifecycle bootstrap with 1h season; stakes, ready for endSeason + harvest after time elapses.
@@ -213,7 +262,7 @@ platform/
 ### Frontend (`platform/frontend/`)
 
 - **Stack**: Next.js 15, RainbowKit v2, wagmi v2, viem, Tailwind 4, next-intl.
-- **Chains**: Base Sepolia (default, chain 84532), Base Mainnet. Live testnet deployment addresses in `CONTRACTS.md`.
+- **Chains**: Ethereum Sepolia (default since v4, chain 11155111) + Ethereum Mainnet (chain 1, production target). Legacy Base Sepolia (84532) + Base Mainnet (8453) still wired in `providers.tsx` but addresses point at the archived v3.3 deploy. Chain set is selected by `NEXT_PUBLIC_CHAIN_ID`. RPC fallback for Sepolia uses publicnode + rpc.sepolia.org + 1rpc.io, with `NEXT_PUBLIC_SEPOLIA_RPC_URL` override for an Alchemy/Infura key under demo load. Block explorer URL builder in `src/lib/explorer.ts` maps the chain id to etherscan/basescan correctly — don't hardcode `sepolia.basescan.org` anywhere; always go through `txUrl(hash)` / `addressUrl(addr)`.
 - **i18n**: EN / IT / ES / FR. Provider in `src/i18n/LocaleProvider.tsx` — browser auto-detect + `localStorage["growfi:locale"]` persistence. Messages in `src/messages/<locale>.json`.
 - **Tx lifecycle** — every write-contract is wrapped in an imperative `sig → chain → success/error` flow using `waitForTransactionReceipt` from `@wagmi/core` (NOT the `useWaitForTransactionReceipt` hook — that caused receipt-hash race bugs where the "acquisto confermato" banner showed an approval hash). The exported wagmi `config` from `app/providers.tsx` is passed to `waitForTransactionReceipt`. User-rejected errors are silently discarded; on-chain reverts surface as a red banner per panel.
 - **Pages**:

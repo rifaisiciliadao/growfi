@@ -41,8 +41,7 @@ contract CollateralModule {
         bool initialized;
     }
 
-    bytes32 internal constant STORAGE_SLOT =
-        0x1d5c7025e27f7f3a598a1ed3ef2f3b18a3b6b8f8025c5754e51904d497088646; // keccak256("growfi.module.collateral.v1")
+    bytes32 internal constant STORAGE_SLOT = 0x1d5c7025e27f7f3a598a1ed3ef2f3b18a3b6b8f8025c5754e51904d497088646; // keccak256("growfi.module.collateral.v1")
 
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;
@@ -144,10 +143,9 @@ contract CollateralModule {
         Layout storage s = _s();
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
         if (cs.paused) revert InvalidState();
-        if (
-            cs.state != uint8(CampaignStorage.State.Funding)
-                && cs.state != uint8(CampaignStorage.State.Active)
-        ) revert InvalidState();
+        if (cs.state != uint8(CampaignStorage.State.Funding) && cs.state != uint8(CampaignStorage.State.Active)) {
+            revert InvalidState();
+        }
         if (s.collateralLocked + amount > maxCollateral()) revert CollateralCapExceeded();
 
         IERC20(cs.usdc).safeTransferFrom(msg.sender, address(this), amount);

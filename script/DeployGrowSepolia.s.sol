@@ -64,19 +64,15 @@ contract DeployGrowSepolia is Script {
         // 2. GrowfiToken (TUP) — genesis 0 to deployer, 100k mintable later to Treasury
         GrowfiToken tImpl = new GrowfiToken();
         bytes memory tInit = abi.encodeCall(
-            GrowfiToken.initialize,
-            ("GrowFi", "GROW", factoryAddr, deployer, GENESIS_DEPLOYER, MARKUP_BPS, BOOT_PRICE)
+            GrowfiToken.initialize, ("GrowFi", "GROW", factoryAddr, deployer, GENESIS_DEPLOYER, MARKUP_BPS, BOOT_PRICE)
         );
-        GrowfiToken growToken = GrowfiToken(
-            address(new TransparentUpgradeableProxy(address(tImpl), deployer, tInit))
-        );
+        GrowfiToken growToken = GrowfiToken(address(new TransparentUpgradeableProxy(address(tImpl), deployer, tInit)));
 
         // 3. GrowfiTreasury (TUP)
         GrowfiTreasury trImpl = new GrowfiTreasury();
         bytes memory trInit = abi.encodeCall(GrowfiTreasury.initialize, (factoryAddr, address(growToken)));
-        GrowfiTreasury growTreasury = GrowfiTreasury(
-            address(new TransparentUpgradeableProxy(address(trImpl), deployer, trInit))
-        );
+        GrowfiTreasury growTreasury =
+            GrowfiTreasury(address(new TransparentUpgradeableProxy(address(trImpl), deployer, trInit)));
 
         // 4. GrowfiMinter (TUP) — default 3-tier bonding curve
         GrowfiMinter mImpl = new GrowfiMinter();
@@ -87,32 +83,26 @@ contract DeployGrowSepolia is Script {
             tier2to3ThresholdBps: 5_000
         });
         bytes memory mInit = abi.encodeCall(GrowfiMinter.initialize, (factoryAddr, address(growToken), curve));
-        GrowfiMinter growMinter = GrowfiMinter(
-            address(new TransparentUpgradeableProxy(address(mImpl), deployer, mInit))
-        );
+        GrowfiMinter growMinter =
+            GrowfiMinter(address(new TransparentUpgradeableProxy(address(mImpl), deployer, mInit)));
 
         // 5. GrowfiFeeSplitter (TUP) — 30% Treasury / 70% Ops
         GrowfiFeeSplitter fsImpl = new GrowfiFeeSplitter();
-        bytes memory fsInit = abi.encodeCall(
-            GrowfiFeeSplitter.initialize, (factoryAddr, address(growTreasury), ops, TREASURY_BPS)
-        );
-        GrowfiFeeSplitter feeSplitter = GrowfiFeeSplitter(
-            address(new TransparentUpgradeableProxy(address(fsImpl), deployer, fsInit))
-        );
+        bytes memory fsInit =
+            abi.encodeCall(GrowfiFeeSplitter.initialize, (factoryAddr, address(growTreasury), ops, TREASURY_BPS));
+        GrowfiFeeSplitter feeSplitter =
+            GrowfiFeeSplitter(address(new TransparentUpgradeableProxy(address(fsImpl), deployer, fsInit)));
 
         // 6. GrowfiStakingPool (TUP)
         GrowfiStakingPool spImpl = new GrowfiStakingPool();
         bytes memory spInit = abi.encodeCall(
             GrowfiStakingPool.initialize, (factoryAddr, address(growToken), usdc, address(growTreasury))
         );
-        GrowfiStakingPool stakingPool = GrowfiStakingPool(
-            address(new TransparentUpgradeableProxy(address(spImpl), deployer, spInit))
-        );
+        GrowfiStakingPool stakingPool =
+            GrowfiStakingPool(address(new TransparentUpgradeableProxy(address(spImpl), deployer, spInit)));
 
         // 7. Wire factory <-> GROW + redirect protocolFeeRecipient -> feeSplitter
-        factory.setGrowfiContracts(
-            address(growToken), address(growMinter), address(growTreasury), address(feeSplitter)
-        );
+        factory.setGrowfiContracts(address(growToken), address(growMinter), address(growTreasury), address(feeSplitter));
         factory.setProtocolFeeRecipient(address(feeSplitter));
 
         // 8. Wire GROW token <-> minter + treasury (via factory forwarders)
@@ -122,9 +112,7 @@ contract DeployGrowSepolia is Script {
         // 9. Add MockUSDC as accepted stablecoin in the Treasury
         //    (scale 1e12: 6-dec -> 18-dec normalisation, $1 feed, 24h heartbeat,
         //     5% depeg band)
-        factory.addGrowfiTreasuryStablecoin(
-            usdc, 1e12, address(usdFeed), 24 hours, 9_500, 10_500
-        );
+        factory.addGrowfiTreasuryStablecoin(usdc, 1e12, address(usdFeed), 24 hours, 9_500, 10_500);
 
         // 10. Treasury StakingPool wiring + automation
         factory.setGrowfiTreasuryStakingPool(address(stakingPool));

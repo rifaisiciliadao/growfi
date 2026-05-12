@@ -121,11 +121,14 @@ contract GrowfiAllocationStressTest is Test {
             })
         );
         vm.prank(PRODUCER);
-        IGrowfiCampaignFull(payable(camp)).addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, price / 1e12, address(0));
+        IGrowfiCampaignFull(payable(camp))
+            .addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, price / 1e12, address(0));
         vm.prank(PRODUCER);
-        IGrowfiCampaignFull(payable(camp)).addAcceptedToken(address(usdt), SaleClassicModule.PricingMode.Fixed, price / 1e12, address(0));
+        IGrowfiCampaignFull(payable(camp))
+            .addAcceptedToken(address(usdt), SaleClassicModule.PricingMode.Fixed, price / 1e12, address(0));
         vm.prank(PRODUCER);
-        IGrowfiCampaignFull(payable(camp)).addAcceptedToken(address(dai), SaleClassicModule.PricingMode.Fixed, price, address(0));
+        IGrowfiCampaignFull(payable(camp))
+            .addAcceptedToken(address(dai), SaleClassicModule.PricingMode.Fixed, price, address(0));
 
         // Activate via producer self-funding (uses USDC, the canonical token in the deploy)
         uint256 selfFund = (minCap * price) / 1e30; // USDC raw amount
@@ -170,7 +173,8 @@ contract GrowfiAllocationStressTest is Test {
             })
         );
         vm.prank(PRODUCER);
-        IGrowfiCampaignFull(payable(camp)).addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, price / 1e12, address(0));
+        IGrowfiCampaignFull(payable(camp))
+            .addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, price / 1e12, address(0));
     }
 
     function _track(address camp) internal {
@@ -305,7 +309,9 @@ contract GrowfiAllocationStressTest is Test {
         factory.allocateAcrossTrackedGrowfiTreasury(address(usdc), 30 * ONE_USDC);
 
         // Each gets $10. Tokens out: cheap=20, mid=10, exp=2.
-        assertEq(IERC20(IGrowfiCampaignFull(payable(campCheap)).campaignToken()).balanceOf(address(growTreasury)), 20e18);
+        assertEq(
+            IERC20(IGrowfiCampaignFull(payable(campCheap)).campaignToken()).balanceOf(address(growTreasury)), 20e18
+        );
         assertEq(IERC20(IGrowfiCampaignFull(payable(campMid)).campaignToken()).balanceOf(address(growTreasury)), 10e18);
         assertEq(IERC20(IGrowfiCampaignFull(payable(campExp)).campaignToken()).balanceOf(address(growTreasury)), 2e18);
     }

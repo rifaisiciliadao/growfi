@@ -2,8 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {GrowfiCampaign} from "../../src/GrowfiCampaign.sol";
 import {CampaignStorage} from "../../src/host/CampaignStorage.sol";
@@ -62,10 +61,7 @@ contract ModulesTest is Test {
         // ---- campaign ----
         GrowfiCampaign campaignImpl = new GrowfiCampaign();
         GrowfiCampaign.InitParams memory p = GrowfiCampaign.InitParams({
-            producer: producer,
-            factory: address(registry),
-            usdc: address(0xCa5),
-            protocolFeeRecipient: address(0xCa6)
+            producer: producer, factory: address(registry), usdc: address(0xCa5), protocolFeeRecipient: address(0xCa6)
         });
         bytes memory campInit = abi.encodeCall(GrowfiCampaign.initialize, (p));
         TransparentUpgradeableProxy campaignProxy =
@@ -205,9 +201,7 @@ contract ModulesTest is Test {
         vm.stopPrank();
 
         vm.prank(address(registry));
-        vm.expectRevert(
-            abi.encodeWithSelector(GrowfiCampaign.SelectorAlreadyTaken.selector, EchoModule.echo.selector)
-        );
+        vm.expectRevert(abi.encodeWithSelector(GrowfiCampaign.SelectorAlreadyTaken.selector, EchoModule.echo.selector));
         campaign.attachModuleAsFactory(SAFE_RANDOM_TYPE, dupKind, address(otherImpl), "");
     }
 

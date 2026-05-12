@@ -150,8 +150,7 @@ contract CollateralHardeningTest is Test {
 
     function test_reentrancy_settleSeasonShortfall_blocked() public {
         ReentrantToken rog = new ReentrantToken("Rogue", "ROG", 18);
-        (, IGrowfiCampaignFull campaign, GrowfiCampaignToken ct, GrowfiHarvestManager hm) =
-            _bootstrap(address(rog));
+        (, IGrowfiCampaignFull campaign, GrowfiCampaignToken ct, GrowfiHarvestManager hm) = _bootstrap(address(rog));
 
         vm.prank(producer);
         campaign.addAcceptedToken(address(rog), SaleClassicModule.PricingMode.Fixed, USDC_RATE_RGN, address(0));

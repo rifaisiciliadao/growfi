@@ -65,12 +65,8 @@ interface IGrowfiCampaignFull {
     function tokenConfig(address token) external view returns (SaleClassicModule.TokenConfig memory);
 
     // --- SaleClassicModule: producer + buyer entrypoints ---
-    function addAcceptedToken(
-        address token,
-        SaleClassicModule.PricingMode mode,
-        uint256 fixedRate,
-        address oracleFeed
-    ) external;
+    function addAcceptedToken(address token, SaleClassicModule.PricingMode mode, uint256 fixedRate, address oracleFeed)
+        external;
     function removeAcceptedToken(address token) external;
     function buy(address paymentToken, uint256 paymentAmount) external;
     function sellBack(uint256 amount) external;

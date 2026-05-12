@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {GrowfiCampaignFactory} from "../../src/GrowfiCampaignFactory.sol";
 import {GrowfiCampaign} from "../../src/GrowfiCampaign.sol";
@@ -47,8 +46,7 @@ library Deployer {
         GrowfiCampaignFactory factoryImpl = new GrowfiCampaignFactory();
         bytes memory initData =
             abi.encodeCall(GrowfiCampaignFactory.initialize, (owner, feeRecipient, usdc, seqFeed, impls));
-        TransparentUpgradeableProxy proxy =
-            new TransparentUpgradeableProxy(address(factoryImpl), owner, initData);
+        TransparentUpgradeableProxy proxy = new TransparentUpgradeableProxy(address(factoryImpl), owner, initData);
         factory = GrowfiCampaignFactory(address(proxy));
 
         // Seed the module whitelist + default modules so every new
@@ -66,17 +64,10 @@ library Deployer {
         factory.approveModuleImpl(collateralKind, collateralImpl_, true);
 
         ModuleRegistry.DefaultModule[] memory defaults = new ModuleRegistry.DefaultModule[](2);
-        defaults[0] = ModuleRegistry.DefaultModule({
-            moduleType: TYPE_SALE,
-            kind: saleKind,
-            impl: saleImpl_,
-            metadataURI: ""
-        });
+        defaults[0] =
+            ModuleRegistry.DefaultModule({moduleType: TYPE_SALE, kind: saleKind, impl: saleImpl_, metadataURI: ""});
         defaults[1] = ModuleRegistry.DefaultModule({
-            moduleType: TYPE_COLLATERAL,
-            kind: collateralKind,
-            impl: collateralImpl_,
-            metadataURI: ""
+            moduleType: TYPE_COLLATERAL, kind: collateralKind, impl: collateralImpl_, metadataURI: ""
         });
         factory.setDefaultModules(defaults);
         vm_stopPrank();

@@ -67,8 +67,7 @@ contract DeployTestnetSepolia is Script {
         // 3. Factory impl + proxy
         GrowfiCampaignFactory factoryImpl = new GrowfiCampaignFactory();
         bytes memory factoryInit = abi.encodeCall(
-            GrowfiCampaignFactory.initialize,
-            (deployer, feeRecipient, address(usdc), sequencerFeed, impls)
+            GrowfiCampaignFactory.initialize, (deployer, feeRecipient, address(usdc), sequencerFeed, impls)
         );
         TransparentUpgradeableProxy factoryProxy =
             new TransparentUpgradeableProxy(address(factoryImpl), deployer, factoryInit);
@@ -93,9 +92,8 @@ contract DeployTestnetSepolia is Script {
         factory.approveModuleImpl(KIND_REPAYMENT, repaymentImpl, true);
 
         ModuleRegistry.DefaultModule[] memory defaults = new ModuleRegistry.DefaultModule[](2);
-        defaults[0] = ModuleRegistry.DefaultModule({
-            moduleType: TYPE_SALE, kind: saleKind, impl: saleImpl, metadataURI: ""
-        });
+        defaults[0] =
+            ModuleRegistry.DefaultModule({moduleType: TYPE_SALE, kind: saleKind, impl: saleImpl, metadataURI: ""});
         defaults[1] = ModuleRegistry.DefaultModule({
             moduleType: TYPE_COLLATERAL, kind: collateralKind, impl: collateralImpl, metadataURI: ""
         });

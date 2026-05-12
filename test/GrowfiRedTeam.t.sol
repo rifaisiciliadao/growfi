@@ -409,7 +409,8 @@ contract GrowfiRedTeamTest is Test {
             })
         );
         vm.prank(PRODUCER);
-        IGrowfiCampaignFull(payable(campaignA)).addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 1e6, address(0));
+        IGrowfiCampaignFull(payable(campaignA))
+            .addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 1e6, address(0));
 
         vm.prank(PRODUCER);
         address campaignB = factory.createCampaign(
@@ -439,7 +440,8 @@ contract GrowfiRedTeamTest is Test {
             })
         );
         vm.prank(PRODUCER);
-        IGrowfiCampaignFull(payable(campaignB)).addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 1e6, address(0));
+        IGrowfiCampaignFull(payable(campaignB))
+            .addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 1e6, address(0));
 
         // Alice buys $50 on Campaign A (escrow).
         usdc.mint(ALICE, 100 * ONE_USDC);

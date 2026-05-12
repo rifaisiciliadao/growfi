@@ -65,9 +65,7 @@ contract GrowfiCampaign is Initializable {
     // Events
     // ------------------------------------------------------------------
 
-    event ModuleAttached(
-        bytes32 indexed moduleType, address indexed impl, bytes32 indexed kind, string metadataURI
-    );
+    event ModuleAttached(bytes32 indexed moduleType, address indexed impl, bytes32 indexed kind, string metadataURI);
     event ModuleDetached(bytes32 indexed moduleType, address indexed previousImpl);
     event ModuleEnabledSet(bytes32 indexed moduleType, bool enabled);
     event ModuleSelectorRegistered(bytes4 indexed selector, bytes32 indexed moduleType);
@@ -239,8 +237,7 @@ contract GrowfiCampaign is Initializable {
         address previous = slot.impl;
         if (previous == address(0)) revert TypeNotAttached();
 
-        bytes4[] memory selectors =
-            IGrowfiCampaignFactoryV4(s.factory).moduleKindSelectors(slot.kind);
+        bytes4[] memory selectors = IGrowfiCampaignFactoryV4(s.factory).moduleKindSelectors(slot.kind);
         for (uint256 i; i < selectors.length;) {
             bytes4 sel = selectors[i];
             if (s.selectorToType[sel] == moduleType) {
@@ -371,13 +368,7 @@ contract GrowfiCampaign is Initializable {
     function moduleSlot(bytes32 moduleType)
         external
         view
-        returns (
-            address impl,
-            bytes32 kind,
-            string memory metadataURI,
-            uint64 attachedAt,
-            bool enabled
-        )
+        returns (address impl, bytes32 kind, string memory metadataURI, uint64 attachedAt, bool enabled)
     {
         CampaignStorage.ModuleSlot storage slot = CampaignStorage.layout().moduleSlot[moduleType];
         return (slot.impl, slot.kind, slot.metadataURI, slot.attachedAt, slot.enabled);

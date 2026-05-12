@@ -87,7 +87,7 @@ contract SmokeSepoliaMultiCampaign is Script {
                 yieldTokenSymbol: "eYIELD",
                 minProductClaim: 1e18,
                 sale: SaleClassicModule.InitParams({
-                    pricePerToken: 0.10e18,
+                    pricePerToken: 0.1e18,
                     minCap: 100e18,
                     maxCap: 500_000e18,
                     fundingDeadline: block.timestamp + 30 days,

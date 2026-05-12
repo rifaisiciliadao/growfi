@@ -237,13 +237,11 @@ contract SecurityTest is Test {
 
     // --- Helpers ---
 
-    function _paramsOverride(
-        uint256 price,
-        uint256 minC,
-        uint256 maxC,
-        uint256 deadline,
-        uint256 seasonDur
-    ) internal view returns (GrowfiCampaignFactory.CreateCampaignParams memory) {
+    function _paramsOverride(uint256 price, uint256 minC, uint256 maxC, uint256 deadline, uint256 seasonDur)
+        internal
+        view
+        returns (GrowfiCampaignFactory.CreateCampaignParams memory)
+    {
         return GrowfiCampaignFactory.CreateCampaignParams({
             producer: producer,
             campaignTokenName: "T",

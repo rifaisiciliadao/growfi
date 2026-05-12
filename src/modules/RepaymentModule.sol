@@ -40,15 +40,13 @@ contract RepaymentModule {
         bool initialized;
     }
 
-    bytes32 internal constant STORAGE_SLOT =
-        0x14aa57f11bde39f5bf9c2d6c4d6638f5a3829e646927e7698ce9a2de15f76398; // keccak256("growfi.module.repayment.v1")
+    bytes32 internal constant STORAGE_SLOT = 0x14aa57f11bde39f5bf9c2d6c4d6638f5a3829e646927e7698ce9a2de15f76398; // keccak256("growfi.module.repayment.v1")
 
     /// @dev SaleClassicModule's namespaced storage slot. `pricePerToken`
     ///      is the first field of its Layout struct, so it sits at this
     ///      exact slot (offset 0). Both modules run in the Campaign's
     ///      delegatecall context, so reading via assembly is safe.
-    bytes32 internal constant SALE_CLASSIC_SLOT =
-        0xd7250d23bb7bc8e93366cf6815d31bcb947e004baa702b9bb515d6082501a234; // keccak256("growfi.module.sale.classic.v1")
+    bytes32 internal constant SALE_CLASSIC_SLOT = 0xd7250d23bb7bc8e93366cf6815d31bcb947e004baa702b9bb515d6082501a234; // keccak256("growfi.module.sale.classic.v1")
 
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;

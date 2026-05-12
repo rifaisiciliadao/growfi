@@ -532,7 +532,9 @@ contract GrowfiIntegrationTest is Test {
         factory.allocateAcrossTrackedGrowfiTreasury(address(usdc), 200 * ONE_USDC);
 
         // All went to the Active one (Funding skipped)
-        assertEq(IERC20(IGrowfiCampaignFull(payable(campActive)).campaignToken()).balanceOf(address(growTreasury)), 200e18);
+        assertEq(
+            IERC20(IGrowfiCampaignFull(payable(campActive)).campaignToken()).balanceOf(address(growTreasury)), 200e18
+        );
         assertEq(IERC20(IGrowfiCampaignFull(payable(campFunding)).campaignToken()).balanceOf(address(growTreasury)), 0);
     }
 
@@ -753,11 +755,16 @@ contract GrowfiIntegrationTest is Test {
 
         // Producer also accepts USDT and DAI on each campaign
         vm.startPrank(PRODUCER);
-        IGrowfiCampaignFull(payable(campA)).addAcceptedToken(address(usdt), SaleClassicModule.PricingMode.Fixed, 1e6, address(0));
-        IGrowfiCampaignFull(payable(campA)).addAcceptedToken(address(dai), SaleClassicModule.PricingMode.Fixed, 1e18, address(0));
-        IGrowfiCampaignFull(payable(campB)).addAcceptedToken(address(usdt), SaleClassicModule.PricingMode.Fixed, 5e5, address(0));
-        IGrowfiCampaignFull(payable(campB)).addAcceptedToken(address(dai), SaleClassicModule.PricingMode.Fixed, 5e17, address(0));
-        IGrowfiCampaignFull(payable(campC)).addAcceptedToken(address(dai), SaleClassicModule.PricingMode.Fixed, 2e18, address(0));
+        IGrowfiCampaignFull(payable(campA))
+            .addAcceptedToken(address(usdt), SaleClassicModule.PricingMode.Fixed, 1e6, address(0));
+        IGrowfiCampaignFull(payable(campA))
+            .addAcceptedToken(address(dai), SaleClassicModule.PricingMode.Fixed, 1e18, address(0));
+        IGrowfiCampaignFull(payable(campB))
+            .addAcceptedToken(address(usdt), SaleClassicModule.PricingMode.Fixed, 5e5, address(0));
+        IGrowfiCampaignFull(payable(campB))
+            .addAcceptedToken(address(dai), SaleClassicModule.PricingMode.Fixed, 5e17, address(0));
+        IGrowfiCampaignFull(payable(campC))
+            .addAcceptedToken(address(dai), SaleClassicModule.PricingMode.Fixed, 2e18, address(0));
         vm.stopPrank();
 
         // ===== Phase 3: Multi-actor multi-token buys =====

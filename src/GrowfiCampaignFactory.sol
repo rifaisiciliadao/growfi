@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.24;
 
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 import {Initializable} from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import {ModuleRegistry} from "./host/ModuleRegistry.sol";
@@ -107,7 +106,9 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         uint256 firstHarvestYear,
         uint256 coverageHarvests
     );
-    event ImplsUpdated(address campaign, address campaignToken, address stakingVault, address yieldToken, address harvestManager);
+    event ImplsUpdated(
+        address campaign, address campaignToken, address stakingVault, address yieldToken, address harvestManager
+    );
     event ProxyAdminOwnerSet(address admin);
     event MinSeasonDurationSet(uint256 seconds_);
     event ProtocolFeeRecipientSet(address recipient);
@@ -141,13 +142,10 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
     /// @param usdc_          Canonical USDC address used by collateral flows.
     /// @param seqFeed        Chainlink L2 sequencer-uptime feed (zero on L1/testnet).
     /// @param impls          5-element array: [campaign, campaignToken, stakingVault, yieldToken, harvestManager].
-    function initialize(
-        address owner,
-        address feeRecipient,
-        address usdc_,
-        address seqFeed,
-        address[5] calldata impls
-    ) external initializer {
+    function initialize(address owner, address feeRecipient, address usdc_, address seqFeed, address[5] calldata impls)
+        external
+        initializer
+    {
         __ModuleRegistry_init(owner);
         usdc = usdc_;
         protocolFeeRecipient = feeRecipient;
@@ -165,11 +163,25 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
     // Owner admin
     // ------------------------------------------------------------------
 
-    function setCampaignImpl(address impl) external onlyOwner { campaignImpl = impl; }
-    function setCampaignTokenImpl(address impl) external onlyOwner { campaignTokenImpl = impl; }
-    function setStakingVaultImpl(address impl) external onlyOwner { stakingVaultImpl = impl; }
-    function setYieldTokenImpl(address impl) external onlyOwner { yieldTokenImpl = impl; }
-    function setHarvestManagerImpl(address impl) external onlyOwner { harvestManagerImpl = impl; }
+    function setCampaignImpl(address impl) external onlyOwner {
+        campaignImpl = impl;
+    }
+
+    function setCampaignTokenImpl(address impl) external onlyOwner {
+        campaignTokenImpl = impl;
+    }
+
+    function setStakingVaultImpl(address impl) external onlyOwner {
+        stakingVaultImpl = impl;
+    }
+
+    function setYieldTokenImpl(address impl) external onlyOwner {
+        yieldTokenImpl = impl;
+    }
+
+    function setHarvestManagerImpl(address impl) external onlyOwner {
+        harvestManagerImpl = impl;
+    }
 
     function setProxyAdminOwner(address newAdmin) external onlyOwner {
         proxyAdminOwner = newAdmin;
@@ -194,15 +206,12 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
 
     /// @notice Wire all four GROW contracts in one call. Mirrors the v3
     ///         initializer-style helper.
-    function setGrowfiContracts(
-        address token_,
-        address minter_,
-        address treasury_,
-        address feeSplitter_
-    ) external onlyOwner {
+    function setGrowfiContracts(address token_, address minter_, address treasury_, address feeSplitter_)
+        external
+        onlyOwner
+    {
         require(
-            token_ != address(0) && minter_ != address(0) && treasury_ != address(0)
-                && feeSplitter_ != address(0),
+            token_ != address(0) && minter_ != address(0) && treasury_ != address(0) && feeSplitter_ != address(0),
             "Zero address"
         );
         growfiToken = token_;
@@ -250,19 +259,15 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         uint16 minPriceBps,
         uint16 maxPriceBps
     ) external onlyOwner {
-        GrowfiTreasury(growfiTreasury).addAcceptedStablecoin(
-            token, scale, priceFeed, heartbeat, minPriceBps, maxPriceBps
-        );
+        GrowfiTreasury(growfiTreasury)
+            .addAcceptedStablecoin(token, scale, priceFeed, heartbeat, minPriceBps, maxPriceBps);
     }
 
     function removeGrowfiTreasuryStablecoin(address token) external onlyOwner {
         GrowfiTreasury(growfiTreasury).removeAcceptedStablecoin(token);
     }
 
-    function allocateGrowfiTreasury(address campaign, address paymentToken, uint256 amount)
-        external
-        onlyOwner
-    {
+    function allocateGrowfiTreasury(address campaign, address paymentToken, uint256 amount) external onlyOwner {
         GrowfiTreasury(growfiTreasury).allocateToCampaign(campaign, paymentToken, amount);
     }
 
@@ -298,18 +303,11 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         GrowfiTreasury(growfiTreasury).setAutomationEnabled(enabled);
     }
 
-    function allocateAcrossTrackedGrowfiTreasury(address paymentToken, uint256 totalAmount)
-        external
-        onlyOwner
-    {
+    function allocateAcrossTrackedGrowfiTreasury(address paymentToken, uint256 totalAmount) external onlyOwner {
         GrowfiTreasury(growfiTreasury).allocateAcrossTracked(paymentToken, totalAmount);
     }
 
-    function stakeGrowfiTreasury(address campaign, uint256 amount)
-        external
-        onlyOwner
-        returns (uint256 positionId)
-    {
+    function stakeGrowfiTreasury(address campaign, uint256 amount) external onlyOwner returns (uint256 positionId) {
         return GrowfiTreasury(growfiTreasury).stakeOnCampaign(campaign, amount);
     }
 
@@ -456,10 +454,7 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
 
     function _deployCampaignHost(address producer) internal returns (address campaignProxy) {
         GrowfiCampaign.InitParams memory hostInit = GrowfiCampaign.InitParams({
-            producer: producer,
-            factory: address(this),
-            usdc: usdc,
-            protocolFeeRecipient: protocolFeeRecipient
+            producer: producer, factory: address(this), usdc: usdc, protocolFeeRecipient: protocolFeeRecipient
         });
         bytes memory campInit = abi.encodeCall(GrowfiCampaign.initialize, (hostInit));
         campaignProxy = address(new TransparentUpgradeableProxy(campaignImpl, proxyAdminOwner, campInit));
@@ -481,14 +476,7 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
 
         bytes memory hmInit = abi.encodeCall(
             GrowfiHarvestManager.initialize,
-            (
-                usdc,
-                p.producer,
-                address(this),
-                protocolFeeRecipient,
-                HARVEST_PROTOCOL_FEE_BPS,
-                p.minProductClaim
-            )
+            (usdc, p.producer, address(this), protocolFeeRecipient, HARVEST_PROTOCOL_FEE_BPS, p.minProductClaim)
         );
         hmAddr = address(new TransparentUpgradeableProxy(harvestManagerImpl, proxyAdminOwner, hmInit));
 

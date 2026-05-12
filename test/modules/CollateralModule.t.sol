@@ -2,8 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {Test} from "forge-std/Test.sol";
-import {TransparentUpgradeableProxy} from
-    "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
+import {TransparentUpgradeableProxy} from "@openzeppelin/contracts/proxy/transparent/TransparentUpgradeableProxy.sol";
 
 import {GrowfiCampaign} from "../../src/GrowfiCampaign.sol";
 import {CampaignStorage} from "../../src/host/CampaignStorage.sol";
@@ -56,10 +55,7 @@ contract CollateralModuleTest is Test {
         // Campaign proxy
         GrowfiCampaign campImpl = new GrowfiCampaign();
         GrowfiCampaign.InitParams memory cp = GrowfiCampaign.InitParams({
-            producer: producer,
-            factory: address(registry),
-            usdc: address(usdc),
-            protocolFeeRecipient: feeRecipient
+            producer: producer, factory: address(registry), usdc: address(usdc), protocolFeeRecipient: feeRecipient
         });
         bytes memory campInit = abi.encodeCall(GrowfiCampaign.initialize, (cp));
         TransparentUpgradeableProxy campaignProxy =
@@ -286,5 +282,4 @@ contract CollateralModuleTest is Test {
         vm.expectRevert(CollateralModule.DepositWindowOpen.selector);
         CollateralModule(payable(address(campaign))).settleSeasonShortfall(1);
     }
-
 }

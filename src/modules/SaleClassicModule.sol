@@ -81,8 +81,7 @@ contract SaleClassicModule {
         bool initialized;
     }
 
-    bytes32 internal constant STORAGE_SLOT =
-        0xd7250d23bb7bc8e93366cf6815d31bcb947e004baa702b9bb515d6082501a234; // keccak256("growfi.module.sale.classic.v1")
+    bytes32 internal constant STORAGE_SLOT = 0xd7250d23bb7bc8e93366cf6815d31bcb947e004baa702b9bb515d6082501a234; // keccak256("growfi.module.sale.classic.v1")
 
     uint256 internal constant MAX_ACCEPTED_TOKENS = 10;
     uint256 internal constant MAX_OPEN_SELLBACK_ORDERS_PER_USER = 50;
@@ -351,8 +350,7 @@ contract SaleClassicModule {
         uint256 tokensToMint = tokensOut;
 
         if (isActive) {
-            (paymentRemaining, tokensToMint) =
-                _fillSellBackQueue(paymentToken, paymentRemaining, tokensOut, msg.sender);
+            (paymentRemaining, tokensToMint) = _fillSellBackQueue(paymentToken, paymentRemaining, tokensOut, msg.sender);
         }
 
         if (paymentRemaining > 0 && tokensToMint > 0) {
@@ -483,11 +481,7 @@ contract SaleClassicModule {
 
     /// @notice Producer extends the funding deadline. Cannot shorten;
     ///         cannot push into the past.
-    function setFundingDeadline(uint256 newDeadline)
-        external
-        onlyProducer
-        inState(CampaignStorage.State.Funding)
-    {
+    function setFundingDeadline(uint256 newDeadline) external onlyProducer inState(CampaignStorage.State.Funding) {
         Layout storage s = _s();
         if (newDeadline <= block.timestamp) revert DeadlineInPast();
         if (newDeadline <= s.fundingDeadline) revert DeadlineNotExtended();
@@ -515,10 +509,9 @@ contract SaleClassicModule {
     function setMaxCap(uint256 newMaxCap) external onlyProducer {
         Layout storage s = _s();
         uint8 st = CampaignStorage.layout().state;
-        if (
-            st != uint8(CampaignStorage.State.Funding)
-                && st != uint8(CampaignStorage.State.Active)
-        ) revert InvalidState();
+        if (st != uint8(CampaignStorage.State.Funding) && st != uint8(CampaignStorage.State.Active)) {
+            revert InvalidState();
+        }
         uint256 committed = s.currentSupply + _queueTotalTokens();
         if (newMaxCap < committed) revert NewMaxCapBelowCommitted();
         if (st == uint8(CampaignStorage.State.Funding) && newMaxCap < s.minCap) revert NewMaxCapBelowCommitted();

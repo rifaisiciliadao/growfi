@@ -105,29 +105,29 @@ contract GrowfiAutoAllocTest is Test {
         uint256 minCap = 100e18;
 
         GrowfiCampaignFactory.CreateCampaignParams memory p = GrowfiCampaignFactory.CreateCampaignParams({
-                producer: producer,
-                campaignTokenName: name,
-                campaignTokenSymbol: "TKN",
-                yieldTokenName: "Y",
-                yieldTokenSymbol: "y",
-                minProductClaim: 1e18,
-                sale: SaleClassicModule.InitParams({
-                    pricePerToken: price,
-                    minCap: minCap,
-                    maxCap: maxCap,
-                    fundingDeadline: block.timestamp + 30 days,
-                    seasonDuration: 1 hours,
-                    fundingFeeBps: 0,
-                    sequencerUptimeFeed: address(0),
-                    growMinter: address(0)
-                }),
-                collateral: CollateralModule.InitParams({
-                    expectedAnnualHarvestUsd: 1000e18,
-                    expectedAnnualHarvest: 100e18,
-                    firstHarvestYear: 2027,
-                    coverageHarvests: 0
-                })
-            });
+            producer: producer,
+            campaignTokenName: name,
+            campaignTokenSymbol: "TKN",
+            yieldTokenName: "Y",
+            yieldTokenSymbol: "y",
+            minProductClaim: 1e18,
+            sale: SaleClassicModule.InitParams({
+                pricePerToken: price,
+                minCap: minCap,
+                maxCap: maxCap,
+                fundingDeadline: block.timestamp + 30 days,
+                seasonDuration: 1 hours,
+                fundingFeeBps: 0,
+                sequencerUptimeFeed: address(0),
+                growMinter: address(0)
+            }),
+            collateral: CollateralModule.InitParams({
+                expectedAnnualHarvestUsd: 1000e18,
+                expectedAnnualHarvest: 100e18,
+                firstHarvestYear: 2027,
+                coverageHarvests: 0
+            })
+        });
         vm.prank(producer);
         campaign = factory.createCampaign(p);
 
@@ -262,29 +262,29 @@ contract GrowfiAutoAllocTest is Test {
     function test_autoAlloc_fundingCampaignSkipped() public {
         // Spawn A but DON'T push past softcap.
         GrowfiCampaignFactory.CreateCampaignParams memory p = GrowfiCampaignFactory.CreateCampaignParams({
-                producer: PRODUCER_A,
-                campaignTokenName: "Funding A",
-                campaignTokenSymbol: "TKN",
-                yieldTokenName: "Y",
-                yieldTokenSymbol: "y",
-                minProductClaim: 1e18,
-                sale: SaleClassicModule.InitParams({
-                    pricePerToken: 1e17,
-                    minCap: 100e18,
-                    maxCap: 10_000e18,
-                    fundingDeadline: block.timestamp + 30 days,
-                    seasonDuration: 1 hours,
-                    fundingFeeBps: 0,
-                    sequencerUptimeFeed: address(0),
-                    growMinter: address(0)
-                }),
-                collateral: CollateralModule.InitParams({
-                    expectedAnnualHarvestUsd: 1000e18,
-                    expectedAnnualHarvest: 100e18,
-                    firstHarvestYear: 2027,
-                    coverageHarvests: 0
-                })
-            });
+            producer: PRODUCER_A,
+            campaignTokenName: "Funding A",
+            campaignTokenSymbol: "TKN",
+            yieldTokenName: "Y",
+            yieldTokenSymbol: "y",
+            minProductClaim: 1e18,
+            sale: SaleClassicModule.InitParams({
+                pricePerToken: 1e17,
+                minCap: 100e18,
+                maxCap: 10_000e18,
+                fundingDeadline: block.timestamp + 30 days,
+                seasonDuration: 1 hours,
+                fundingFeeBps: 0,
+                sequencerUptimeFeed: address(0),
+                growMinter: address(0)
+            }),
+            collateral: CollateralModule.InitParams({
+                expectedAnnualHarvestUsd: 1000e18,
+                expectedAnnualHarvest: 100e18,
+                firstHarvestYear: 2027,
+                coverageHarvests: 0
+            })
+        });
         vm.prank(PRODUCER_A);
         address campA = factory.createCampaign(p);
         vm.prank(OWNER);

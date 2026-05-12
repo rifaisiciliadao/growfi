@@ -259,9 +259,7 @@ contract RepaymentSystemicTest is Test {
         vm.prank(alice);
         _r().redeem(200e18, new uint256[](0));
         assertEq(
-            usdc.balanceOf(alice) - aliceUsdcBefore,
-            200e18 * FIXED_RATE / 1e18,
-            "redeem paid principal even in Buyback"
+            usdc.balanceOf(alice) - aliceUsdcBefore, 200e18 * FIXED_RATE / 1e18, "redeem paid principal even in Buyback"
         );
     }
 

@@ -115,9 +115,7 @@ contract RepaymentReentrancyTest is Test {
     /// @dev On redeem payout, a malicious USDC tries to re-enter
     ///      redeem itself. nonReentrant must catch and bubble up.
     function test_reent_redeemReentryBlocked() public {
-        bytes memory reentry = abi.encodeWithSelector(
-            RepaymentModule.redeem.selector, uint256(50e18), new uint256[](0)
-        );
+        bytes memory reentry = abi.encodeWithSelector(RepaymentModule.redeem.selector, uint256(50e18), new uint256[](0));
         usdc.arm(campaignAddr, reentry);
 
         // Pranking alice — her redeem triggers payout → USDC transfer →
@@ -204,9 +202,7 @@ contract RepaymentReentrancyTest is Test {
         campaignToken.approve(campaignAddr, type(uint256).max);
 
         // Arm reentry as alice's redeem
-        bytes memory reentry = abi.encodeWithSelector(
-            RepaymentModule.redeem.selector, uint256(10e18), new uint256[](0)
-        );
+        bytes memory reentry = abi.encodeWithSelector(RepaymentModule.redeem.selector, uint256(10e18), new uint256[](0));
         usdc.arm(campaignAddr, reentry);
 
         usdc.mint(producer, 1_000e6);
