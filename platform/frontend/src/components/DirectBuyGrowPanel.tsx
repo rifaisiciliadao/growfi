@@ -269,31 +269,60 @@ export function DirectBuyGrowPanel() {
   }
 
   const markupPct = Number(markupBps) / 100;
+  const formattedSalePrice =
+    salePrice === 0n ? "—" : formatUsd18(salePrice, 4, 6);
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-1 text-xl font-semibold text-zinc-900">{t("title")}</h2>
-      <p className="mb-4 text-sm text-zinc-500">{t("blurb")}</p>
+    <div className="rounded-[8px] border border-zinc-200 bg-white p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.65)] md:p-6">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            {t("salePriceHint", { markup: markupPct.toLocaleString() })}
+          </p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950 sm:text-2xl">
+            {t("title")}
+          </h2>
+        </div>
+        <span
+          className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+            saleActive
+              ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+              : "border-amber-200 bg-amber-50 text-amber-700"
+          }`}
+        >
+          {saleActive ? "ON" : "OFF"}
+        </span>
+      </div>
+      <p className="mb-5 text-sm leading-6 text-zinc-600">
+        {t("blurb", { markup: markupPct.toLocaleString() })}
+      </p>
 
       {!saleActive && (
-        <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+        <div className="mb-4 rounded-[8px] border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           {t("salePaused")}
         </div>
       )}
 
-      {/* Quote header — only Sale price (floor lives in the page-level stat strip) */}
-      <div className="mb-4 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
-        <div className="text-xs uppercase tracking-wide text-zinc-500">
-          {t("salePrice")}
-        </div>
-        <div className="font-mono text-zinc-900">
-          {salePrice === 0n ? "—" : `$${formatUnits(salePrice, 18)}`}
+      <div className="-mx-5 mb-5 border-y border-zinc-200 bg-[#f6f8f4] px-5 py-4 md:-mx-6 md:px-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+              {t("salePrice")}
+            </div>
+            <div className="mt-1 font-mono text-3xl text-zinc-950">
+              {formattedSalePrice}
+            </div>
+          </div>
+          <div className="pb-1 text-right text-[11px] leading-4 text-zinc-500">
+            {selected?.symbol ?? "USDC"}
+            <br />
+            {stableDepegged ? "OFF" : "OK"}
+          </div>
         </div>
       </div>
 
-      {/* Stablecoin selector */}
       <div className="mb-1 flex items-baseline justify-between">
-        <label className="block text-xs uppercase tracking-wide text-zinc-500">
+        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
           {t("payWith")}
         </label>
         {faucetEnabled && isConnected && selected && (
@@ -313,16 +342,16 @@ export function DirectBuyGrowPanel() {
           </button>
         )}
       </div>
-      <div className="mb-3 flex gap-2">
+      <div className="mb-4 flex gap-1 rounded-[8px] border border-zinc-200 bg-zinc-100 p-1">
         {stableOptions.map((s) => (
           <button
             key={s.symbol}
             type="button"
             onClick={() => setSelectedSym(s.symbol)}
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition ${
+            className={`flex-1 rounded-[6px] px-3 py-2 text-sm font-semibold transition ${
               selectedSym === s.symbol
-                ? "bg-emerald-600 text-white"
-                : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
+                ? "bg-white text-zinc-950 shadow-sm"
+                : "text-zinc-500 hover:text-zinc-800"
             }`}
           >
             {s.symbol}
@@ -330,27 +359,25 @@ export function DirectBuyGrowPanel() {
         ))}
       </div>
 
-      {/* Depeg banner */}
       {stableDepegged && selected && (
-        <div className="mb-3 rounded-lg border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
+        <div className="mb-3 rounded-[8px] border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
           {t("depegged", { symbol: selected.symbol })}
         </div>
       )}
 
-      {/* Amount input */}
-      <label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">
+      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
         {t("youPay")}
       </label>
-      <div className="mb-3 flex items-stretch gap-2">
+      <div className="mb-3 flex min-h-[54px] overflow-hidden rounded-[8px] border border-zinc-300 bg-white focus-within:border-emerald-600">
         <input
           type="text"
           inputMode="decimal"
           value={paymentInput}
           onChange={(e) => setPaymentInput(e.target.value)}
           placeholder="0.00"
-          className="w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-lg focus:border-emerald-600 focus:outline-none"
+          className="min-w-0 flex-1 px-3 py-2 font-mono text-lg text-zinc-950 outline-none"
         />
-        <div className="flex w-20 items-center justify-center rounded-lg bg-zinc-100 text-sm font-medium text-zinc-600">
+        <div className="flex w-20 items-center justify-center border-l border-zinc-200 bg-zinc-50 text-sm font-semibold text-zinc-600">
           {selected?.symbol}
         </div>
       </div>
@@ -366,15 +393,24 @@ export function DirectBuyGrowPanel() {
         )}
       </div>
 
-      {/* You receive */}
-      <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50 p-3">
-        <div className="text-xs uppercase tracking-wide text-emerald-700">
-          {t("youReceive")}
+      <div className="mb-4 border-t border-zinc-200 pt-4">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              {t("youReceive")}
+            </div>
+            <div className="mt-1 font-mono text-3xl text-emerald-900">
+              {growOut === 0n
+                ? "—"
+                : Number(formatUnits(growOut, 18)).toLocaleString(undefined, {
+                    maximumFractionDigits: 4,
+                  })}
+            </div>
+          </div>
+          <div className="pb-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            $GROW
+          </div>
         </div>
-        <div className="font-mono text-2xl text-emerald-900">
-          {growOut === 0n ? "—" : Number(formatUnits(growOut, 18)).toFixed(4)}
-        </div>
-        <div className="text-xs text-emerald-700">$GROW</div>
       </div>
 
       <button
@@ -389,7 +425,7 @@ export function DirectBuyGrowPanel() {
           insufficientBalance ||
           salePrice === 0n
         }
-        className="flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
+        className="flex w-full items-center justify-center gap-2 rounded-[8px] bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
       >
         {isBusy && <Spinner />}
         {!isConnected
@@ -412,4 +448,12 @@ export function DirectBuyGrowPanel() {
       )}
     </div>
   );
+}
+
+function formatUsd18(value: bigint, minDigits: number, maxDigits: number) {
+  const amount = Number(formatUnits(value, 18));
+  return `$${amount.toLocaleString(undefined, {
+    minimumFractionDigits: minDigits,
+    maximumFractionDigits: maxDigits,
+  })}`;
 }

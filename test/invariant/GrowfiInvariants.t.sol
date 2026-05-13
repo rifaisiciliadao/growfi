@@ -17,7 +17,7 @@ import {GrowfiHandler} from "./GrowfiHandler.sol";
 ///          (more precisely: holdings in splitter == sum(donated) - sum(flushed))
 ///   INV-3: treasury USDC balance == sum of inflows - sum of redeems-out
 ///          (loose check: balance ≥ 0 by ERC20 invariant; tight check via ghost vars)
-///   INV-4: floor price is non-negative (no underflow)
+///   INV-4: floor price matches stablecoin backing / circulating supply
 ///   INV-5: circulating supply (totalSupply - treasury holdings) is consistent with
 ///          burned amounts
 contract GrowfiInvariantsTest is Test {
@@ -89,12 +89,13 @@ contract GrowfiInvariantsTest is Test {
         handler = new GrowfiHandler(token, treasury, splitter, usdc, usdt, OPS, actors);
         targetContract(address(handler));
 
-        bytes4[] memory selectors = new bytes4[](5);
+        bytes4[] memory selectors = new bytes4[](6);
         selectors[0] = handler.directBuy.selector;
         selectors[1] = handler.donateToTreasury.selector;
         selectors[2] = handler.redeem.selector;
         selectors[3] = handler.flushSplitter.selector;
         selectors[4] = handler.transferGrow.selector;
+        selectors[5] = handler.donateToSplitter.selector;
         targetSelector(FuzzSelector({addr: address(handler), selectors: selectors}));
     }
 
@@ -109,18 +110,14 @@ contract GrowfiInvariantsTest is Test {
         assertGe(GENESIS + handler.ghost_totalGrowMintedViaDirectBuy(), supply, "supply > inflows");
     }
 
-    /// @notice INV-2: After every flush, the splitter holds zero of the flushed stablecoin.
-    ///         We can only check the "post-condition" here at the end of fuzz — but the
-    ///         property is enforced in code (flushToken transfers everything). At any
-    ///         fuzz step, splitter's balance can be non-zero (between donations and flushes).
-    ///         Stronger: splitter's balance ≤ ghost_donations_to_splitter (loose).
+    /// @notice INV-2: The splitter never holds more stablecoin than was donated to it.
     function invariant_splitter_does_not_drain_to_self() public view {
-        // The splitter's balance can only grow via external transfers and shrink via flush.
-        // Treasury + ops together hold the share that has been flushed out.
-        // No specific invariant beyond "splitter balance is consistent" — this would require
-        // a ghost var per token. For now: assert non-negative (trivial, ERC20 enforced).
-        assertGe(usdc.balanceOf(address(splitter)), 0);
-        assertGe(usdt.balanceOf(address(splitter)), 0);
+        assertLe(
+            usdc.balanceOf(address(splitter)), handler.ghost_totalUsdcDonatedToSplitter(), "splitter USDC > donated"
+        );
+        assertLe(
+            usdt.balanceOf(address(splitter)), handler.ghost_totalUsdtDonatedToSplitter(), "splitter USDT > donated"
+        );
     }
 
     /// @notice INV-3: Treasury's USDC balance is bounded above by the cumulative inflows.
@@ -133,13 +130,19 @@ contract GrowfiInvariantsTest is Test {
         assertLe(bal, inflows, "treasury USDC > recorded inflows");
     }
 
-    /// @notice INV-4: Floor price is always a valid non-overflowing uint256. The view
-    ///         must not revert on standard state (no campaigns tracked here, only stablecoins).
+    /// @notice INV-4: Floor price equals live stablecoin backing divided by circulating GROW.
     function invariant_floorPrice_nonNegative_andCallable() public view {
         uint256 floor = treasury.intrinsicFloorPrice();
-        // Floor is always ≥ 0 by uint256 type. But the call must not revert.
-        // (Avoid usage of `floor` to keep optimizer happy.)
-        assertTrue(floor >= 0);
+        uint256 totalValue = (usdc.balanceOf(address(treasury)) + usdt.balanceOf(address(treasury))) * 1e12;
+        uint256 totalSupply = token.totalSupply();
+        uint256 treasuryGrow = token.balanceOf(address(treasury));
+
+        uint256 expectedFloor;
+        if (totalValue > 0 && totalSupply > treasuryGrow) {
+            expectedFloor = (totalValue * 1e18) / (totalSupply - treasuryGrow);
+        }
+
+        assertEq(floor, expectedFloor, "floor != stable backing / circulating supply");
     }
 
     /// @notice INV-5: Circulating supply (totalSupply - treasury holdings) is non-negative.

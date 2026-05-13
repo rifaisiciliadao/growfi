@@ -352,9 +352,10 @@ contract AuditFixesTest is Test {
 
         // pause and confirm reportHarvest reverts
         factory.pauseCampaign(0);
+        uint256 expectedTotalYieldSupply = GrowfiHarvestManager(hmAddr).redeemableYieldSupply();
         vm.prank(producer);
         vm.expectRevert();
-        GrowfiHarvestManager(hmAddr).reportHarvest(1, 1000e18, bytes32(0), 0);
+        GrowfiHarvestManager(hmAddr).reportHarvest(1, 1000e18, bytes32(0), 0, expectedTotalYieldSupply);
     }
 
     function harvestManagerOf(uint256 i) internal view returns (GrowfiHarvestManager) {
@@ -603,8 +604,11 @@ contract AuditFixesTest is Test {
         campaign.endSeason();
 
         uint256 totalValueUSD = 1000e18; // $1000 harvest
-        vm.prank(producer);
-        GrowfiHarvestManager(hmAddr).reportHarvest(1, totalValueUSD, bytes32(0), 0);
+        {
+            uint256 expectedTotalYieldSupply = GrowfiHarvestManager(hmAddr).redeemableYieldSupply();
+            vm.prank(producer);
+            GrowfiHarvestManager(hmAddr).reportHarvest(1, totalValueUSD, bytes32(0), 0, expectedTotalYieldSupply);
+        }
 
         (,, address ytAddr,,,,) = factory.campaigns(0);
         aliceYield = IERC20(ytAddr).balanceOf(alice);
@@ -626,7 +630,7 @@ contract AuditFixesTest is Test {
 
     /// @notice Each depositUSDC call routes 2% of the amount to protocolFeeRecipient.
     function test_M05_depositUSDC_routesFeeToRecipient() public {
-        (IGrowfiCampaignFull camp, GrowfiHarvestManager hm,, uint256 depositAmount) = _runToHarvest();
+        (IGrowfiCampaignFull camp,,, uint256 depositAmount) = _runToHarvest();
         camp; // silence unused
 
         uint256 feeBefore = usdc.balanceOf(feeRecipient);
@@ -695,8 +699,11 @@ contract AuditFixesTest is Test {
 
         vm.prank(producer);
         campaign.endSeason();
-        vm.prank(producer);
-        hm.reportHarvest(1, 1000e18, bytes32(0), 0);
+        {
+            uint256 expectedTotalYieldSupply = hm.redeemableYieldSupply();
+            vm.prank(producer);
+            hm.reportHarvest(1, 1000e18, bytes32(0), 0, expectedTotalYieldSupply);
+        }
 
         // Alice NOW claims her yield (after report) — should still get fair share.
         vm.prank(alice);
@@ -719,6 +726,270 @@ contract AuditFixesTest is Test {
         (,,, uint256 bobOwed18,) = hm.claims(1, bob);
         uint256 holderPool18 = 1000e18 * 9800 / 10_000; // 2% fee haircut
         assertLe(aliceOwed18 + bobOwed18, holderPool18 + 1, "M-06: usdcOwed oversubscribed beyond holderPool");
+    }
+
+    function test_M06_reportHarvest_revertsWhileSeasonActive() public {
+        vm.prank(producer);
+        campaign.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 144_000, address(0));
+
+        usdc.mint(alice, 7200e6);
+        vm.prank(alice);
+        usdc.approve(address(campaign), type(uint256).max);
+        vm.prank(alice);
+        campaign.buy(address(usdc), 7200e6);
+
+        vm.prank(producer);
+        campaign.startSeason();
+
+        (,,,, address hmAddr,,) = factory.campaigns(0);
+        uint256 expectedTotalYieldSupply = GrowfiHarvestManager(hmAddr).redeemableYieldSupply();
+        vm.prank(producer);
+        vm.expectRevert(GrowfiHarvestManager.SeasonNotEnded.selector);
+        GrowfiHarvestManager(hmAddr).reportHarvest(1, 1000e18, bytes32(0), 0, expectedTotalYieldSupply);
+    }
+
+    function test_M06_reportHarvest_revertsWhileLaterSeasonActive() public {
+        vm.prank(producer);
+        campaign.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 144_000, address(0));
+
+        usdc.mint(alice, 7200e6);
+        vm.prank(alice);
+        usdc.approve(address(campaign), type(uint256).max);
+        vm.prank(alice);
+        campaign.buy(address(usdc), 7200e6);
+
+        vm.prank(producer);
+        campaign.startSeason();
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(producer);
+        campaign.endSeason();
+        vm.prank(producer);
+        campaign.startSeason();
+
+        (,,,, address hmAddr,,) = factory.campaigns(0);
+        uint256 expectedTotalYieldSupply = GrowfiHarvestManager(hmAddr).redeemableYieldSupply();
+        vm.prank(producer);
+        vm.expectRevert(GrowfiHarvestManager.SeasonNotEnded.selector);
+        GrowfiHarvestManager(hmAddr).reportHarvest(1, 1000e18, bytes32(0), 0, expectedTotalYieldSupply);
+    }
+
+    function test_M06_reportHarvest_revertsWhenMerkleDenominatorIsStale() public {
+        vm.prank(producer);
+        campaign.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 144_000, address(0));
+
+        usdc.mint(alice, 7200e6);
+        vm.prank(alice);
+        usdc.approve(address(campaign), type(uint256).max);
+        vm.prank(alice);
+        campaign.buy(address(usdc), 7200e6);
+
+        vm.prank(producer);
+        campaign.startSeason();
+        vm.prank(alice);
+        campaignToken.approve(address(stakingVault), type(uint256).max);
+        uint256 aliceStake = campaignToken.balanceOf(alice);
+        vm.prank(alice);
+        stakingVault.stake(aliceStake);
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(producer);
+        campaign.endSeason();
+
+        (,,,, address hmAddr,,) = factory.campaigns(0);
+        GrowfiHarvestManager hm = GrowfiHarvestManager(hmAddr);
+        uint256 actualSupply = hm.redeemableYieldSupply();
+        assertGt(actualSupply, 0, "stale denominator setup failed");
+
+        vm.prank(producer);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                GrowfiHarvestManager.TotalYieldSupplyMismatch.selector, actualSupply + 1, actualSupply
+            )
+        );
+        hm.reportHarvest(1, 1000e18, bytes32(0), 0, actualSupply + 1);
+    }
+
+    function test_M06_startSeason_revertsWhileHarvestClaimWindowOpen() public {
+        vm.prank(producer);
+        campaign.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 144_000, address(0));
+
+        usdc.mint(alice, 7200e6);
+        vm.prank(alice);
+        usdc.approve(address(campaign), type(uint256).max);
+        vm.prank(alice);
+        campaign.buy(address(usdc), 7200e6);
+
+        vm.prank(producer);
+        campaign.startSeason();
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(producer);
+        campaign.endSeason();
+
+        (,,,, address hmAddr,,) = factory.campaigns(0);
+        GrowfiHarvestManager hm = GrowfiHarvestManager(hmAddr);
+        {
+            uint256 expectedTotalYieldSupply = hm.redeemableYieldSupply();
+            vm.prank(producer);
+            hm.reportHarvest(1, 1000e18, bytes32(0), 0, expectedTotalYieldSupply);
+        }
+        uint256 claimEnd = hm.latestClaimWindowEnd();
+
+        vm.prank(producer);
+        vm.expectRevert(GrowfiCampaign.InvalidState.selector);
+        campaign.startSeason();
+
+        vm.warp(claimEnd + 1);
+        vm.prank(producer);
+        campaign.startSeason();
+        assertEq(stakingVault.currentSeasonId(), 2);
+    }
+
+    function test_M06_carriedYieldIsIncludedInFutureHarvestDenominator() public {
+        vm.prank(producer);
+        campaign.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 144_000, address(0));
+
+        usdc.mint(alice, 10_000e6);
+        usdc.mint(bob, 10_000e6);
+        vm.prank(alice);
+        usdc.approve(address(campaign), type(uint256).max);
+        vm.prank(bob);
+        usdc.approve(address(campaign), type(uint256).max);
+
+        vm.prank(alice);
+        campaign.buy(address(usdc), 3_600e6);
+        vm.prank(bob);
+        campaign.buy(address(usdc), 3_600e6);
+
+        (,,, address sv, address hmAddr,,) = factory.campaigns(0);
+        GrowfiStakingVault vault = GrowfiStakingVault(sv);
+        GrowfiHarvestManager hm = GrowfiHarvestManager(hmAddr);
+        (,, address ytAddr,,,,) = factory.campaigns(0);
+        IERC20 yieldTok = IERC20(ytAddr);
+
+        vm.prank(alice);
+        campaignToken.approve(address(vault), type(uint256).max);
+        vm.prank(bob);
+        campaignToken.approve(address(vault), type(uint256).max);
+
+        vm.prank(producer);
+        campaign.startSeason();
+        uint256 aliceStake = campaignToken.balanceOf(alice);
+        vm.prank(alice);
+        uint256 alicePos = vault.stake(aliceStake);
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(producer);
+        campaign.endSeason();
+        vm.prank(alice);
+        vault.claimYield(alicePos);
+        uint256 aliceOldYield = yieldTok.balanceOf(alice);
+        vm.prank(alice);
+        vault.unstake(alicePos);
+
+        vm.prank(producer);
+        campaign.startSeason();
+        uint256 bobStake = campaignToken.balanceOf(bob);
+        vm.prank(bob);
+        uint256 bobPos = vault.stake(bobStake);
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(producer);
+        campaign.endSeason();
+
+        {
+            uint256 expectedTotalYieldSupply = hm.redeemableYieldSupply();
+            vm.prank(producer);
+            hm.reportHarvest(2, 1000e18, bytes32(0), 0, expectedTotalYieldSupply);
+        }
+        vm.prank(bob);
+        vault.claimYield(bobPos);
+        uint256 bobCurrentYield = yieldTok.balanceOf(bob);
+
+        (,, uint256 snapshotSupply,,,,,,,,,) = hm.seasonHarvests(2);
+        assertEq(snapshotSupply, aliceOldYield + bobCurrentYield, "fungible yield supply must be fully snapshotted");
+
+        vm.prank(alice);
+        hm.redeemUSDC(2, aliceOldYield);
+        vm.prank(bob);
+        hm.redeemUSDC(2, bobCurrentYield);
+
+        (,,, uint256 aliceOwed18,) = hm.claims(2, alice);
+        (,,, uint256 bobOwed18,) = hm.claims(2, bob);
+        uint256 holderPool18 = 1000e18 * 9800 / 10_000;
+        assertLe(aliceOwed18 + bobOwed18, holderPool18 + 1, "old fungible yield oversubscribed season 2");
+    }
+
+    function test_M06_unmintedPriorSeasonYieldIsIncludedInFutureHarvestDenominator() public {
+        vm.prank(producer);
+        campaign.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 144_000, address(0));
+
+        usdc.mint(alice, 10_000e6);
+        usdc.mint(bob, 10_000e6);
+        vm.prank(alice);
+        usdc.approve(address(campaign), type(uint256).max);
+        vm.prank(bob);
+        usdc.approve(address(campaign), type(uint256).max);
+
+        vm.prank(alice);
+        campaign.buy(address(usdc), 3_600e6);
+        vm.prank(bob);
+        campaign.buy(address(usdc), 3_600e6);
+
+        (,,, address sv, address hmAddr,,) = factory.campaigns(0);
+        GrowfiStakingVault vault = GrowfiStakingVault(sv);
+        GrowfiHarvestManager hm = GrowfiHarvestManager(hmAddr);
+        (,, address ytAddr,,,,) = factory.campaigns(0);
+        IERC20 yieldTok = IERC20(ytAddr);
+
+        vm.prank(alice);
+        campaignToken.approve(address(vault), type(uint256).max);
+        vm.prank(bob);
+        campaignToken.approve(address(vault), type(uint256).max);
+
+        vm.prank(producer);
+        campaign.startSeason();
+        uint256 aliceStake = campaignToken.balanceOf(alice);
+        vm.prank(alice);
+        uint256 alicePos = vault.stake(aliceStake);
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(producer);
+        campaign.endSeason();
+
+        uint256 aliceUnmintedYield = vault.earned(alicePos);
+        assertGt(aliceUnmintedYield, 0, "season 1 unminted yield setup failed");
+
+        vm.prank(producer);
+        campaign.startSeason();
+        uint256 bobStake = campaignToken.balanceOf(bob);
+        vm.prank(bob);
+        uint256 bobPos = vault.stake(bobStake);
+        vm.warp(block.timestamp + 365 days);
+        vm.prank(producer);
+        campaign.endSeason();
+
+        {
+            uint256 expectedTotalYieldSupply = hm.redeemableYieldSupply();
+            vm.prank(producer);
+            hm.reportHarvest(2, 1000e18, bytes32(0), 0, expectedTotalYieldSupply);
+        }
+        (,, uint256 snapshotSupply,,,,,,,,,) = hm.seasonHarvests(2);
+
+        vm.prank(alice);
+        vault.claimYield(alicePos);
+        vm.prank(bob);
+        vault.claimYield(bobPos);
+        uint256 aliceOldYield = yieldTok.balanceOf(alice);
+        uint256 bobCurrentYield = yieldTok.balanceOf(bob);
+
+        assertEq(aliceOldYield, aliceUnmintedYield, "old unminted yield changed");
+        assertGe(snapshotSupply, aliceOldYield + bobCurrentYield, "future report missed unminted carried yield");
+
+        vm.prank(alice);
+        hm.redeemUSDC(2, aliceOldYield);
+        vm.prank(bob);
+        hm.redeemUSDC(2, bobCurrentYield);
+
+        (,,, uint256 aliceOwed18,) = hm.claims(2, alice);
+        (,,, uint256 bobOwed18,) = hm.claims(2, bob);
+        uint256 holderPool18 = 1000e18 * 9800 / 10_000;
+        assertLe(aliceOwed18 + bobOwed18, holderPool18 + 1, "unminted old yield oversubscribed season 2");
     }
 
     // ===================================================================
@@ -794,7 +1065,7 @@ contract AuditFixesTest is Test {
 
     /// @notice Fee is routed across multiple partial deposits, not only once.
     function test_M05_depositUSDC_routesFeeOnEveryDeposit() public {
-        (, GrowfiHarvestManager hm,, uint256 depositAmount) = _runToHarvest();
+        (,,, uint256 depositAmount) = _runToHarvest();
 
         usdc.mint(producer, depositAmount);
         vm.prank(producer);

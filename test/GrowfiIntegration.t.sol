@@ -666,8 +666,11 @@ contract GrowfiIntegrationTest is Test {
         bytes32 root = keccak256(abi.encodePacked(address(growTreasury), uint256(1), uint256(0)));
 
         GrowfiHarvestManager hm = GrowfiHarvestManager(IGrowfiCampaignFull(payable(campaign)).harvestManager());
-        vm.prank(PRODUCER);
-        hm.reportHarvest(1, totalValueUSD, root, totalProductUnits);
+        {
+            uint256 expectedTotalYieldSupply = hm.redeemableYieldSupply();
+            vm.prank(PRODUCER);
+            hm.reportHarvest(1, totalValueUSD, root, totalProductUnits, expectedTotalYieldSupply);
+        }
 
         // ============================================================
         // Phase 8: Treasury commits USDC redeem (burns YIELD)

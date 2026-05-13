@@ -182,7 +182,7 @@ Per-campaign harvest claim token — "the fruit."
 - **Mintable by**: StakingVault only (during staking)
 - **Burned on**: harvest redemption (product or USDC)
 - Fresh $YIELD minted each season from staking
-- No carry-over between seasons — each season's $YIELD is independent
+- $YIELD is fungible across seasons: unredeemed balances can be carried forward and burned against a later reported harvest. Harvest reports therefore snapshot all redeemable $YIELD supply, including already-minted balances plus ended-season yield that has accrued but has not yet been minted.
 
 #### 5. `StakingVault`
 Handles staking, yield accrual, penalties, and the unstaking queue.

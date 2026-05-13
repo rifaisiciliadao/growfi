@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
-import { createPublicClient, http, type Address } from "viem";
+import { createPublicClient, fallback, http, type Address } from "viem";
 import { mainnet } from "viem/chains";
 
 /**
@@ -22,18 +22,22 @@ import { mainnet } from "viem/chains";
  */
 const MAINNET_RPCS = [
   process.env.NEXT_PUBLIC_MAINNET_RPC_URL,
-  "https://eth.llamarpc.com",
-  "https://cloudflare-eth.com",
+  "https://ethereum.publicnode.com",
   "https://rpc.ankr.com/eth",
+  "https://cloudflare-eth.com",
 ].filter((u): u is string => !!u);
 
 const mainnetClient = createPublicClient({
   chain: mainnet,
-  transport: http(MAINNET_RPCS[0], {
-    retryCount: 2,
-    retryDelay: 400,
-    timeout: 8_000,
-  }),
+  transport: fallback(
+    MAINNET_RPCS.map((url) =>
+      http(url, {
+        retryCount: 1,
+        retryDelay: 400,
+        timeout: 8_000,
+      }),
+    ),
+  ),
 });
 
 /**

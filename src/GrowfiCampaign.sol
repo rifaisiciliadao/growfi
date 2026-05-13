@@ -24,6 +24,11 @@ interface IStakingVaultYieldSet {
     function setYieldToken(address yieldToken) external;
 }
 
+/// @dev Local interface for harvest claim-window lifecycle checks.
+interface IHarvestManagerClaimWindow {
+    function latestClaimWindowEnd() external view returns (uint256);
+}
+
 /// @title  GrowfiCampaign — module host
 /// @notice The Campaign contract is intentionally minimal. It owns:
 ///
@@ -327,6 +332,12 @@ contract GrowfiCampaign is Initializable {
     function startSeason() external onlyProducer {
         CampaignStorage.Layout storage s = CampaignStorage.layout();
         if (s.state != uint8(CampaignStorage.State.Active)) revert InvalidState();
+        if (
+            s.harvestManager != address(0)
+                && block.timestamp <= IHarvestManagerClaimWindow(s.harvestManager).latestClaimWindowEnd()
+        ) {
+            revert InvalidState();
+        }
         s.currentSeasonId += 1;
         IStakingVaultLifecycle(s.stakingVault).startSeason(s.currentSeasonId);
     }

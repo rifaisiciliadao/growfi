@@ -42,6 +42,11 @@ abstract contract ForkBase is Test {
     }
 
     function setUp() public virtual {
+        if (!vm.envOr("RUN_FORK_TESTS", false)) {
+            emit log_named_string("SKIP: fork tests disabled for", _chainName());
+            return;
+        }
+
         string memory rpc = _rpcUrl();
         try vm.createSelectFork(rpc) {
             _forkReady = true;
@@ -93,7 +98,7 @@ abstract contract ForkBase is Test {
     }
 
     modifier onlyFork() {
-        if (!_forkReady) return;
+        if (!_forkReady) vm.skip(true);
         _;
     }
 
@@ -110,7 +115,7 @@ abstract contract ForkBase is Test {
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active), "auto-activated");
     }
 
-    function test_fork_realChainlinkPrice() public view onlyFork {
+    function test_fork_realChainlinkPrice() public onlyFork {
         uint256 price = campaign.getPrice(_weth(), 1e18);
         assertGt(price, 0, "oracle returned zero");
         assertLt(price, 1e18, "oracle result implausible (>1 ETH per OLIVE)");
@@ -141,8 +146,11 @@ abstract contract ForkBase is Test {
         vm.prank(producer);
         campaign.endSeason();
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18, expectedTotalYieldSupply);
+        }
 
         uint256 aliceYield = yieldToken.balanceOf(alice);
         vm.prank(alice);

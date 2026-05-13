@@ -51,7 +51,7 @@ The first production use case is extra-virgin olive oil in Sicily, but the proto
 3. **Failure → Buyback** — If `minCap` is not reached by `fundingDeadline`, anyone can trigger `Buyback`. Each investor can reclaim their exact original payment (per token) by burning their proportional `$CAMPAIGN`.
 4. **Staking & seasons** — In the `Active` state the producer calls `startSeason(id)`. Holders stake `$CAMPAIGN` to earn `$YIELD`. The yield rate is **dynamic**: 5 `$YIELD/token/day` at 0 % vault fill, linearly decaying to 1 at 100 % fill (Synthetix-style O(1) accumulator). Unstaking before the end of the season incurs a linear penalty (tokens burned). Each stake creates an independent position (up to 50 per user, compactable).
 5. **Sell-back queue** — Active holders can deposit `$CAMPAIGN` into a FIFO sell-back queue. New buyers automatically fill the queue first — supply stays flat (burn + mint net zero), and the seller receives the buyer's payment token at the same price.
-6. **Harvest reporting** — At the end of each season the producer calls `reportHarvest(seasonId, valueUSD, merkleRoot, productUnits)`. The contract snapshots the total `$YIELD` supply and opens a 30-day claim window plus a 90-day USDC deposit window. 2 % protocol fee is deducted. Holders can either burn `$YIELD` for physical product (verified against the Merkle root) or for a pro-rata share of the USDC pool.
+6. **Harvest reporting** — At the end of each season the producer calls `reportHarvest(seasonId, valueUSD, merkleRoot, productUnits)`. The contract snapshots all redeemable `$YIELD` supply, including unredeemed carry-over, and opens a 30-day claim window plus a 90-day USDC deposit window. 2 % protocol fee is deducted. Holders can either burn `$YIELD` for physical product (verified against the Merkle root) or for a pro-rata share of the USDC pool.
 7. **Redemption** — Product redemption requires a valid Merkle proof of `(holder, seasonId, productAmount)` and enforces a minimum claim (e.g. 5 L). USDC claims are pro-rata against the producer's deposits — can be called repeatedly as the producer deposits more. After the deposit window closes the remaining USDC obligation is frozen.
 8. **Next season** — Positions can be `restake`d into the next season (yield from the previous season is auto-claimed at restake). Unstake after the full season returns principal with no penalty.
 
@@ -160,7 +160,7 @@ Across ~28k random action sequences per invariant, all held:
 
 ### Explicit non-guarantees
 
-- **Rebasing / fee-on-transfer payment tokens** are not supported. The whitelist expects standard-behavior ERC20s. Adding such a token would break the buyback accounting. Producers must not whitelist them.
+- **Rebasing / fee-on-transfer payment tokens** are not supported. Payment paths fail fast if the received amount differs from the declared transfer amount; producers and the multisig should still whitelist only standard-behavior ERC20s.
 - **Chainlink feed heartbeat** is enforced as 1 hour. Feeds with longer heartbeats (some rare L2 feeds) would fail `StaleOraclePrice` spuriously. Choose feeds with ≤1h heartbeat.
 - **Merkle tree construction** happens off-chain. If the producer publishes a malicious root, holders get the product allocation that root encodes. The protocol cannot validate that the root is fair — only that the producer signed it.
 - **USDC decimals** are assumed to be 6 globally. This holds on Ethereum, Base, and Arbitrum (all Circle native USDC) but would break on chains where USDC has other decimals.

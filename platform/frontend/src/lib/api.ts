@@ -75,6 +75,7 @@ export interface ProducerProfileResult {
 
 export interface MerkleProof {
   user: string;
+  yieldAmount: string | null; // 18-dec, exact burn amount the proof was built for
   productAmount: string; // 18-dec
   proof: `0x${string}`[];
 }
@@ -107,6 +108,8 @@ export interface SnapshotResult {
   totalYield: string;
   /** Expected season-scoped total from StakingVault.seasonTotalYieldOwed; null if not exposed. */
   seasonTotalYieldOwed: string | null;
+  /** Exact reportHarvest denominator: minted YIELD + ended-season accrued/unminted YIELD. */
+  redeemableYieldSupply: string | null;
   holders: Array<{ user: string; yieldAmount: string }>;
   notes: string[];
 }
@@ -129,6 +132,7 @@ export async function generateMerkleTree(input: {
   campaign: string;
   seasonId: string | number | bigint;
   totalProductUnits: string;
+  totalYieldSupply: string;
   holders: Array<{ user: string; yieldAmount: string }>;
   minProductClaim?: string;
 }): Promise<MerkleGenerateResult> {

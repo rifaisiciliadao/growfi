@@ -121,23 +121,29 @@ export function EscrowClaimPanel() {
 
   if (!minterAddr) {
     return (
-      <div className="rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
+      <div className="rounded-[8px] border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900">
         {t("notDeployed")}
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <h2 className="mb-1 text-xl font-semibold text-zinc-900">{t("title")}</h2>
-      <p className="mb-4 text-sm text-zinc-500">{t("blurb")}</p>
+    <div className="rounded-[8px] border border-zinc-200 bg-white p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.65)] md:p-6">
+      <div className="mb-5 grid gap-2 lg:grid-cols-[0.8fr_1.2fr] lg:items-end">
+        <h2 className="text-2xl font-semibold tracking-tight text-zinc-950">
+          {t("title")}
+        </h2>
+        <p className="text-sm leading-6 text-zinc-600 lg:text-right">
+          {t("blurb")}
+        </p>
+      </div>
 
       {!isConnected ? (
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+        <div className="rounded-[8px] border border-zinc-200 bg-[#f6f8f4] p-4 text-sm text-zinc-600">
           {t("connectPrompt")}
         </div>
       ) : rows.length === 0 ? (
-        <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 text-sm text-zinc-600">
+        <div className="rounded-[8px] border border-zinc-200 bg-[#f6f8f4] p-4 text-sm text-zinc-600">
           {t("empty")}
         </div>
       ) : (
@@ -177,7 +183,7 @@ export function EscrowClaimPanel() {
                   type="button"
                   onClick={() => handleClaim(row.campaign)}
                   disabled={!isClaimable || claiming !== null}
-                  className="flex w-24 items-center justify-center gap-1 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
+                  className="flex w-24 items-center justify-center gap-1 rounded-[8px] bg-emerald-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
                 >
                   {claiming === row.campaign ? (
                     <Spinner />

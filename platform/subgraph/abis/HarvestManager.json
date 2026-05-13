@@ -316,6 +316,19 @@
   },
   {
     "type": "function",
+    "name": "redeemableYieldSupply",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "reportHarvest",
     "inputs": [
       {
@@ -335,6 +348,11 @@
       },
       {
         "name": "totalUnits",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "expectedTotalYieldSupply",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -884,6 +902,22 @@
     "type": "error",
     "name": "USDCNotDeposited",
     "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TotalYieldSupplyMismatch",
+    "inputs": [
+      {
+        "name": "expected",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "actual",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
   },
   {
     "type": "error",

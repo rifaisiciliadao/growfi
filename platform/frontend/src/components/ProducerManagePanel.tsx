@@ -815,6 +815,9 @@ function ReportHarvestCard({
       if (snap.holders.length === 0) {
         throw new Error(t("errors.noHolders"));
       }
+      if (!snap.redeemableYieldSupply || BigInt(snap.redeemableYieldSupply) === 0n) {
+        throw new Error("Missing on-chain redeemable yield supply");
+      }
 
       // 2. Build a Merkle tree scoped to this season → root for reportHarvest.
       setStage({ kind: "merkle" });
@@ -823,6 +826,7 @@ function ReportHarvestCard({
         campaign: campaignAddress,
         seasonId: season.seasonId,
         totalProductUnits: productUnitsWei.toString(),
+        totalYieldSupply: snap.redeemableYieldSupply,
         holders: snap.holders,
         minProductClaim: minProductClaim.toString(),
       });
@@ -839,6 +843,7 @@ function ReportHarvestCard({
           valueUsdWei,
           merkle.root,
           productUnitsWei,
+          BigInt(snap.redeemableYieldSupply),
         ],
       });
 

@@ -123,8 +123,9 @@ contract CollateralAttacksTest is Test {
         vm.warp(block.timestamp + SEASON_DURATION);
         vm.prank(producer);
         campaign.endSeason();
+        uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
         vm.prank(producer);
-        harvestManager.reportHarvest(seasonId, harvestValueUsd18, bytes32(0), 0);
+        harvestManager.reportHarvest(seasonId, harvestValueUsd18, bytes32(0), 0, expectedTotalYieldSupply);
     }
 
     function _commitUsdcClaim(address holder, uint256 posId, uint256 seasonId) internal {

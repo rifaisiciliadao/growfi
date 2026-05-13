@@ -19,6 +19,13 @@ const client = createPublicClient({
 const stakingVaultAbi = [
   {
     type: "function",
+    name: "currentSeasonId",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "earned",
     stateMutability: "view",
     inputs: [{ name: "positionId", type: "uint256" }],
@@ -29,6 +36,31 @@ const stakingVaultAbi = [
     name: "seasonTotalYieldOwed",
     stateMutability: "view",
     inputs: [{ name: "seasonId", type: "uint256" }],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "seasons",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "uint256" }],
+    outputs: [
+      { name: "startTime", type: "uint256" },
+      { name: "endTime", type: "uint256" },
+      { name: "totalYieldMinted", type: "uint256" },
+      { name: "rewardPerTokenAtEnd", type: "uint256" },
+      { name: "totalYieldOwed", type: "uint256" },
+      { name: "active", type: "bool" },
+      { name: "existed", type: "bool" },
+    ],
+  },
+] as const;
+
+const erc20Abi = [
+  {
+    type: "function",
+    name: "totalSupply",
+    stateMutability: "view",
+    inputs: [],
     outputs: [{ type: "uint256" }],
   },
 ] as const;
@@ -77,6 +109,7 @@ export interface SnapshotResult {
   yieldToken: Address;
   totalYield: bigint;
   seasonTotalYieldOwed: bigint | null;
+  redeemableYieldSupply: bigint | null;
   holders: SnapshotHolder[];
   notes: string[];
 }
@@ -99,6 +132,10 @@ export interface SnapshotResult {
  * - Peer-to-peer $YIELD token transfers are not reflected here — the
  *   snapshot is "yield earned by position", not "current ERC20 balance".
  *   Again fine for the happy path.
+ *
+ * `redeemableYieldSupply` is different: it mirrors the on-chain denominator
+ * used by HarvestManager.reportHarvest:
+ *   yieldToken.totalSupply() + Σ(ended season totalYieldOwed - totalYieldMinted)
  */
 export async function snapshotSeasonYield(
   campaign: Address,
@@ -192,6 +229,7 @@ export async function snapshotSeasonYield(
   // 4. Cross-check against the canonical on-chain value, if the season
   //    was started. Surface any mismatch as a note.
   let seasonTotalYieldOwed: bigint | null = null;
+  let redeemableYieldSupply: bigint | null = null;
   try {
     seasonTotalYieldOwed = (await client.readContract({
       address: stakingVault,
@@ -213,6 +251,21 @@ export async function snapshotSeasonYield(
     );
   }
 
+  try {
+    redeemableYieldSupply = await readRedeemableYieldSupply(stakingVault, yieldToken);
+    if (redeemableYieldSupply !== totalYield) {
+      const delta = totalYield - redeemableYieldSupply;
+      notes.push(
+        `Snapshot totalYield (${totalYield}) differs from redeemableYieldSupply (${redeemableYieldSupply}) by ${delta}. ` +
+          "Merkle generation must use redeemableYieldSupply as the denominator to match reportHarvest.",
+      );
+    }
+  } catch {
+    notes.push(
+      "redeemableYieldSupply read failed — Merkle generation cannot be safely matched to reportHarvest.",
+    );
+  }
+
   return {
     campaign,
     seasonId,
@@ -220,7 +273,47 @@ export async function snapshotSeasonYield(
     yieldToken,
     totalYield,
     seasonTotalYieldOwed,
+    redeemableYieldSupply,
     holders,
     notes,
   };
+}
+
+async function readRedeemableYieldSupply(
+  stakingVault: Address,
+  yieldToken: Address,
+): Promise<bigint> {
+  const [currentSeasonId, mintedSupply] = await Promise.all([
+    client.readContract({
+      address: stakingVault,
+      abi: stakingVaultAbi,
+      functionName: "currentSeasonId",
+    }) as Promise<bigint>,
+    client.readContract({
+      address: yieldToken,
+      abi: erc20Abi,
+      functionName: "totalSupply",
+    }) as Promise<bigint>,
+  ]);
+
+  let total = mintedSupply;
+  for (let seasonId = 1n; seasonId <= currentSeasonId; seasonId += 1n) {
+    const season = (await client.readContract({
+      address: stakingVault,
+      abi: stakingVaultAbi,
+      functionName: "seasons",
+      args: [seasonId],
+    })) as readonly [bigint, bigint, bigint, bigint, bigint, boolean, boolean];
+
+    const totalYieldMinted = season[2];
+    const totalYieldOwed = season[4];
+    const active = season[5];
+    const existed = season[6];
+
+    if (existed && !active && totalYieldOwed > totalYieldMinted) {
+      total += totalYieldOwed - totalYieldMinted;
+    }
+  }
+
+  return total;
 }

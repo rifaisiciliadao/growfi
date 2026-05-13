@@ -184,8 +184,11 @@ contract RepaymentSystemicTest is Test {
         campaign.endSeason();
 
         // Producer reports harvest: 1000 USD total
-        vm.prank(producer);
-        harvestManager.reportHarvest(sid, 1_000e18, bytes32(0), 0); // no product, USDC-only
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(sid, 1_000e18, bytes32(0), 0, expectedTotalYieldSupply);
+        }
 
         // Both alice and bob redeem YIELD → USDC
         vm.prank(alice);
@@ -469,8 +472,11 @@ contract RepaymentSystemicTest is Test {
         campaign.endSeason();
 
         // Producer reports harvest
-        vm.prank(producer);
-        harvestManager.reportHarvest(sid, 2_000e18, bytes32(0), 0);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(sid, 2_000e18, bytes32(0), 0, expectedTotalYieldSupply);
+        }
 
         // Bob claims his yield (lazy)
         vm.prank(bob);

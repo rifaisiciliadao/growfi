@@ -122,6 +122,7 @@ contract SaleClassicModule {
     error DeadlineInPast();
     error NewMinCapBelowSupply();
     error NewMaxCapBelowCommitted();
+    error TransferAmountMismatch();
 
     // ------------------------------------------------------------------
     // Events
@@ -329,7 +330,10 @@ contract SaleClassicModule {
             paymentAmount = _calculatePaymentNeeded(paymentToken, tokensOut, oraclePrice);
         }
 
+        uint256 balanceBefore = IERC20(paymentToken).balanceOf(address(this));
         IERC20(paymentToken).safeTransferFrom(msg.sender, address(this), paymentAmount);
+        uint256 balanceAfter = IERC20(paymentToken).balanceOf(address(this));
+        if (balanceAfter - balanceBefore != paymentAmount) revert TransferAmountMismatch();
 
         uint256 fundingFee = paymentAmount * s.fundingFeeBps / 10_000;
         uint256 netPayment = paymentAmount - fundingFee;

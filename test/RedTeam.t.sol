@@ -174,9 +174,10 @@ contract RedTeamTest is Test {
     // ATTACK 5 — Random caller forges a harvest report
     // =========================================================================
     function test_attack_forgeHarvestReport() public {
+        uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
         vm.prank(attacker);
         vm.expectRevert(GrowfiHarvestManager.OnlyProducer.selector);
-        harvestManager.reportHarvest(1, 1_000_000e18, bytes32(uint256(0xdead)), 1000e18);
+        harvestManager.reportHarvest(1, 1_000_000e18, bytes32(uint256(0xdead)), 1000e18, expectedTotalYieldSupply);
     }
 
     // =========================================================================
@@ -201,8 +202,11 @@ contract RedTeamTest is Test {
         uint256 productAlice = aliceYield * totalProductUnits / totalYield;
         bytes32 realRoot = keccak256(abi.encodePacked(alice, uint256(1), productAlice));
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 14_000e18, realRoot, totalProductUnits);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 14_000e18, realRoot, totalProductUnits, expectedTotalYieldSupply);
+        }
 
         // Attacker tries to claim product as if they were in the tree with a bogus proof
         bytes32[] memory fakeProof = new bytes32[](1);
@@ -239,8 +243,11 @@ contract RedTeamTest is Test {
         uint256 productAlice = aliceYield * totalProductUnits / totalYield;
         bytes32 leaf = keccak256(abi.encodePacked(alice, uint256(1), productAlice));
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 14_000e18, leaf, totalProductUnits);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 14_000e18, leaf, totalProductUnits, expectedTotalYieldSupply);
+        }
 
         // First redemption ok
         bytes32[] memory emptyProof = new bytes32[](0);
@@ -269,8 +276,11 @@ contract RedTeamTest is Test {
         campaign.endSeason();
 
         uint256 aliceYield = yieldToken.balanceOf(alice);
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18, expectedTotalYieldSupply);
+        }
 
         // 31 days later, window closed
         vm.warp(block.timestamp + 31 days);
@@ -294,8 +304,11 @@ contract RedTeamTest is Test {
         vm.prank(producer);
         campaign.endSeason();
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18, expectedTotalYieldSupply);
+        }
 
         // Warp past claimEnd (30d) + usdcDeposit window (90d)
         vm.warp(block.timestamp + 121 days);
@@ -410,13 +423,17 @@ contract RedTeamTest is Test {
         vm.prank(producer);
         campaign.endSeason();
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 10_000e18, bytes32(0), 2000e18);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 10_000e18, bytes32(0), 2000e18, expectedTotalYieldSupply);
+        }
 
         // Producer tries to overwrite with higher value
+        uint256 secondExpectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
         vm.prank(producer);
         vm.expectRevert(GrowfiHarvestManager.AlreadyReported.selector);
-        harvestManager.reportHarvest(1, 999_999e18, bytes32(0), 2000e18);
+        harvestManager.reportHarvest(1, 999_999e18, bytes32(0), 2000e18, secondExpectedTotalYieldSupply);
     }
 
     // =========================================================================
@@ -505,8 +522,11 @@ contract RedTeamTest is Test {
         vm.prank(producer);
         campaign.endSeason();
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18, expectedTotalYieldSupply);
+        }
 
         uint256 aliceYield = yieldToken.balanceOf(alice);
         vm.prank(alice);
@@ -745,8 +765,11 @@ contract RedTeamTest is Test {
         uint256 dustYield = totalYield * 4e18 / totalProduct; // ~4 liters worth
         bytes32 leaf = keccak256(abi.encodePacked(alice, uint256(1), dustYield * totalProduct / totalYield));
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 14_000e18, leaf, totalProduct);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 14_000e18, leaf, totalProduct, expectedTotalYieldSupply);
+        }
 
         bytes32[] memory emptyProof = new bytes32[](0);
         vm.prank(alice);

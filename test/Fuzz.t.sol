@@ -262,8 +262,11 @@ contract FuzzTest is Test {
         vm.prank(producer);
         campaign.endSeason();
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 14_000e18, bytes32(0), 2000e18, expectedTotalYieldSupply);
+        }
 
         // Both redeem USDC
         uint256 aliceYield = yieldToken.balanceOf(alice);

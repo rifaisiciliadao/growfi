@@ -87,32 +87,18 @@ contract CollateralHardeningTest is Test {
     // 1. FEE-ON-TRANSFER "USDC" MISCONFIG
     // =========================================================================
 
-    function test_fot_lockCollateral_overCountsBalance() public {
+    function test_fot_lockCollateral_revertsBeforeOverCounting() public {
         FeeOnTransferToken fot = new FeeOnTransferToken("FoT", "FOT", 18, 100); // 1% burn
         (, IGrowfiCampaignFull campaign,,) = _bootstrap(address(fot));
-
-        vm.prank(producer);
-        campaign.addAcceptedToken(address(fot), SaleClassicModule.PricingMode.Fixed, USDC_RATE_FOT, address(0));
-        fot.mint(alice, 200_000e18);
-        vm.startPrank(alice);
-        fot.approve(address(campaign), type(uint256).max);
-        campaign.buy(address(fot), 60_000e18);
-        vm.stopPrank();
-        assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
 
         fot.mint(producer, 1_000e18);
         vm.startPrank(producer);
         fot.approve(address(campaign), type(uint256).max);
-        uint256 producerBefore = fot.balanceOf(producer);
-        uint256 campaignBefore = fot.balanceOf(address(campaign));
+        vm.expectRevert(CollateralModule.TransferAmountMismatch.selector);
         campaign.lockCollateral(1_000e18);
-        uint256 producerAfter = fot.balanceOf(producer);
-        uint256 campaignAfter = fot.balanceOf(address(campaign));
         vm.stopPrank();
 
-        assertEq(producerBefore - producerAfter, 1_000e18, "producer lost declared 1000");
-        assertEq(campaignAfter - campaignBefore, 990e18, "contract received 990 (1% burned)");
-        assertEq(campaign.collateralLocked(), 1_000e18, "collateralLocked over-counts: drift confirmed");
+        assertEq(campaign.collateralLocked(), 0, "failed FoT lock must not update collateral accounting");
     }
 
     // =========================================================================
@@ -176,8 +162,11 @@ contract CollateralHardeningTest is Test {
         vm.warp(block.timestamp + SEASON_DURATION);
         vm.prank(producer);
         campaign.endSeason();
-        vm.prank(producer);
-        hm.reportHarvest(1, 5_000e18, bytes32(0), 0);
+        {
+            uint256 expectedTotalYieldSupply = hm.redeemableYieldSupply();
+            vm.prank(producer);
+            hm.reportHarvest(1, 5_000e18, bytes32(0), 0, expectedTotalYieldSupply);
+        }
 
         vm.startPrank(alice);
         sv.claimYield(posId);

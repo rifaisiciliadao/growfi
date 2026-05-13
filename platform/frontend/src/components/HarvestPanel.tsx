@@ -711,6 +711,7 @@ function ProductRedemption({
   }
 
   const productAmount = BigInt(proofData.productAmount);
+  const redeemYieldAmount = proofData.yieldAmount ? BigInt(proofData.yieldAmount) : userYieldBalance;
 
   return (
     <div className="mt-3 pt-3 border-t border-outline-variant/15">
@@ -728,8 +729,13 @@ function ProductRedemption({
           </div>
         </div>
         <button
-          onClick={() => onRedeem(userYieldBalance, proofData.proof)}
-          disabled={userYieldBalance === 0n || pendingKind !== null}
+          onClick={() => onRedeem(redeemYieldAmount, proofData.proof)}
+          disabled={
+            userYieldBalance === 0n ||
+            redeemYieldAmount === 0n ||
+            redeemYieldAmount > userYieldBalance ||
+            pendingKind !== null
+          }
           className="bg-primary text-white rounded-full px-5 py-2 text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {pendingKind === "redeem" ? t("redeeming") : t("redeemProduct")}

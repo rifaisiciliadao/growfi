@@ -197,7 +197,7 @@ contract PoolSecurityTest is Test {
         assertTrue(active);
     }
 
-    function test_reentrancy_depositUSDC_blocksSelfReentry() public {
+    function test_reentrancy_depositUSDC_reentryAttemptIsIneffective() public {
         ReentrantToken rog = new ReentrantToken("Rogue USDC", "rUSDC", 6);
         GrowfiCampaignFactory rogueFactory =
             Deployer.deployProtocol(protocolOwner, feeRecipient, address(rog), address(0));
@@ -229,19 +229,58 @@ contract PoolSecurityTest is Test {
                 })
             })
         );
-        (,,,, address hm2,,) = rogueFactory.campaigns(0);
+        (address c2, address ct2,, address sv2, address hm2,,) = rogueFactory.campaigns(0);
+        IGrowfiCampaignFull rc = IGrowfiCampaignFull(payable(c2));
+        GrowfiCampaignToken ct = GrowfiCampaignToken(ct2);
+        GrowfiStakingVault vault = GrowfiStakingVault(sv2);
         GrowfiHarvestManager hm = GrowfiHarvestManager(hm2);
 
-        rog.mint(producer, 1_000e6);
         vm.prank(producer);
-        rog.approve(address(campaign), type(uint256).max);
+        rc.addAcceptedToken(address(rog), SaleClassicModule.PricingMode.Fixed, USDC_FIXED_RATE, address(0));
 
-        bytes memory payload = abi.encodeCall(GrowfiHarvestManager.depositFromCollateral, (1, 1e6));
-        rog.arm(address(hm), payload);
+        uint256 activationPayment = 100 * USDC_FIXED_RATE;
+        rog.mint(alice, activationPayment);
+        vm.startPrank(alice);
+        rog.approve(c2, type(uint256).max);
+        rc.buy(address(rog), activationPayment);
+        ct.approve(address(vault), type(uint256).max);
+        vm.stopPrank();
 
         vm.prank(producer);
-        vm.expectRevert();
-        campaign.depositUSDC(1, 1e6);
+        rc.startSeason();
+        uint256 aliceCt = ct.balanceOf(alice);
+        vm.prank(alice);
+        uint256 pos = vault.stake(aliceCt);
+
+        vm.warp(block.timestamp + SEASON_DURATION);
+        vm.prank(producer);
+        rc.endSeason();
+        {
+            uint256 expectedTotalYieldSupply = hm.redeemableYieldSupply();
+            vm.prank(producer);
+            hm.reportHarvest(1, 1_000e18, bytes32(0), 0, expectedTotalYieldSupply);
+        }
+
+        vm.prank(alice);
+        vault.claimYield(pos);
+        uint256 aliceYield = GrowfiYieldToken(address(hm.yieldToken())).balanceOf(alice);
+        vm.prank(alice);
+        hm.redeemUSDC(1, aliceYield);
+
+        uint256 depositCap = hm.remainingDepositGross(1);
+        rog.mint(producer, depositCap);
+        vm.prank(producer);
+        rog.approve(c2, type(uint256).max);
+
+        bytes memory payload = abi.encodeCall(CollateralModule.depositUSDC, (1, uint256(1)));
+        rog.arm(c2, payload, true);
+
+        vm.prank(producer);
+        rc.depositUSDC(1, depositCap);
+
+        assertFalse(rog.lastCallOk(), "token-triggered reentry must not enter producer-only deposit");
+        (,,,,,,, uint256 usdcDeposited,,,,) = hm.seasonHarvests(1);
+        assertGt(usdcDeposited, 0, "outer deposit should still fund the harvest");
     }
 
     // =========================================================================
@@ -315,43 +354,25 @@ contract PoolSecurityTest is Test {
     }
 
     // =========================================================================
-    // 4. FEE-ON-TRANSFER ACCOUNTING DOCUMENTATION
+    // 4. FEE-ON-TRANSFER ACCOUNTING
     // =========================================================================
 
-    function test_feeOnTransfer_buybackShortfallForLastUser() public {
+    function test_feeOnTransfer_buy_revertsBeforeAccountingDrift() public {
         FeeOnTransferToken fot = new FeeOnTransferToken("Fee Token", "FEE", 18, 100);
         _whitelistFotToken(fot, 1e18);
         fot.mint(alice, 1000e18);
-        fot.mint(bob, 1000e18);
         vm.prank(alice);
         fot.approve(address(campaign), type(uint256).max);
-        vm.prank(bob);
-        fot.approve(address(campaign), type(uint256).max);
 
         vm.prank(alice);
+        vm.expectRevert(SaleClassicModule.TransferAmountMismatch.selector);
         campaign.buy(address(fot), 100e18);
-        vm.prank(bob);
-        campaign.buy(address(fot), 100e18);
 
-        assertEq(campaign.purchases(alice, address(fot)), 97e18);
-        assertEq(campaign.purchases(bob, address(fot)), 97e18);
-        assertEq(
-            fot.balanceOf(address(campaign)), 192e18, "shortfall: 2 on buy-in + 0.06 on fee transfer burned by FoT"
-        );
-
-        vm.warp(block.timestamp + 91 days);
-        campaign.triggerBuyback();
-
-        vm.prank(alice);
-        campaign.buyback(address(fot));
-        assertEq(fot.balanceOf(alice), 1000e18 - 100e18 + 97e18 * 99 / 100);
-
-        vm.prank(bob);
-        vm.expectRevert();
-        campaign.buyback(address(fot));
+        assertEq(campaign.purchases(alice, address(fot)), 0, "no purchase accounting after failed FoT buy");
+        assertEq(campaignToken.balanceOf(alice), 0, "no CT minted after failed FoT buy");
     }
 
-    function test_feeOnTransfer_activationUsesRealBalance() public {
+    function test_feeOnTransfer_cannotActivateOnDeclaredAmount() public {
         FeeOnTransferToken fot = new FeeOnTransferToken("Fee Token", "FEE", 18, 100);
         _whitelistFotToken(fot, 1e18);
         fot.mint(alice, 100_000e18);
@@ -360,13 +381,10 @@ contract PoolSecurityTest is Test {
 
         uint256 declared = 60_000e18;
         vm.prank(alice);
+        vm.expectRevert(SaleClassicModule.TransferAmountMismatch.selector);
         campaign.buy(address(fot), declared);
 
-        assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
-
-        uint256 producerReceived = fot.balanceOf(producer);
-        uint256 feeReceived = fot.balanceOf(feeRecipient);
-        assertLt(producerReceived, declared, "producer cannot exceed declared");
-        assertGt(feeReceived, 0, "feeRecipient got the funding fee");
+        assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Funding));
+        assertEq(campaign.currentSupply(), 0, "failed FoT buy must not activate");
     }
 }

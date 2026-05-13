@@ -95,73 +95,101 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 pt-28 pb-20">
-      <div className="flex items-start justify-between gap-4 mb-2">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight text-on-surface">
-          {t("title")}
-        </h1>
-        <RefreshButton
-          onClick={refetchAll}
-          label={t("refresh")}
-          className="mt-2 shrink-0"
-        />
-      </div>
-      <p className="text-on-surface-variant mb-10 text-sm md:text-base">
-        {t("subtitle")}
-      </p>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Activity feed — 2/3 width on desktop */}
-        <section className="lg:col-span-2">
-          <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider mb-4">
-            {t("activity.title")}
-          </h2>
-          {feedLoading ? (
-            <FeedSkeleton />
-          ) : !feed || feed.length === 0 ? (
-            <EmptyState text={t("activity.empty")} />
-          ) : (
-            <ol className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 divide-y divide-outline-variant/10 overflow-hidden">
-              {feed.map((item) => (
-                <FeedRow
-                  key={item.id}
-                  item={item}
-                  profile={profiles?.get(item.user.toLowerCase())}
-                  ens={ensNames?.get(item.user.toLowerCase()) ?? null}
-                  protocolLabel={protocolLabels.get(item.user.toLowerCase())}
-                />
-              ))}
-            </ol>
-          )}
+    <div className="bg-[#f7f9f4]">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-8 md:pt-12 pb-20">
+        <section className="mb-6 rounded-[8px] border border-zinc-200 bg-white p-5 shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)] md:p-6">
+          <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+                {t("activity.title")}
+              </p>
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-950 md:text-5xl">
+                {t("title")}
+              </h1>
+              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 md:text-base">
+                {t("subtitle")}
+              </p>
+            </div>
+            <RefreshButton
+              onClick={refetchAll}
+              label={t("refresh")}
+              className="shrink-0 self-start md:self-auto"
+            />
+          </div>
+          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-zinc-200 pt-4 md:max-w-md">
+            <FeedStat
+              label={t("activity.title")}
+              value={feedLoading ? "—" : String(feed?.length ?? 0)}
+            />
+            <FeedStat
+              label={t("leaderboard.title")}
+              value={lbLoading ? "—" : String(leaderboard?.length ?? 0)}
+            />
+          </div>
         </section>
 
-        {/* Leaderboard — 1/3 width on desktop, sticky on lg+ */}
-        <aside className="lg:col-span-1">
-          <div className="lg:sticky lg:top-24">
-            <h2 className="text-sm font-bold text-on-surface uppercase tracking-wider mb-4">
-              {t("leaderboard.title")}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <section className="lg:col-span-2">
+            <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-on-surface">
+              {t("activity.title")}
             </h2>
-            {lbLoading ? (
-              <LeaderboardSkeleton />
-            ) : !leaderboard || leaderboard.length === 0 ? (
-              <EmptyState text={t("leaderboard.empty")} />
+            {feedLoading ? (
+              <FeedSkeleton />
+            ) : !feed || feed.length === 0 ? (
+              <EmptyState text={t("activity.empty")} />
             ) : (
-              <ol className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-4 space-y-1">
-                {leaderboard.map((entry, i) => (
-                  <LeaderboardRow
-                    key={entry.id}
-                    rank={i + 1}
-                    entry={entry}
-                    profile={profiles?.get(entry.id.toLowerCase())}
-                    ens={ensNames?.get(entry.id.toLowerCase()) ?? null}
-                    protocolLabel={protocolLabels.get(entry.id.toLowerCase())}
+              <ol className="overflow-hidden rounded-[8px] border border-outline-variant/15 bg-surface-container-lowest shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)] divide-y divide-outline-variant/10">
+                {feed.map((item) => (
+                  <FeedRow
+                    key={item.id}
+                    item={item}
+                    profile={profiles?.get(item.user.toLowerCase())}
+                    ens={ensNames?.get(item.user.toLowerCase()) ?? null}
+                    protocolLabel={protocolLabels.get(item.user.toLowerCase())}
                   />
                 ))}
               </ol>
             )}
-          </div>
-        </aside>
+          </section>
+
+          <aside className="lg:col-span-1">
+            <div className="lg:sticky lg:top-24">
+              <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-on-surface">
+                {t("leaderboard.title")}
+              </h2>
+              {lbLoading ? (
+                <LeaderboardSkeleton />
+              ) : !leaderboard || leaderboard.length === 0 ? (
+                <EmptyState text={t("leaderboard.empty")} />
+              ) : (
+                <ol className="space-y-1 rounded-[8px] border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)]">
+                  {leaderboard.map((entry, i) => (
+                    <LeaderboardRow
+                      key={entry.id}
+                      rank={i + 1}
+                      entry={entry}
+                      profile={profiles?.get(entry.id.toLowerCase())}
+                      ens={ensNames?.get(entry.id.toLowerCase()) ?? null}
+                      protocolLabel={protocolLabels.get(entry.id.toLowerCase())}
+                    />
+                  ))}
+                </ol>
+              )}
+            </div>
+          </aside>
+        </div>
       </div>
+    </div>
+  );
+}
+
+function FeedStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-1 font-mono text-2xl text-zinc-950">{value}</div>
     </div>
   );
 }

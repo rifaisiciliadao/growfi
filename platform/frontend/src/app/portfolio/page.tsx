@@ -140,85 +140,68 @@ export default function Portfolio() {
 function PortfolioConnectPrompt() {
   const t = useTranslations("portfolio");
   return (
-    <div className="max-w-3xl mx-auto px-4 md:px-8 pt-24 md:pt-32 pb-24 text-center">
-      <div className="relative mx-auto mb-10 w-36 h-36 md:w-44 md:h-44">
-        {/* Pulsing halo rings */}
-        <span className="absolute inset-0 rounded-full bg-primary-fixed/50 animate-ping" />
-        <span
-          className="absolute inset-2 rounded-full bg-primary-fixed/40 animate-ping"
-          style={{ animationDelay: "0.6s" }}
-        />
-        <span
-          className="absolute inset-4 rounded-full bg-primary-fixed/30 animate-ping"
-          style={{ animationDelay: "1.2s" }}
-        />
-        <div className="absolute inset-6 rounded-full regen-gradient flex items-center justify-center shadow-2xl shadow-primary/40">
-          <svg
-            width="48"
-            height="48"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="text-white"
-            aria-hidden
-          >
-            <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7" />
-            <circle cx="17" cy="12" r="1.2" fill="currentColor" />
-          </svg>
-        </div>
-      </div>
+    <div className="bg-[#f7f9f4]">
+      <div className="mx-auto max-w-7xl px-4 pb-20 pt-8 md:px-8 md:pt-12">
+        <section className="overflow-hidden rounded-[8px] border border-emerald-950/10 bg-[#06140f] shadow-[0_30px_80px_-55px_rgba(6,20,15,0.7)]">
+          <div className="grid gap-8 p-5 md:p-8 lg:grid-cols-[1fr_0.85fr] lg:p-10">
+            <div className="flex min-h-[320px] flex-col justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
+                  GrowFi Portfolio
+                </p>
+                <h1 className="mt-5 text-4xl font-semibold tracking-tight text-white md:text-6xl">
+                  {t("title")}
+                </h1>
+                <p className="mt-5 max-w-2xl text-sm leading-6 text-emerald-50/75 md:text-base">
+                  {t("connectWallet")}
+                </p>
+              </div>
 
-      <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-on-surface mb-4">
-        {t("title")}
-      </h1>
-      <p className="text-base md:text-lg text-on-surface-variant mb-10 max-w-xl mx-auto leading-relaxed">
-        {t("connectWallet")}
-      </p>
-
-      <ConnectButton.Custom>
-        {({ openConnectModal, mounted }) => (
-          <button
-            type="button"
-            onClick={openConnectModal}
-            disabled={!mounted}
-            className="regen-gradient text-white h-14 px-10 rounded-full text-sm font-semibold tracking-widest uppercase shadow-lg shadow-primary/25 hover:opacity-90 transition inline-flex items-center gap-3 disabled:opacity-60"
-          >
-            <svg
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden
-            >
-              <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7" />
-              <circle cx="17" cy="12" r="1.3" fill="currentColor" />
-            </svg>
-            {t("connectCta")}
-          </button>
-        )}
-      </ConnectButton.Custom>
-
-      <div className="mt-14 grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-2xl mx-auto">
-        {(["positions", "purchases", "claims"] as const).map((k) => (
-          <div
-            key={k}
-            className="bg-surface-container-lowest border border-outline-variant/15 rounded-2xl p-5"
-          >
-            <div className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
-              {t(`preview.${k}.label`)}
+              <ConnectButton.Custom>
+                {({ openConnectModal, mounted }) => (
+                  <button
+                    type="button"
+                    onClick={openConnectModal}
+                    disabled={!mounted}
+                    className="mt-8 inline-flex h-12 w-full items-center justify-center gap-3 rounded-[8px] bg-emerald-500 px-6 text-sm font-semibold uppercase tracking-[0.18em] text-emerald-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden
+                    >
+                      <path d="M21 12V7a2 2 0 0 0-2-2H5a2 2 0 0 0 0 4h15a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7" />
+                      <circle cx="17" cy="12" r="1.3" fill="currentColor" />
+                    </svg>
+                    {t("connectCta")}
+                  </button>
+                )}
+              </ConnectButton.Custom>
             </div>
-            <div className="text-sm text-on-surface">
-              {t(`preview.${k}.hint`)}
+
+            <div className="grid content-end gap-3">
+              {(["positions", "purchases", "claims"] as const).map((k) => (
+                <div
+                  key={k}
+                  className="rounded-[8px] border border-white/10 bg-white/[0.06] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]"
+                >
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-100/60">
+                    {t(`preview.${k}.label`)}
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-emerald-50/75">
+                    {t(`preview.${k}.hint`)}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
-        ))}
+        </section>
       </div>
     </div>
   );

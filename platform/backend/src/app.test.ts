@@ -253,11 +253,12 @@ describe("POST /api/merkle/generate", () => {
         campaign: CAMPAIGN,
         seasonId: 1,
         totalProductUnits: "1000000000000000000000",
+        totalYieldSupply: "0",
         holders: [{ user: ALICE, yieldAmount: "0" }],
       },
     });
     assert.equal(res.statusCode, 400);
-    assert.match(res.json().error, /totalYield/);
+    assert.match(res.json().error, /totalYieldSupply/);
   });
 
   it("400 when minProductClaim excludes everyone", async () => {
@@ -269,6 +270,7 @@ describe("POST /api/merkle/generate", () => {
         campaign: CAMPAIGN,
         seasonId: 1,
         totalProductUnits: (10n * 10n ** 18n).toString(),
+        totalYieldSupply: "2",
         holders: [
           { user: ALICE, yieldAmount: "1" },
           { user: BOB, yieldAmount: "1" },
@@ -288,6 +290,7 @@ describe("POST /api/merkle/generate", () => {
         campaign: CAMPAIGN,
         seasonId: 3,
         totalProductUnits: (100n * 10n ** 18n).toString(),
+        totalYieldSupply: (10n * 10n ** 18n).toString(),
         holders: [
           { user: ALICE, yieldAmount: (6n * 10n ** 18n).toString() },
           { user: BOB, yieldAmount: (4n * 10n ** 18n).toString() },
@@ -305,6 +308,7 @@ describe("POST /api/merkle/generate", () => {
     );
     const stored = JSON.parse(puts[0].input.Body as string);
     assert.equal(stored.root, body.root);
+    assert.equal(stored.totalYieldSupply, (10n * 10n ** 18n).toString());
     assert.equal(stored.leaves.length, 2);
     // Alice: 6/10 * 100e18 = 60e18; Bob: 4/10 * 100e18 = 40e18
     const alice = stored.leaves.find(
@@ -313,8 +317,58 @@ describe("POST /api/merkle/generate", () => {
     const bob = stored.leaves.find(
       (l: { user: string }) => l.user.toLowerCase() === BOB.toLowerCase(),
     );
+    assert.equal(alice.yieldAmount, (6n * 10n ** 18n).toString());
     assert.equal(alice.productAmount, (60n * 10n ** 18n).toString());
     assert.equal(bob.productAmount, (40n * 10n ** 18n).toString());
+  });
+
+  it("uses totalYieldSupply as the Solidity denominator, not local holder sum", async () => {
+    const { app, puts } = await makeApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/merkle/generate",
+      payload: {
+        campaign: CAMPAIGN,
+        seasonId: 4,
+        totalProductUnits: (100n * 10n ** 18n).toString(),
+        totalYieldSupply: (20n * 10n ** 18n).toString(),
+        holders: [
+          { user: ALICE, yieldAmount: (6n * 10n ** 18n).toString() },
+          { user: BOB, yieldAmount: (4n * 10n ** 18n).toString() },
+        ],
+      },
+    });
+    assert.equal(res.statusCode, 200);
+
+    const stored = JSON.parse(puts[0].input.Body as string);
+    const alice = stored.leaves.find(
+      (l: { user: string }) => l.user.toLowerCase() === ALICE.toLowerCase(),
+    );
+    const bob = stored.leaves.find(
+      (l: { user: string }) => l.user.toLowerCase() === BOB.toLowerCase(),
+    );
+
+    assert.equal(alice.productAmount, (30n * 10n ** 18n).toString());
+    assert.equal(bob.productAmount, (20n * 10n ** 18n).toString());
+  });
+
+  it("400 when submitted holder yield exceeds totalYieldSupply", async () => {
+    const { app } = await makeApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/merkle/generate",
+      payload: {
+        campaign: CAMPAIGN,
+        seasonId: 4,
+        totalProductUnits: (100n * 10n ** 18n).toString(),
+        totalYieldSupply: (5n * 10n ** 18n).toString(),
+        holders: [
+          { user: ALICE, yieldAmount: (6n * 10n ** 18n).toString() },
+        ],
+      },
+    });
+    assert.equal(res.statusCode, 400);
+    assert.match(res.json().error, /exceeds/);
   });
 });
 
@@ -338,6 +392,7 @@ describe("GET /api/merkle/:campaign/:seasonId/:user", () => {
         leaves: [
           {
             user: BOB,
+            yieldAmount: "1",
             productAmount: "1",
             proof: ["0x00"],
           },
@@ -361,6 +416,7 @@ describe("GET /api/merkle/:campaign/:seasonId/:user", () => {
         leaves: [
           {
             user: ALICE,
+            yieldAmount: "100",
             productAmount: "42",
             proof: ["0xdeadbeef"],
           },
@@ -374,6 +430,7 @@ describe("GET /api/merkle/:campaign/:seasonId/:user", () => {
     assert.equal(res.statusCode, 200);
     const body = res.json();
     assert.equal(body.user, ALICE);
+    assert.equal(body.yieldAmount, "100");
     assert.equal(body.productAmount, "42");
     assert.deepEqual(body.proof, ["0xdeadbeef"]);
   });
@@ -400,6 +457,7 @@ describe("GET /api/snapshot/:campaign/:seasonId", () => {
       yieldToken: YIELD,
       totalYield: 42n * 10n ** 18n,
       seasonTotalYieldOwed: 42n * 10n ** 18n,
+      redeemableYieldSupply: 42n * 10n ** 18n,
       holders: [
         { user: ALICE, yieldAmount: 30n * 10n ** 18n },
         { user: BOB, yieldAmount: 12n * 10n ** 18n },
@@ -415,6 +473,7 @@ describe("GET /api/snapshot/:campaign/:seasonId", () => {
     assert.equal(body.campaign, CAMPAIGN);
     assert.equal(body.seasonId, "7");
     assert.equal(body.totalYield, (42n * 10n ** 18n).toString());
+    assert.equal(body.redeemableYieldSupply, (42n * 10n ** 18n).toString());
     assert.equal(body.holders.length, 2);
     assert.equal(body.holders[0].yieldAmount, (30n * 10n ** 18n).toString());
     assert.deepEqual(body.notes, ["ok"]);

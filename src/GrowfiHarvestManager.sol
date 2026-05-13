@@ -74,6 +74,10 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
     address public campaign;
     bool private _campaignSet;
 
+    // --- Appended storage v4 ---
+
+    uint256 public latestClaimWindowEnd;
+
     // --- Events ---
 
     event HarvestReported(
@@ -128,6 +132,9 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
     error DepositExceedsOwed();
     error AlreadySet();
     error NotUsdcRedemption();
+    error SeasonNotEnded();
+    error TransferAmountMismatch();
+    error TotalYieldSupplyMismatch(uint256 expected, uint256 actual);
 
     // --- Modifiers ---
 
@@ -201,21 +208,30 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
     /// @param totalValueUSD 70% of gross harvest value (18 decimals).
     /// @param merkleRoot Merkle root for product claims.
     /// @param totalUnits Total product units available (18 decimals, e.g., liters).
-    function reportHarvest(uint256 seasonId, uint256 totalValueUSD, bytes32 merkleRoot, uint256 totalUnits)
-        external
-        onlyProducer
-        whenNotPaused
-    {
+    function reportHarvest(
+        uint256 seasonId,
+        uint256 totalValueUSD,
+        bytes32 merkleRoot,
+        uint256 totalUnits,
+        uint256 expectedTotalYieldSupply
+    ) external onlyProducer whenNotPaused {
         SeasonHarvest storage harvest = seasonHarvests[seasonId];
         if (harvest.reported) revert AlreadyReported();
 
         uint256 protocolFee = totalValueUSD * protocolFeeBps / 10_000;
         uint256 holderPool = totalValueUSD - protocolFee;
 
-        // Snapshot the canonical per-season yield total (accrued, not just
-        // minted). Immune to holders front-running or lagging claimYield
-        // around the reportHarvest transaction.
-        uint256 totalYieldSupply = stakingVault.seasonTotalYieldOwed(seasonId);
+        uint256 currentSeasonId = stakingVault.currentSeasonId();
+        (,,,,, bool currentSeasonActive,) = stakingVault.seasons(currentSeasonId);
+        if (currentSeasonActive) revert SeasonNotEnded();
+
+        (,,,,, bool seasonActive, bool seasonExisted) = stakingVault.seasons(seasonId);
+        if (!seasonExisted || seasonActive) revert SeasonNotEnded();
+
+        uint256 totalYieldSupply = _redeemableYieldSupply(currentSeasonId);
+        if (totalYieldSupply != expectedTotalYieldSupply) {
+            revert TotalYieldSupplyMismatch(expectedTotalYieldSupply, totalYieldSupply);
+        }
 
         harvest.merkleRoot = merkleRoot;
         harvest.totalHarvestValueUSD = totalValueUSD;
@@ -226,6 +242,9 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
         harvest.usdcDeadline = block.timestamp + 30 days + USDC_DEPOSIT_WINDOW;
         harvest.protocolFeeCollected = protocolFee;
         harvest.reported = true;
+        if (harvest.claimEnd > latestClaimWindowEnd) {
+            latestClaimWindowEnd = harvest.claimEnd;
+        }
 
         emit HarvestReported(
             seasonId,
@@ -368,7 +387,10 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
         uint256 newPool18 = harvest.usdcDeposited + poolPortion * 1e12;
         if (newPool18 > harvest.usdcOwed) revert DepositExceedsOwed();
 
+        uint256 balanceBefore = usdc.balanceOf(address(this));
         usdc.safeTransferFrom(msg.sender, address(this), amount);
+        uint256 balanceAfter = usdc.balanceOf(address(this));
+        if (balanceAfter - balanceBefore != amount) revert TransferAmountMismatch();
 
         if (feePortion > 0) {
             usdc.safeTransfer(protocolFeeRecipient, feePortion);
@@ -409,5 +431,24 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
         if (!harvest.reported || harvest.totalYieldSupply == 0) return 0;
         uint256 holderPool = harvest.totalHarvestValueUSD - harvest.protocolFeeCollected;
         return holderPool * 1e18 / harvest.totalYieldSupply;
+    }
+
+    function redeemableYieldSupply() external view returns (uint256) {
+        return _redeemableYieldSupply(stakingVault.currentSeasonId());
+    }
+
+    function _redeemableYieldSupply(uint256 currentSeasonId) internal view returns (uint256 totalYieldSupply) {
+        totalYieldSupply = yieldToken.totalSupply();
+
+        for (uint256 seasonId = 1; seasonId <= currentSeasonId;) {
+            (,, uint256 minted,, uint256 owed, bool active, bool existed) = stakingVault.seasons(seasonId);
+            if (existed && !active && owed > minted) {
+                totalYieldSupply += owed - minted;
+            }
+
+            unchecked {
+                ++seasonId;
+            }
+        }
     }
 }

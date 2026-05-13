@@ -68,6 +68,7 @@ contract GrowfiToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeabl
     error TreasuryNotSet();
     error PaymentTokenNotAccepted();
     error TreasuryGenesisAlreadyMinted();
+    error TransferAmountMismatch();
 
     event MinterUpdated(address indexed previous, address indexed current);
     event TreasuryUpdated(address indexed previous, address indexed current);
@@ -236,7 +237,10 @@ contract GrowfiToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeabl
         //                 = paymentAmount × scale × priceUsd18 / effectivePrice
         growOut = (paymentAmount * scale * priceUsd18) / effectivePrice;
 
+        uint256 treasuryBalanceBefore = IERC20(paymentToken).balanceOf(treasury);
         IERC20(paymentToken).safeTransferFrom(msg.sender, treasury, paymentAmount);
+        uint256 treasuryBalanceAfter = IERC20(paymentToken).balanceOf(treasury);
+        if (treasuryBalanceAfter - treasuryBalanceBefore != paymentAmount) revert TransferAmountMismatch();
         _mint(msg.sender, growOut);
 
         // Cache the floor we used so the fallback path stays fresh.

@@ -42,91 +42,67 @@ export function Flywheel() {
   ];
 
   return (
-    <section className="mt-16 rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm md:p-10">
-      <header className="mb-8 text-center">
-        <p className="text-xs uppercase tracking-[0.2em] text-emerald-700">
-          {t("eyebrow")}
-        </p>
-        <h2 className="mt-2 text-2xl font-bold tracking-tight text-zinc-900 md:text-3xl">
-          {t("title")}
-        </h2>
-        <p className="mx-auto mt-3 max-w-2xl text-sm text-zinc-600 md:text-base">
-          {t("subtitle")}
-        </p>
-      </header>
+    <section className="mt-10 rounded-[8px] border border-emerald-950/10 bg-[#06140f] p-5 text-white shadow-[0_30px_80px_-55px_rgba(6,20,15,0.7)] md:p-8">
+      <div className="grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:items-center">
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-300">
+            {t("eyebrow")}
+          </p>
+          <h2 className="mt-3 text-3xl font-semibold tracking-tight md:text-4xl">
+            {t("title")}
+          </h2>
+          <p className="mt-4 max-w-xl text-sm leading-6 text-emerald-50/70 md:text-base">
+            {t("subtitle")}
+          </p>
+          <div aria-hidden className="mt-8 hidden text-emerald-300/80 lg:block">
+            <svg width="152" height="72" viewBox="0 0 152 72" fill="none">
+              <path
+                d="M26 36C26 18.327 40.327 4 58 4H94C111.673 4 126 18.327 126 36C126 53.673 111.673 68 94 68H58C40.327 68 26 53.673 26 36Z"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeDasharray="6 6"
+              />
+              <path d="M121 24L135 36L121 48" stroke="currentColor" strokeWidth="2" />
+              <path d="M31 48L17 36L31 24" stroke="currentColor" strokeWidth="2" />
+              <text
+                x="76"
+                y="42"
+                textAnchor="middle"
+                fontSize="12"
+                fontWeight="700"
+                fill="currentColor"
+                className="font-mono"
+              >
+                $GROW
+              </text>
+            </svg>
+          </div>
+        </header>
 
-      {/* Grid + central icon overlay. The icon is decorative and hidden on small screens. */}
-      <div className="relative grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6">
-        {steps.map((s) => (
-          <article
-            key={s.n}
-            className={`relative rounded-xl border border-zinc-200 bg-zinc-50 p-5 transition hover:border-emerald-300 hover:bg-white ${
-              s.pos === "br" ? "md:col-start-2 md:row-start-2" : ""
-            } ${s.pos === "bl" ? "md:col-start-1 md:row-start-2" : ""} ${
-              s.pos === "tr" ? "md:col-start-2 md:row-start-1" : ""
-            }`}
-          >
-            <div className="mb-2 flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white">
-                {s.n}
-              </span>
-              <h3 className="text-base font-semibold text-zinc-900 md:text-lg">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {steps.map((s) => (
+            <article
+              key={s.n}
+              className="rounded-[8px] border border-white/10 bg-white/[0.055] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)] transition hover:border-emerald-300/40 hover:bg-white/[0.08]"
+            >
+              <div className="mb-3 flex items-center gap-3">
+                <span className="font-mono text-xs font-semibold text-emerald-300">
+                  {s.n}
+                </span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+              <h3 className="text-base font-semibold text-white md:text-lg">
                 {s.title}
               </h3>
-            </div>
-            <p className="text-sm leading-relaxed text-zinc-600">{s.body}</p>
-          </article>
-        ))}
-
-        {/* Centre flywheel ring — only visible on md+ where the 2×2 grid is symmetric. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 md:block"
-        >
-          <svg
-            width="80"
-            height="80"
-            viewBox="0 0 80 80"
-            className="text-emerald-600"
-          >
-            {/* outer ring */}
-            <circle
-              cx="40"
-              cy="40"
-              r="34"
-              fill="white"
-              stroke="currentColor"
-              strokeWidth="2"
-              opacity="0.4"
-            />
-            {/* clockwise arrow */}
-            <path
-              d="M 40 14 A 26 26 0 1 1 16 50"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              strokeLinecap="round"
-            />
-            <path
-              d="M 16 50 L 14 42 L 22 46 Z"
-              fill="currentColor"
-            />
-            <text
-              x="40"
-              y="46"
-              textAnchor="middle"
-              fontSize="11"
-              fontWeight="700"
-              fill="currentColor"
-              className="font-mono"
-            >
-              FLY
-            </text>
-          </svg>
+              <p className="mt-2 text-sm leading-6 text-emerald-50/65">{s.body}</p>
+            </article>
+          ))}
         </div>
       </div>
 
-      <p className="mt-8 text-center text-xs text-zinc-500">{t("footnote")}</p>
+      <p className="mt-6 border-t border-white/10 pt-4 text-xs leading-5 text-emerald-50/55">
+        {t("footnote")}
+      </p>
     </section>
   );
 }

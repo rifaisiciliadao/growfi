@@ -116,6 +116,7 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     error CanonicalUsdcNotSet();
     error AutomationDisabled();
     error NoActiveTrackedCampaigns();
+    error RedeemAmountTooSmall();
 
     event StablecoinAccepted(
         address indexed token,
@@ -574,6 +575,8 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
         if (totalSupply_ <= treasuryGrow) revert NoCirculatingSupply();
         uint256 circulating = totalSupply_ - treasuryGrow;
 
+        if (!_redeemHasPayout(growAmount, circulating)) revert RedeemAmountTooSmall();
+
         IERC20(address(growToken)).safeTransferFrom(msg.sender, address(this), growAmount);
         growToken.burn(growAmount);
 
@@ -604,6 +607,23 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
         }
 
         emit Redeemed(msg.sender, growAmount);
+    }
+
+    function _redeemHasPayout(uint256 growAmount, uint256 circulating) internal view returns (bool) {
+        uint256 nStable = _acceptedStablecoins.length();
+        for (uint256 i; i < nStable; ++i) {
+            uint256 bal = IERC20(_acceptedStablecoins.at(i)).balanceOf(address(this));
+            if (bal > 0 && (bal * growAmount) / circulating > 0) return true;
+        }
+
+        uint256 nCampaigns = _trackedCampaigns.length();
+        for (uint256 i; i < nCampaigns; ++i) {
+            uint256 ctBal =
+                IERC20(IGrowfiCampaignView(_trackedCampaigns.at(i)).campaignToken()).balanceOf(address(this));
+            if (ctBal > 0 && (ctBal * growAmount) / circulating > 0) return true;
+        }
+
+        return false;
     }
 
     // ---------- rescue ----------

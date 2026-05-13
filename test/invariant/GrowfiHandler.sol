@@ -22,6 +22,8 @@ contract GrowfiHandler is Test {
 
     // Ghost vars
     uint256 public ghost_totalUsdcInflowToTreasury;
+    uint256 public ghost_totalUsdcDonatedToSplitter;
+    uint256 public ghost_totalUsdtDonatedToSplitter;
     uint256 public ghost_totalGrowMintedViaDirectBuy;
     uint256 public ghost_directBuyCalls;
     uint256 public ghost_redeemCalls;
@@ -85,6 +87,21 @@ contract GrowfiHandler is Test {
         ghost_donateCalls++;
     }
 
+    /// @notice Random stablecoin fees arrive at the passive splitter.
+    function donateToSplitter(uint256 stableSeed, uint256 amount) public {
+        amount = bound(amount, 1, 100_000 * 1e6);
+        MockERC20 stable = _stable(stableSeed);
+        stable.mint(address(splitter), amount);
+
+        if (address(stable) == address(usdc)) {
+            ghost_totalUsdcDonatedToSplitter += amount;
+        } else {
+            ghost_totalUsdtDonatedToSplitter += amount;
+        }
+
+        ghost_donateCalls++;
+    }
+
     /// @notice Random user with GROW redeems some.
     function redeem(uint256 actorSeed, uint256 amount) public {
         address user = _actor(actorSeed);
@@ -104,7 +121,12 @@ contract GrowfiHandler is Test {
     /// @notice Permissionless flush of accumulated fees in splitter.
     function flushSplitter(uint256 stableSeed) public {
         MockERC20 stable = _stable(stableSeed);
+        uint256 treasuryUsdcBefore = usdc.balanceOf(address(treasury));
         try splitter.flushToken(address(stable)) {
+            uint256 treasuryUsdcAfter = usdc.balanceOf(address(treasury));
+            if (treasuryUsdcAfter > treasuryUsdcBefore) {
+                ghost_totalUsdcInflowToTreasury += treasuryUsdcAfter - treasuryUsdcBefore;
+            }
             ghost_flushCalls++;
         } catch {
             // Reverts on zero balance — acceptable.

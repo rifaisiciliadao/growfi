@@ -197,8 +197,11 @@ contract AuditTest is Test {
         vm.prank(producer);
         campaign.endSeason();
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, 4200e18, bytes32(0), 210e18);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, 4200e18, bytes32(0), 210e18, expectedTotalYieldSupply);
+        }
 
         vm.prank(alice);
         harvestManager.redeemUSDC(1, aliceYield);

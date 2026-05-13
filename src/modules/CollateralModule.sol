@@ -63,6 +63,7 @@ contract CollateralModule {
     error AlreadyFunded();
     error AlreadySettled();
     error NotInCoverage();
+    error TransferAmountMismatch();
 
     // ------------------------------------------------------------------
     // Events
@@ -148,7 +149,10 @@ contract CollateralModule {
         }
         if (s.collateralLocked + amount > maxCollateral()) revert CollateralCapExceeded();
 
+        uint256 balanceBefore = IERC20(cs.usdc).balanceOf(address(this));
         IERC20(cs.usdc).safeTransferFrom(msg.sender, address(this), amount);
+        uint256 balanceAfter = IERC20(cs.usdc).balanceOf(address(this));
+        if (balanceAfter - balanceBefore != amount) revert TransferAmountMismatch();
         s.collateralLocked += amount;
         emit CollateralLocked(msg.sender, amount, s.collateralLocked);
     }
@@ -175,7 +179,10 @@ contract CollateralModule {
         if (total == 0) revert ZeroAmount();
 
         if (fromWallet > 0) {
+            uint256 balanceBefore = IERC20(cs.usdc).balanceOf(address(this));
             IERC20(cs.usdc).safeTransferFrom(msg.sender, address(this), fromWallet);
+            uint256 balanceAfter = IERC20(cs.usdc).balanceOf(address(this));
+            if (balanceAfter - balanceBefore != fromWallet) revert TransferAmountMismatch();
         }
         if (fromCollateral > 0) {
             s.collateralDrawn += fromCollateral;

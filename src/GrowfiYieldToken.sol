@@ -6,7 +6,7 @@ import {ERC20Upgradeable} from "@openzeppelin/contracts-upgradeable/token/ERC20/
 
 /// @title GrowfiYieldToken — "The Fruit"
 /// @notice Per-campaign harvest claim token. Minted by GrowfiStakingVault, burned on redemption.
-/// @dev Fresh $YIELD minted each season. No carry-over between seasons.
+/// @dev Fresh $YIELD is minted from seasonal staking accrual; unredeemed ERC20 balance can be carried forward.
 ///      Initializable so it can be deployed as an EIP-1167 clone.
 contract GrowfiYieldToken is Initializable, ERC20Upgradeable {
     address public stakingVault;

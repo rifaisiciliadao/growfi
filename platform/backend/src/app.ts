@@ -313,6 +313,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
         yieldToken: snap.yieldToken,
         totalYield: snap.totalYield.toString(),
         seasonTotalYieldOwed: snap.seasonTotalYieldOwed?.toString() ?? null,
+        redeemableYieldSupply: snap.redeemableYieldSupply?.toString() ?? null,
         holders: snap.holders.map((h) => ({
           user: h.user,
           yieldAmount: h.yieldAmount.toString(),
@@ -331,6 +332,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       campaign: string;
       seasonId: string | number;
       totalProductUnits: string;
+      totalYieldSupply: string;
       holders: Array<{ user: string; yieldAmount: string }>;
       minProductClaim?: string;
     };
@@ -339,30 +341,42 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       return reply.status(503).send({ error: "DO Spaces non configurato" });
     }
 
-    const { campaign, seasonId, totalProductUnits, holders, minProductClaim } =
+    const { campaign, seasonId, totalProductUnits, totalYieldSupply, holders, minProductClaim } =
       req.body;
-    if (!campaign || seasonId === undefined || !totalProductUnits || !holders) {
+    if (!campaign || seasonId === undefined || !totalProductUnits || !totalYieldSupply || !holders) {
       return reply.status(400).send({ error: "campos requeridos" });
     }
 
     const campaignAddr = getAddress(campaign);
     const seasonIdBig = BigInt(seasonId);
     const totalUnits = BigInt(totalProductUnits);
+    const denominator = BigInt(totalYieldSupply);
     const minClaim = BigInt(minProductClaim ?? "0");
 
-    const totalYield = holders.reduce(
+    if (denominator === 0n) {
+      return reply.status(400).send({ error: "totalYieldSupply is zero" });
+    }
+
+    const submittedYield = holders.reduce(
       (acc, h) => acc + BigInt(h.yieldAmount),
       0n,
     );
-    if (totalYield === 0n) {
+    if (submittedYield === 0n) {
       return reply.status(400).send({ error: "totalYield is zero" });
+    }
+    if (submittedYield > denominator) {
+      return reply.status(400).send({
+        error: "holders yield exceeds totalYieldSupply",
+      });
     }
 
     const leaves = holders
       .map((h) => {
-        const productAmount = (BigInt(h.yieldAmount) * totalUnits) / totalYield;
+        const yieldAmount = BigInt(h.yieldAmount);
+        const productAmount = (yieldAmount * totalUnits) / denominator;
         return {
           user: getAddress(h.user) as Address,
+          yieldAmount,
           productAmount,
         };
       })
@@ -381,9 +395,12 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       campaign: campaignAddr,
       seasonId: seasonIdBig.toString(),
       totalProductUnits: totalUnits.toString(),
+      totalYieldSupply: denominator.toString(),
+      submittedYield: submittedYield.toString(),
       root,
       leaves: leaves.map((l) => ({
         user: l.user,
+        yieldAmount: l.yieldAmount.toString(),
         productAmount: l.productAmount.toString(),
         proof: proofs[l.user.toLowerCase()],
       })),
@@ -419,7 +436,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       return reply.status(404).send({ error: "Merkle tree not found", url });
     }
     const payload = (await res.json()) as {
-      leaves: Array<{ user: string; productAmount: string; proof: string[] }>;
+      leaves: Array<{ user: string; yieldAmount?: string; productAmount: string; proof: string[] }>;
     };
 
     const match = payload.leaves.find(
@@ -433,6 +450,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
     return {
       user: getAddress(match.user),
+      yieldAmount: match.yieldAmount ?? null,
       productAmount: match.productAmount,
       proof: match.proof,
     };

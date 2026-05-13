@@ -294,8 +294,11 @@ contract E2ETest is Test {
         bytes32 nodeDE = _hashPair(leafD, leafE);
         bytes32 root = _hashPair(nodeAC, nodeDE);
 
-        vm.prank(producer);
-        harvestManager.reportHarvest(1, totalValueUSD, root, totalProductUnits);
+        {
+            uint256 expectedTotalYieldSupply = harvestManager.redeemableYieldSupply();
+            vm.prank(producer);
+            harvestManager.reportHarvest(1, totalValueUSD, root, totalProductUnits, expectedTotalYieldSupply);
+        }
 
         (, uint256 harvestValueUSD,,,,,,,, uint256 feeCollected,,) = harvestManager.seasonHarvests(1);
         assertEq(harvestValueUSD, totalValueUSD);
@@ -379,6 +382,7 @@ contract E2ETest is Test {
         // ========================================================
         console.log("=== PHASE 9: SEASON 2 ===");
 
+        vm.warp(block.timestamp + 30 days + 1);
         vm.prank(producer);
         campaign.startSeason();
 

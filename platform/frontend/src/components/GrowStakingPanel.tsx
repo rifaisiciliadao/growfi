@@ -152,6 +152,13 @@ export function GrowStakingPanel() {
     const elapsed = Math.floor(Date.now() / 1000) - Number(streakStart);
     return Math.max(0, RAMP_DURATION_S - elapsed);
   }, [streakStart]);
+  const rampProgressPct =
+    staked === 0n
+      ? 0
+      : Math.min(
+          100,
+          Math.max(0, ((RAMP_DURATION_S - secondsUntilCap) / RAMP_DURATION_S) * 100),
+        );
 
   const periodSecondsLeft = useMemo(() => {
     const now = Math.floor(Date.now() / 1000);
@@ -236,74 +243,87 @@ export function GrowStakingPanel() {
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
-      <div className="mb-1 flex items-baseline justify-between">
-        <h2 className="text-xl font-semibold text-zinc-900">{t("title")}</h2>
-        <span className="text-xs text-zinc-500">
+    <div className="rounded-[8px] border border-zinc-200 bg-white p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.65)] md:p-6">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+            {t("pendingUsdc")}
+          </p>
+          <h2 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950 sm:text-2xl">
+            {t("title")}
+          </h2>
+        </div>
+        <span className="max-w-[132px] rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-right text-[11px] font-medium leading-4 text-zinc-500 sm:max-w-[150px]">
           {t("totalStaked", {
             amount: Number(formatUnits(totalStaked, 18)).toFixed(2),
           })}
         </span>
       </div>
-      <p className="mb-4 text-sm text-zinc-500">{t("blurb")}</p>
+      <p className="mb-5 text-sm leading-6 text-zinc-600">{t("blurb")}</p>
 
-      {/* Multiplier */}
-      <div className="mb-4 grid grid-cols-3 gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 text-sm">
-        <div>
-          <div className="text-xs uppercase tracking-wide text-zinc-500">
-            {t("multiplier")}
-          </div>
-          <div className="font-mono text-emerald-700">
-            {staked === 0n ? "—" : `${(liveMulPct / 100).toFixed(2)}×`}
-          </div>
-          {storedMul !== liveMul && staked > 0n && (
-            <div className="mt-1 text-[10px] text-zinc-500">
-              {t("multiplierStored", {
-                value: (storedMulPct / 100).toFixed(2),
-              })}
+      <div className="-mx-5 mb-5 border-y border-zinc-200 bg-[#f6f8f4] px-5 py-4 md:-mx-6 md:px-6">
+        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              {t("multiplier")}
             </div>
-          )}
-        </div>
-        <div>
-          <div className="text-xs uppercase tracking-wide text-zinc-500">
-            {t("timeToCap")}
-          </div>
-          <div className="font-mono text-zinc-900">
-            {staked === 0n
-              ? "—"
-              : secondsUntilCap === 0
-                ? t("max")
-                : `${Math.ceil(secondsUntilCap / 86400)}d`}
-          </div>
-        </div>
-        <div>
-          <div className="text-xs uppercase tracking-wide text-zinc-500">
-            {t("pendingUsdc")}
-          </div>
-          <div className="font-mono text-zinc-900">
-            {Number(formatUnits(earned, 6)).toFixed(4)}
-          </div>
-          {rewardRate > 0n && periodSecondsLeft > 0 && (
-            <div className="mt-1 text-[10px] text-zinc-500">
-              {t("distEndsIn", {
-                days: Math.ceil(periodSecondsLeft / 86400),
-              })}
+            <div className="mt-1 font-mono text-2xl text-emerald-700">
+              {staked === 0n ? "—" : `${(liveMulPct / 100).toFixed(2)}×`}
             </div>
-          )}
+            {storedMul !== liveMul && staked > 0n && (
+              <div className="mt-1 text-[10px] leading-4 text-zinc-500">
+                {t("multiplierStored", {
+                  value: (storedMulPct / 100).toFixed(2),
+                })}
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              {t("timeToCap")}
+            </div>
+            <div className="mt-1 font-mono text-2xl text-zinc-950">
+              {staked === 0n
+                ? "—"
+                : secondsUntilCap === 0
+                  ? t("max")
+                  : `${Math.ceil(secondsUntilCap / 86400)}d`}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+              {t("pendingUsdc")}
+            </div>
+            <div className="mt-1 font-mono text-2xl text-zinc-950">
+              {Number(formatUnits(earned, 6)).toFixed(4)}
+            </div>
+            {rewardRate > 0n && periodSecondsLeft > 0 && (
+              <div className="mt-1 text-[10px] leading-4 text-zinc-500">
+                {t("distEndsIn", {
+                  days: Math.ceil(periodSecondsLeft / 86400),
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-200">
+          <div
+            className="h-full rounded-full bg-emerald-600"
+            style={{ width: `${rampProgressPct}%` }}
+          />
         </div>
       </div>
 
-      {/* Tabs */}
-      <div className="mb-3 flex gap-1 rounded-lg bg-zinc-100 p-1 text-sm font-medium">
+      <div className="mb-3 flex gap-1 rounded-[8px] border border-zinc-200 bg-zinc-100 p-1 text-sm font-semibold">
         <button
           type="button"
           onClick={() => {
             setTab("stake");
             setAmountInput("");
           }}
-          className={`flex-1 rounded-md px-3 py-2 transition ${
+          className={`flex-1 rounded-[6px] px-3 py-2 transition ${
             tab === "stake"
-              ? "bg-white text-zinc-900 shadow-sm"
+              ? "bg-white text-zinc-950 shadow-sm"
               : "text-zinc-500"
           }`}
         >
@@ -315,9 +335,9 @@ export function GrowStakingPanel() {
             setTab("withdraw");
             setAmountInput("");
           }}
-          className={`flex-1 rounded-md px-3 py-2 transition ${
+          className={`flex-1 rounded-[6px] px-3 py-2 transition ${
             tab === "withdraw"
-              ? "bg-white text-zinc-900 shadow-sm"
+              ? "bg-white text-zinc-950 shadow-sm"
               : "text-zinc-500"
           }`}
         >
@@ -326,22 +346,22 @@ export function GrowStakingPanel() {
       </div>
 
       {tab === "withdraw" && staked > 0n && (
-        <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
+        <div className="mb-3 rounded-[8px] border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
           {t("withdrawWarning")}
         </div>
       )}
 
-      <label className="mb-1 block text-xs uppercase tracking-wide text-zinc-500">
+      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
         {tab === "stake" ? t("amountToStake") : t("amountToWithdraw")}
       </label>
-      <div className="mb-3 flex items-stretch gap-2">
+      <div className="mb-3 flex min-h-[54px] overflow-hidden rounded-[8px] border border-zinc-300 bg-white focus-within:border-emerald-600">
         <input
           type="text"
           inputMode="decimal"
           value={amountInput}
           onChange={(e) => setAmountInput(e.target.value)}
           placeholder="0.00"
-          className="w-full rounded-lg border border-zinc-300 px-3 py-2 font-mono text-lg focus:border-emerald-600 focus:outline-none"
+          className="min-w-0 flex-1 px-3 py-2 font-mono text-lg text-zinc-950 outline-none"
         />
         <button
           type="button"
@@ -352,13 +372,13 @@ export function GrowStakingPanel() {
                 : formatUnits(staked, 18),
             )
           }
-          className="rounded-lg bg-zinc-100 px-3 text-xs font-medium text-zinc-700 hover:bg-zinc-200"
+          className="border-l border-zinc-200 bg-zinc-50 px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
         >
           {t("max")}
         </button>
       </div>
-      <div className="mb-4 flex justify-between text-xs text-zinc-500">
-        <span>
+      <div className="mb-4 grid grid-cols-2 gap-2 text-xs text-zinc-500">
+        <span className="text-right">
           {t("wallet")}:{" "}
           <span className="font-mono">
             {Number(formatUnits(growBalance, 18)).toFixed(4)}
@@ -383,7 +403,7 @@ export function GrowStakingPanel() {
         type="button"
         onClick={handleStakeOrWithdraw}
         disabled={!isConnected || isBusy || amount === 0n || insufficient}
-        className="mb-2 flex w-full items-center justify-center gap-2 rounded-lg bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
+        className="mb-2 flex w-full items-center justify-center gap-2 rounded-[8px] bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
       >
         {isBusy && tx.kind !== "claiming-sig" && tx.kind !== "claiming-chain" && (
           <Spinner />
@@ -409,7 +429,7 @@ export function GrowStakingPanel() {
         type="button"
         onClick={handleClaim}
         disabled={!isConnected || isBusy || earned === 0n}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-emerald-600 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:border-zinc-300 disabled:text-zinc-400"
+        className="flex w-full items-center justify-center gap-2 rounded-[8px] border border-emerald-600 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:border-zinc-300 disabled:text-zinc-400"
       >
         {(tx.kind === "claiming-sig" || tx.kind === "claiming-chain") && (
           <Spinner />

@@ -62,6 +62,7 @@ abstract contract ModuleRegistry is Ownable2StepUpgradeable {
     error ImplNotApproved();
     error KindHasNoSelectors();
     error IndexOutOfBounds();
+    error OwnershipCannotBeRenounced();
 
     // ------------------------------------------------------------------
     // Events
@@ -78,6 +79,15 @@ abstract contract ModuleRegistry is Ownable2StepUpgradeable {
     function __ModuleRegistry_init(address owner_) internal onlyInitializing {
         __Ownable_init(owner_);
         __Ownable2Step_init();
+    }
+
+    function transferOwnership(address newOwner) public override onlyOwner {
+        if (newOwner == address(0)) revert ZeroAddress();
+        super.transferOwnership(newOwner);
+    }
+
+    function renounceOwnership() public view override onlyOwner {
+        revert OwnershipCannotBeRenounced();
     }
 
     // ------------------------------------------------------------------
