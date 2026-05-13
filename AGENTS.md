@@ -1,4 +1,4 @@
-# GrowFi — Claude Code guide
+# GrowFi — Agent guide
 
 Permissionless RegenFi protocol: farmers/cooperatives tokenise a future harvest as $CAMPAIGN, stakers earn $YIELD, at harvest holders redeem $YIELD for physical product (Merkle proof) or pro-rata USDC.
 

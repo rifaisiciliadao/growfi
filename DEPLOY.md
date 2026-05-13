@@ -163,5 +163,5 @@ form. Run `cast to-check-sum-address 0x...` locally and update both
 ## Related
 
 - `CONTRACTS.md` — chain addresses, subgraph endpoint.
-- `CLAUDE.md` → Platform section — architecture overview.
+- `AGENTS.md` → Platform section — architecture overview.
 - `platform/subgraph/DEPLOY.md` — Goldsky subgraph redeploy flow.

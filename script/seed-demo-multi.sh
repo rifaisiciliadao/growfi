@@ -1,27 +1,49 @@
 #!/usr/bin/env bash
 # seed-demo-multi.sh — uploads images + metadata for the 2 demo campaigns created
-# by MultiCampaignSetup.s.sol. Idempotent. Reads campaign addresses from broadcast file.
+# by SmokeSepoliaMultiCampaign.s.sol. Idempotent.
 #
 # Required env (sourced from .env):
-#   PRIVATE_KEY                 deployer (also factory owner + producer in the multi setup)
-#   RPC_URL                     https://sepolia.base.org
+#   PRIVATE_KEY                     deployer (also factory owner + producer in the smoke setup)
+#   RPC_URL                         Ethereum Sepolia RPC
+#   REGISTRY_ADDRESS                CampaignRegistry address
+#   PRODUCER_REGISTRY_ADDRESS       ProducerRegistry address
+#   CAMP_A / CAMP_B                 campaign addresses from SmokeSepoliaMultiCampaign
 #
-# Hardcoded for the v5 (2026-05-07) Sepolia deploy:
 set -euo pipefail
 cd "$(dirname "$0")/.."
 # shellcheck disable=SC1091
-source .env
+if [ -f .env ]; then
+  source .env
+fi
 
-BACKEND_URL="${BACKEND_URL:-http://localhost:4001}"
-RPC_URL="${RPC_URL:-https://sepolia.base.org}"
+BACKEND_URL="${BACKEND_URL:-${NEXT_PUBLIC_BACKEND_URL:-https://growfi.dev}}"
+RPC_URL="${RPC_URL:-}"
 
-REGISTRY_ADDRESS="0x9d91b83ba2e068625a42Fe1d375AB1Aa98313584"
-PRODUCER_REGISTRY_ADDRESS="0x5d03F9B8F9e01E18C58833dcE0B930f8D7193194"
-DEPLOYER_ADDRESS="0xFF6bdef4fB646EE44e29FE8FC0862B02F0Ba8a33"
+REGISTRY_ADDRESS="${REGISTRY_ADDRESS:-${NEXT_PUBLIC_REGISTRY_ADDRESS:-}}"
+PRODUCER_REGISTRY_ADDRESS="${PRODUCER_REGISTRY_ADDRESS:-${NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS:-}}"
+DEPLOYER_ADDRESS="${DEPLOYER_ADDRESS:-}"
 
-# Campaigns from the v6 MultiCampaignSetup run.
-CAMP_A="0xa4a3b6b7DfD2D4f53B532ba589cae32CB5D17350"
-CAMP_B="0xB74eD0B95A14b0b4D0Fe5DaEA031B7BF856C1Dad"
+CAMP_A="${CAMP_A:-${OLIVE_CAMPAIGN_ADDRESS:-}}"
+CAMP_B="${CAMP_B:-${ETNA_CAMPAIGN_ADDRESS:-}}"
+
+require_env() {
+  local name="$1"
+  if [ -z "${!name:-}" ]; then
+    echo "✗ missing required env: $name" >&2
+    exit 1
+  fi
+}
+
+require_env PRIVATE_KEY
+require_env RPC_URL
+require_env REGISTRY_ADDRESS
+require_env PRODUCER_REGISTRY_ADDRESS
+require_env CAMP_A
+require_env CAMP_B
+
+if [ -z "$DEPLOYER_ADDRESS" ]; then
+  DEPLOYER_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY")
+fi
 
 # Image sources.
 A_IMG_URL="https://www.visitsicily.info/wp-content/uploads/2022/02/nebrodi.b.5.jpg"
@@ -158,8 +180,8 @@ fi
 
 echo
 echo "✓ Demo seed complete."
-echo "  Olive    : https://sepolia.basescan.org/address/$CAMP_A"
-echo "  Vineyard : https://sepolia.basescan.org/address/$CAMP_B"
+echo "  Olive    : https://sepolia.etherscan.io/address/$CAMP_A"
+echo "  Vineyard : https://sepolia.etherscan.io/address/$CAMP_B"
 echo "  meta A   : $A_META"
 echo "  meta B   : $B_META"
 echo "  profile  : $PROFILE_URL"
