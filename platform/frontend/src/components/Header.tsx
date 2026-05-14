@@ -53,7 +53,10 @@ export function Header() {
               {t("create")}
             </Link>
           ) : (
-            <Link href="/#invite" className={linkClass}>
+            <Link
+              href="/?openInvite=1"
+              className={linkClass}
+            >
               {tInvite("requestSubmit")}
             </Link>
           )}
@@ -181,7 +184,7 @@ export function Header() {
               </Link>
             ) : (
               <Link
-                href="/#invite"
+                href="/?openInvite=1"
                 onClick={() => setMobileOpen(false)}
                 className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
               >
