@@ -1,14 +1,25 @@
 import { createPublicClient, http, getAddress, type Address } from "viem";
-import { baseSepolia } from "viem/chains";
+import { baseSepolia, mainnet, sepolia } from "viem/chains";
 
 const SUBGRAPH_URL =
   process.env.SUBGRAPH_URL ||
   "https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/prod/gn";
 
-const RPC_URL = process.env.BASE_SEPOLIA_RPC || "https://sepolia.base.org";
+const CHAIN_ID = Number(process.env.CHAIN_ID || process.env.NEXT_PUBLIC_CHAIN_ID || baseSepolia.id);
+
+const RPC_URL =
+  process.env.RPC_URL ||
+  process.env.SEPOLIA_RPC_URL ||
+  process.env.BASE_SEPOLIA_RPC ||
+  (CHAIN_ID === sepolia.id
+    ? "https://ethereum-sepolia-rpc.publicnode.com"
+    : "https://sepolia.base.org");
+
+const chain =
+  CHAIN_ID === sepolia.id ? sepolia : CHAIN_ID === mainnet.id ? mainnet : baseSepolia;
 
 const client = createPublicClient({
-  chain: baseSepolia,
+  chain,
   transport: http(RPC_URL),
 });
 

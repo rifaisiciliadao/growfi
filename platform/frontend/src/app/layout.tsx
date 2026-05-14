@@ -37,7 +37,7 @@ const crimsonText = Crimson_Text({
 });
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL ??
+  process.env.NEXT_PUBLIC_SITE_URL ||
   "https://growfi-test-m9s8u.ondigitalocean.app";
 
 const SITE_TITLE = "GrowFi — Regenerative Finance for a Living Planet";

@@ -134,11 +134,11 @@ contract SmokeSepoliaMultiCampaign is Script {
         console.log("Olive Sicily campaign:    ", olive);
         console.log("Vineyard of Etna campaign:", etna);
         console.log("");
-        console.log("Olive state:", uint8(oliveC.state()), "(2=Active)");
+        console.log("Olive state:", uint8(oliveC.state()), "(1=Active)");
         console.log("Olive currentSupply:", oliveC.currentSupply());
         console.log("Olive currentSeasonId:", oliveC.currentSeasonId());
         console.log("");
-        console.log("Etna state:", uint8(etnaC.state()), "(2=Active)");
+        console.log("Etna state:", uint8(etnaC.state()), "(1=Active)");
         console.log("Etna currentSupply:", etnaC.currentSupply());
         console.log("Etna currentSeasonId:", etnaC.currentSeasonId());
         console.log("");
