@@ -99,15 +99,15 @@ export function Nav() {
 
   return (
     <nav className="relative z-20 w-full">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 md:px-8 md:py-6 gap-3">
+      <div className="relative mx-auto flex max-w-7xl items-center justify-between px-4 py-5 md:px-8 md:py-6 gap-3">
         <a
           href="#home"
-          className="shrink-0 transition-transform duration-200 hover:scale-[1.02]"
+          className="relative z-10 shrink-0 transition-transform duration-200 hover:scale-[1.02]"
         >
           <LandingLogo />
         </a>
 
-        <div className="hidden items-center gap-5 md:flex">
+        <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-5 lg:flex">
           <a
             href="#campaigns"
             className={desktopLinkClass}
@@ -131,7 +131,7 @@ export function Nav() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="relative z-10 flex items-center gap-2 shrink-0">
           <div className="hidden md:block">
             <LanguageSwitcher />
           </div>
@@ -164,6 +164,34 @@ export function Nav() {
                 role="menu"
                 className="absolute right-0 top-full mt-2 w-60 rounded-lg border border-black/10 bg-white/95 p-1.5 shadow-[0_18px_48px_-28px_rgba(0,0,0,0.45)] backdrop-blur-xl"
               >
+                <a
+                  href="#campaigns"
+                  role="menuitem"
+                  onClick={() => setDesktopOpen(false)}
+                  className={`${menuLinkClass} lg:hidden`}
+                  style={{ fontFamily: "var(--font-header)" }}
+                >
+                  {tNav("explore")}
+                </a>
+                <Link
+                  href="/investors"
+                  role="menuitem"
+                  onClick={() => setDesktopOpen(false)}
+                  className={`${menuLinkClass} lg:hidden`}
+                  style={{ fontFamily: "var(--font-header)" }}
+                >
+                  {tNav("investors")}
+                </Link>
+                <Link
+                  href="/grow"
+                  role="menuitem"
+                  onClick={() => setDesktopOpen(false)}
+                  className={`${menuLinkClass} text-emerald-700 hover:text-emerald-800 lg:hidden`}
+                  style={{ fontFamily: "var(--font-header)" }}
+                >
+                  $GROW
+                </Link>
+                <div className="my-1 h-px bg-black/10 lg:hidden" />
                 <Link
                   href="/feed"
                   role="menuitem"

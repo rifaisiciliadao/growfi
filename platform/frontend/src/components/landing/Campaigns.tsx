@@ -3,12 +3,15 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { formatUnits } from "viem";
+import { useReadContracts } from "wagmi";
+import { formatUnits, type Address } from "viem";
 import { useInView } from "@/lib/landing/useInView";
 import { useSubgraphCampaigns, type SubgraphCampaign } from "@/lib/subgraph";
 import { useCampaignMetadata } from "@/lib/metadata";
+import { assetProductDisplayLabel } from "@/lib/productUnit";
 import { useInviteGate } from "@/lib/inviteGate";
 import { useInviteModal } from "@/lib/inviteModal";
+import { repaymentModuleAbi } from "@/contracts/repayment";
 
 type CampaignState = "funding" | "active" | "ended";
 
@@ -91,8 +94,24 @@ function LiveCampaignCard({
     campaign.metadataURI,
     campaign.metadataVersion,
   );
+  const { data: repaymentReads } = useReadContracts({
+    contracts: [
+      {
+        address: campaign.id as Address,
+        abi: repaymentModuleAbi,
+        functionName: "poolBalance",
+      },
+      {
+        address: campaign.id as Address,
+        abi: repaymentModuleAbi,
+        functionName: "payoutPerCt",
+      },
+    ],
+    query: { refetchInterval: 30_000 },
+  });
 
   const state = toCampaignState(campaign.state);
+  const hasRepayment = repaymentReads?.[0]?.status === "success";
   const progress = (() => {
     const cap = BigInt(campaign.maxCap);
     return cap === 0n
@@ -108,7 +127,7 @@ function LiveCampaignCard({
   ).toLocaleString()}`;
 
   const displayName = meta?.name ?? `Campaign ${campaign.id.slice(0, 8)}…`;
-  const product = meta?.productType ?? "";
+  const product = assetProductDisplayLabel(meta?.productType);
   const location = meta?.location ?? "";
   const imageUrl = meta?.image ?? undefined;
   const fallbackHueA = "#2d5a36";
@@ -171,6 +190,22 @@ function LiveCampaignCard({
         <div className="absolute left-4 top-4">
           <StateBadge state={state} label={t(`stateLabel.${state}`)} />
         </div>
+        {hasRepayment && (
+          <div className="absolute right-4 top-4">
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] backdrop-blur-md"
+              style={{
+                background: "rgba(236,253,245,0.96)",
+                borderColor: "rgba(0,83,32,0.28)",
+                color: "#005320",
+                fontFamily: "var(--font-header)",
+              }}
+            >
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              {t("repaymentBadge")}
+            </span>
+          </div>
+        )}
         <div className="absolute bottom-4 right-4 text-right">
           <span
             className="font-display text-[10px] tracking-[0.15em] uppercase"
@@ -303,25 +338,8 @@ function CreateCampaignCard({
     WebkitBackdropFilter: "blur(14px) saturate(1.1)",
   } as const;
 
-  const Wrapper = approved
-    ? ({ children }: { children: React.ReactNode }) => (
-        <Link href="/create" className={sharedClassName} style={sharedStyle}>
-          {children}
-        </Link>
-      )
-    : ({ children }: { children: React.ReactNode }) => (
-        <button
-          type="button"
-          onClick={openModal}
-          className={`${sharedClassName} cursor-pointer`}
-          style={sharedStyle}
-        >
-          {children}
-        </button>
-      );
-
-  return (
-    <Wrapper>
+  const content = (
+    <>
       <span
         className="pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         style={{
@@ -380,7 +398,26 @@ function CreateCampaignCard({
           <path d="M5 12h14M13 5l7 7-7 7" />
         </svg>
       </span>
-    </Wrapper>
+    </>
+  );
+
+  if (approved) {
+    return (
+      <Link href="/create" className={sharedClassName} style={sharedStyle}>
+        {content}
+      </Link>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={openModal}
+      className={`${sharedClassName} cursor-pointer`}
+      style={sharedStyle}
+    >
+      {content}
+    </button>
   );
 }
 

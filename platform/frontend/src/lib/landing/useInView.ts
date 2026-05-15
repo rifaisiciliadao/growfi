@@ -2,11 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 
+const DEFAULT_OPTIONS: IntersectionObserverInit = {
+  threshold: 0.08,
+  rootMargin: "0px 0px -5% 0px",
+};
+
 export function useInView<T extends HTMLElement>(
-  options: IntersectionObserverInit = {
-    threshold: 0.08,
-    rootMargin: "0px 0px -5% 0px",
-  },
+  options: IntersectionObserverInit = DEFAULT_OPTIONS,
 ) {
   const ref = useRef<T | null>(null);
   const [inView, setInView] = useState(false);
@@ -14,17 +16,19 @@ export function useInView<T extends HTMLElement>(
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
+    const revealNextFrame = () => {
+      const frame = requestAnimationFrame(() => setInView(true));
+      return () => cancelAnimationFrame(frame);
+    };
 
     const rect = el.getBoundingClientRect();
     const vh = window.innerHeight || document.documentElement.clientHeight;
     if (rect.top < vh * 0.95) {
-      setInView(true);
-      return;
+      return revealNextFrame();
     }
 
     if (typeof IntersectionObserver === "undefined") {
-      setInView(true);
-      return;
+      return revealNextFrame();
     }
 
     const obs = new IntersectionObserver((entries) => {
@@ -42,7 +46,7 @@ export function useInView<T extends HTMLElement>(
       obs.disconnect();
       window.clearTimeout(t);
     };
-  }, []);
+  }, [options]);
 
   return { ref, inView };
 }

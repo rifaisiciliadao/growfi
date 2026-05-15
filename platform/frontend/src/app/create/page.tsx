@@ -7,7 +7,6 @@ import { readContract } from "@wagmi/core";
 import { config as wagmiConfig } from "@/app/providers";
 import {
   parseUnits,
-  formatUnits,
   decodeEventLog,
   zeroAddress,
   type Address,
@@ -22,7 +21,7 @@ import {
 import { uploadImage, uploadMetadata } from "@/lib/api";
 import { findCampaignByName } from "@/lib/subgraph";
 import { waitForTx } from "@/lib/waitForTx";
-import { productUnitLabel } from "@/lib/productUnit";
+import { encodeProductType, productUnitLabel } from "@/lib/productUnit";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { Spinner } from "@/components/Spinner";
 
@@ -49,7 +48,10 @@ type FormData = {
   name: string;
   description: string;
   location: string;
+  assetType: string;
+  assetTypeCustom: string;
   productType: string;
+  productTypeCustom: string;
   imageFile: File | null;
   imagePreview: string | null;
   pricePerToken: string;
@@ -84,13 +86,24 @@ type FormData = {
 };
 
 const STEP_KEYS = ["info", "params", "payments", "collateral", "confirm"] as const;
+const CUSTOM_KEY = "custom";
+const ASSET_KEYS = [
+  "tree",
+  "land",
+  "ha",
+  "plot",
+  "vineyard",
+  CUSTOM_KEY,
+] as const;
 const PRODUCT_KEYS = [
+  "olive",
   "olive-oil",
   "citrus",
+  "grapes",
   "wine",
   "honey",
   "nuts",
-  "other",
+  CUSTOM_KEY,
 ] as const;
 
 export default function CreateCampaign() {
@@ -104,7 +117,10 @@ export default function CreateCampaign() {
     name: "",
     description: "",
     location: "",
+    assetType: "",
+    assetTypeCustom: "",
     productType: "",
+    productTypeCustom: "",
     imageFile: null,
     imagePreview: null,
     pricePerToken: "",
@@ -178,6 +194,34 @@ export default function CreateCampaign() {
     setForm((f) => ({ ...f, [key]: value }));
   };
 
+  const selectedAssetType =
+    form.assetType === CUSTOM_KEY ? form.assetTypeCustom.trim() : form.assetType;
+  const selectedProductType =
+    form.productType === CUSTOM_KEY
+      ? form.productTypeCustom.trim()
+      : form.productType;
+  const encodedProductType =
+    selectedAssetType && selectedProductType
+      ? encodeProductType(selectedAssetType, selectedProductType)
+      : selectedProductType;
+  const selectedProductUnit = productUnitLabel(encodedProductType);
+  const assetReviewLabel =
+    form.assetType === CUSTOM_KEY
+      ? form.assetTypeCustom.trim()
+      : form.assetType
+        ? t(`step1.assets.${form.assetType}` as never)
+        : "—";
+  const productReviewLabel =
+    form.productType === CUSTOM_KEY
+      ? form.productTypeCustom.trim()
+      : form.productType
+        ? t(`step1.products.${form.productType}` as never)
+        : "—";
+  const assetUnitLabel =
+    assetReviewLabel === "—"
+      ? t("step2.assetFallback")
+      : assetReviewLabel.toLocaleLowerCase();
+
   const next = () => setStep((s) => Math.min(5, s + 1));
   const prev = () => setStep((s) => Math.max(1, s - 1));
 
@@ -193,7 +237,12 @@ export default function CreateCampaign() {
         form.description.trim().length > 0 &&
         !!form.imageFile &&
         form.location.trim().length > 0 &&
-        form.productType.length > 0
+        form.assetType.length > 0 &&
+        (form.assetType !== CUSTOM_KEY ||
+          form.assetTypeCustom.trim().length > 0) &&
+        form.productType.length > 0 &&
+        (form.productType !== CUSTOM_KEY ||
+          form.productTypeCustom.trim().length > 0)
       );
     }
     if (step === 2) {
@@ -351,7 +400,7 @@ export default function CreateCampaign() {
         name: form.name,
         description: form.description,
         location: form.location,
-        productType: form.productType,
+        productType: encodedProductType,
         imageUrl: image.url,
       });
 
@@ -736,30 +785,91 @@ export default function CreateCampaign() {
                 </label>
               </Field>
 
+              <Field label={t("step1.location")}>
+                <input
+                  type="text"
+                  value={form.location}
+                  onChange={(e) => update("location", e.target.value)}
+                  placeholder={t("step1.locationPlaceholder")}
+                  className="input"
+                />
+              </Field>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Field label={t("step1.location")}>
-                  <input
-                    type="text"
-                    value={form.location}
-                    onChange={(e) => update("location", e.target.value)}
-                    placeholder={t("step1.locationPlaceholder")}
-                    className="input"
-                  />
+                <Field label={t("step1.assetType")}>
+                  <div className="space-y-3">
+                    <select
+                      value={form.assetType}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          assetType: e.target.value,
+                          assetTypeCustom:
+                            e.target.value === CUSTOM_KEY
+                              ? current.assetTypeCustom
+                              : "",
+                        }))
+                      }
+                      className="input appearance-none"
+                    >
+                      <option value="">{t("step1.selectAsset")}</option>
+                      {ASSET_KEYS.map((key) => (
+                        <option key={key} value={key}>
+                          {t(`step1.assets.${key}`)}
+                        </option>
+                      ))}
+                    </select>
+
+                    {form.assetType === CUSTOM_KEY && (
+                      <input
+                        type="text"
+                        value={form.assetTypeCustom}
+                        onChange={(e) =>
+                          update("assetTypeCustom", e.target.value)
+                        }
+                        placeholder={t("step1.assetCustomPlaceholder")}
+                        className="input"
+                      />
+                    )}
+                  </div>
                 </Field>
 
                 <Field label={t("step1.productType")}>
-                  <select
-                    value={form.productType}
-                    onChange={(e) => update("productType", e.target.value)}
-                    className="input appearance-none"
-                  >
-                    <option value="">{t("step1.selectProduct")}</option>
-                    {PRODUCT_KEYS.map((key) => (
-                      <option key={key} value={key}>
-                        {t(`step1.products.${key}`)}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="space-y-3">
+                    <select
+                      value={form.productType}
+                      onChange={(e) =>
+                        setForm((current) => ({
+                          ...current,
+                          productType: e.target.value,
+                          productTypeCustom:
+                            e.target.value === CUSTOM_KEY
+                              ? current.productTypeCustom
+                              : "",
+                        }))
+                      }
+                      className="input appearance-none"
+                    >
+                      <option value="">{t("step1.selectProduct")}</option>
+                      {PRODUCT_KEYS.map((key) => (
+                        <option key={key} value={key}>
+                          {t(`step1.products.${key}`)}
+                        </option>
+                      ))}
+                    </select>
+
+                    {form.productType === CUSTOM_KEY && (
+                      <input
+                        type="text"
+                        value={form.productTypeCustom}
+                        onChange={(e) =>
+                          update("productTypeCustom", e.target.value)
+                        }
+                        placeholder={t("step1.productCustomPlaceholder")}
+                        className="input"
+                      />
+                    )}
+                  </div>
                 </Field>
               </div>
             </div>
@@ -804,7 +914,7 @@ export default function CreateCampaign() {
 
               <div className="grid grid-cols-2 gap-6">
                 <Field
-                  label={t("step2.minCap")}
+                  label={t("step2.minCap", { asset: assetUnitLabel })}
                   hint={t("step2.minCapHint")}
                 >
                   <input
@@ -816,8 +926,11 @@ export default function CreateCampaign() {
                   />
                 </Field>
                 <Field
-                  label={t("step2.maxCap")}
-                  hint={t("step2.maxCapHint", { total: maxCap.toLocaleString() })}
+                  label={t("step2.maxCap", { asset: assetUnitLabel })}
+                  hint={t("step2.maxCapHint", {
+                    asset: assetUnitLabel,
+                    total: maxCap.toLocaleString(),
+                  })}
                 >
                   <input
                     type="number"
@@ -891,10 +1004,10 @@ export default function CreateCampaign() {
                 </Field>
                 <Field
                   label={t("step2.expectedAnnualHarvestQty", {
-                    unit: productUnitLabel(form.productType),
+                    unit: selectedProductUnit,
                   })}
                   hint={t("step2.expectedAnnualHarvestQtyHint", {
-                    unit: productUnitLabel(form.productType),
+                    unit: selectedProductUnit,
                   })}
                 >
                   <div className="relative">
@@ -910,7 +1023,7 @@ export default function CreateCampaign() {
                       className="input pr-16 font-semibold tabular-nums"
                     />
                     <span className="absolute inset-y-0 right-0 flex items-center pr-4 pl-3 border-l border-outline-variant/15 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant pointer-events-none">
-                      {productUnitLabel(form.productType)} / yr
+                      {selectedProductUnit} / yr
                     </span>
                   </div>
                 </Field>
@@ -966,7 +1079,7 @@ export default function CreateCampaign() {
                 pricePerToken={form.pricePerToken}
                 annualHarvestUsd={form.expectedAnnualHarvestUsd}
                 annualHarvestQty={form.expectedAnnualHarvest}
-                productType={form.productType}
+                productType={encodedProductType}
                 firstHarvestYear={form.firstHarvestYear}
                 coverageHarvests={form.coverageHarvests}
               />
@@ -1182,12 +1295,12 @@ export default function CreateCampaign() {
                   value={form.location || "—"}
                 />
                 <ReviewRow
+                  label={t("step5.rows.assetType")}
+                  value={assetReviewLabel}
+                />
+                <ReviewRow
                   label={t("step5.rows.productType")}
-                  value={
-                    form.productType
-                      ? t(`step1.products.${form.productType}` as never)
-                      : "—"
-                  }
+                  value={productReviewLabel}
                 />
               </ReviewSection>
 
@@ -1199,6 +1312,7 @@ export default function CreateCampaign() {
                 <ReviewRow
                   label={t("step5.rows.minCap")}
                   value={t("step5.rows.trees", {
+                    asset: assetUnitLabel,
                     count: form.minCapTrees,
                     tokens: minCap.toLocaleString(),
                   })}
@@ -1206,6 +1320,7 @@ export default function CreateCampaign() {
                 <ReviewRow
                   label={t("step5.rows.maxCap")}
                   value={t("step5.rows.trees", {
+                    asset: assetUnitLabel,
                     count: form.maxCapTrees,
                     tokens: maxCap.toLocaleString(),
                   })}

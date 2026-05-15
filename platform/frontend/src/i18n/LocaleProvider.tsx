@@ -56,14 +56,21 @@ export function LocaleProvider({ children }: { children: React.ReactNode }) {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const stored =
-      typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
-    if (stored && (LOCALES as string[]).includes(stored)) {
-      setLocaleState(stored as Locale);
-    } else {
-      setLocaleState(detectBrowserLocale());
-    }
-    setHydrated(true);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const stored =
+        typeof window !== "undefined" ? localStorage.getItem(STORAGE_KEY) : null;
+      if (stored && (LOCALES as string[]).includes(stored)) {
+        setLocaleState(stored as Locale);
+      } else {
+        setLocaleState(detectBrowserLocale());
+      }
+      setHydrated(true);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const setLocale = (next: Locale) => {

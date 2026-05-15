@@ -32,6 +32,9 @@ export function ProductiveAssetCard({
   pricePerToken18,
   collateralLocked6,
   collateralDrawn6,
+  hasRepayment = false,
+  repaymentPool6 = 0n,
+  repaymentPayoutPerCt6 = 0n,
 }: {
   annualHarvestUsd18: bigint;
   annualHarvest18: bigint;
@@ -42,6 +45,9 @@ export function ProductiveAssetCard({
   pricePerToken18: bigint;
   collateralLocked6: bigint;
   collateralDrawn6: bigint;
+  hasRepayment?: boolean;
+  repaymentPool6?: bigint;
+  repaymentPayoutPerCt6?: bigint;
 }) {
   const annual = Number(annualHarvestUsd18) / 1e18;
   const annualQty = Number(annualHarvest18) / 1e18;
@@ -112,6 +118,39 @@ export function ProductiveAssetCard({
           }
         />
       </div>
+
+      {hasRepayment && (
+        <div className="rounded-xl border border-emerald-700/20 bg-emerald-50 p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-emerald-800">
+                Repayment module
+              </div>
+              <div className="mt-1 text-base font-bold text-on-surface">
+                Producer-funded exit path
+              </div>
+            </div>
+            <span className="rounded-full bg-white/80 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-800">
+              Active
+            </span>
+          </div>
+          <p className="text-[11px] leading-5 text-on-surface-variant">
+            Holders can burn free campaign tokens for USDC while the grower-funded pool has liquidity. This is separate from failed-campaign refunds.
+          </p>
+          <div className="grid grid-cols-2 gap-3 border-t border-emerald-700/10 pt-3">
+            <Tile
+              label="Pool"
+              value={`$${(Number(repaymentPool6) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 2 })}`}
+              compact
+            />
+            <Tile
+              label="Payout / CT"
+              value={`$${(Number(repaymentPayoutPerCt6) / 1e6).toLocaleString(undefined, { maximumFractionDigits: 3 })}`}
+              compact
+            />
+          </div>
+        </div>
+      )}
 
       {/* Collateral + risk band */}
       <div className="rounded-xl border border-outline-variant/15 p-4 space-y-3">

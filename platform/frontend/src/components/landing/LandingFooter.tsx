@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { LandingLogo } from "./LandingLogo";
 import { useInView } from "@/lib/landing/useInView";
+import { getAddresses } from "@/contracts";
+import { addressUrl } from "@/lib/explorer";
 
 export function LandingFooter() {
   const t = useTranslations("landing.footer");
   const { ref, inView } = useInView<HTMLDivElement>();
+  const { factory } = getAddresses();
 
   const COLS: {
     title: string;
@@ -30,7 +33,7 @@ export function LandingFooter() {
         { label: t("linkDocs"), href: "#" },
         {
           label: t("linkContracts"),
-          href: "https://sepolia.basescan.org/address/0x5178A4AB4c6400CeeB812663AFfd1bd5B0c9FF64",
+          href: addressUrl(factory),
           external: true,
         },
         {

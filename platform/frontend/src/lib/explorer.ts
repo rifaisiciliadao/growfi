@@ -9,8 +9,19 @@ const EXPLORERS: Record<number, string> = {
   [mainnet.id]: "https://etherscan.io",
 };
 
+const EXPLORER_NAMES: Record<number, string> = {
+  [baseSepolia.id]: "BaseScan",
+  [base.id]: "BaseScan",
+  [sepolia.id]: "Etherscan",
+  [mainnet.id]: "Etherscan",
+};
+
 export function explorerBase(chainId: number = CHAIN_ID): string {
   return EXPLORERS[chainId] ?? EXPLORERS[baseSepolia.id];
+}
+
+export function explorerName(chainId: number = CHAIN_ID): string {
+  return EXPLORER_NAMES[chainId] ?? EXPLORER_NAMES[baseSepolia.id];
 }
 
 export function txUrl(hash: string, chainId: number = CHAIN_ID): string {

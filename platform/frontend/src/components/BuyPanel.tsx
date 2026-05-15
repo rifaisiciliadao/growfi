@@ -14,6 +14,7 @@ import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
+import { txUrl } from "@/lib/explorer";
 
 type AcceptedTokenInfo = {
   address: Address;
@@ -21,6 +22,7 @@ type AcceptedTokenInfo = {
   pricingMode: number;        // 0 = Fixed, 1 = Oracle
   fixedRate: bigint;
   decimals: number;
+  active: boolean;
 };
 
 interface Props {
@@ -78,6 +80,55 @@ const mockUsdcMintAbi = [
 
 const campaignAbi = abis.Campaign as never;
 
+const tokenConfigAbi = [
+  {
+    type: "function",
+    name: "tokenConfig",
+    stateMutability: "view",
+    inputs: [{ name: "token", type: "address" }],
+    outputs: [
+      {
+        type: "tuple",
+        components: [
+          { name: "pricingMode", type: "uint8" },
+          { name: "fixedRate", type: "uint256" },
+          { name: "oracleFeed", type: "address" },
+          { name: "paymentDecimals", type: "uint8" },
+          { name: "active", type: "bool" },
+        ],
+      },
+    ],
+  },
+] as const;
+
+type TokenConfigResult =
+  | readonly [number | bigint, bigint, Address, number | bigint, boolean]
+  | {
+      pricingMode?: number | bigint;
+      fixedRate?: bigint;
+      oracleFeed?: Address;
+      paymentDecimals?: number | bigint;
+      active?: boolean;
+    };
+
+function readTokenConfig(raw: unknown) {
+  const cfg = raw as TokenConfigResult | undefined;
+  if (!cfg) return null;
+  if (Array.isArray(cfg)) {
+    return {
+      pricingMode: Number(cfg[0] ?? 0),
+      fixedRate: cfg[1] ?? 0n,
+      active: Boolean(cfg[4]),
+    };
+  }
+  const cfgObj = cfg as Exclude<TokenConfigResult, readonly unknown[]>;
+  return {
+    pricingMode: Number(cfgObj.pricingMode ?? 0),
+    fixedRate: cfgObj.fixedRate ?? 0n,
+    active: cfgObj.active ?? false,
+  };
+}
+
 const MOCK_USDC_DECIMALS = 6;
 const MOCK_USDC_MINT_AMOUNT = 10_000n * 10n ** BigInt(MOCK_USDC_DECIMALS); // 10,000 mUSDC
 
@@ -118,8 +169,8 @@ export function BuyPanel({
     return acceptedTokenAddresses.flatMap((addr) => [
       {
         address: campaignAddress,
-        abi: campaignAbi,
-        functionName: "tokenConfigs",
+        abi: tokenConfigAbi,
+        functionName: "tokenConfig",
         args: [addr],
       },
       { address: addr, abi: erc20Abi, functionName: "symbol" },
@@ -141,20 +192,17 @@ export function BuyPanel({
       const cfgResult = results[i * 3];
       const symResult = results[i * 3 + 1];
       const decResult = results[i * 3 + 2];
-
-      // tokenConfigs returns (PricingMode, uint256 fixedRate, address oracleFeed, bool active)
-      const cfg = cfgResult?.result as
-        | [number, bigint, Address, boolean]
-        | undefined;
+      const cfg = readTokenConfig(cfgResult?.result);
 
       return {
         address: addr,
         symbol: (symResult?.result as string) ?? "???",
-        pricingMode: cfg?.[0] ?? 0,
-        fixedRate: cfg?.[1] ?? 0n,
+        pricingMode: cfg?.pricingMode ?? 0,
+        fixedRate: cfg?.fixedRate ?? 0n,
         decimals: (decResult?.result as number) ?? 18,
+        active: cfg?.active ?? false,
       };
-    });
+    }).filter((tok) => tok.active);
   }, [acceptedTokenAddresses, tokenConfigs]);
 
   // Selected token (default: first)
@@ -626,7 +674,7 @@ export function BuyPanel({
             <div className="mt-4 bg-primary-fixed/30 text-primary border border-primary/30 rounded-xl p-3 text-sm font-medium">
               {t("purchaseConfirmed")}{" "}
               <a
-                href={`https://sepolia.basescan.org/tx/${status.hash}`}
+                href={txUrl(status.hash)}
                 target="_blank"
                 rel="noreferrer"
                 className="underline"

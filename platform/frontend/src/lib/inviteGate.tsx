@@ -68,11 +68,18 @@ export function InviteGateProvider({
   }, []);
 
   useEffect(() => {
-    if (isConnecting || isReconnecting) {
-      setState("loading");
-      return;
-    }
-    void runCheck(lower);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      if (isConnecting || isReconnecting) {
+        setState("loading");
+        return;
+      }
+      void runCheck(lower);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [lower, isConnecting, isReconnecting, runCheck]);
 
   const refresh = useCallback(async () => {

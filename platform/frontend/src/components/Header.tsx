@@ -116,12 +116,12 @@ export function Header() {
 
   return (
     <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl border-b border-outline-variant/15">
-      <div className="flex justify-between items-center px-4 md:px-8 h-16 max-w-7xl mx-auto w-full gap-2 md:gap-6">
-        <Link href="/" className="flex items-center gap-1 shrink-0 min-w-0">
+      <div className="relative flex justify-between items-center px-4 md:px-8 h-16 max-w-7xl mx-auto w-full gap-2 md:gap-6">
+        <Link href="/" className="relative z-10 flex items-center gap-1 shrink-0 min-w-0">
           <Logo />
         </Link>
 
-        <div className="hidden md:flex gap-5 items-center">
+        <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-5 lg:flex">
           <Link href="/" className={linkClass}>
             {t("explore")}
           </Link>
@@ -133,7 +133,7 @@ export function Header() {
           </Link>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="relative z-10 flex items-center gap-2 shrink-0">
           <div className="hidden md:block">
             <LanguageSwitcher />
           </div>
@@ -166,6 +166,31 @@ export function Header() {
                 role="menu"
                 className="absolute right-0 top-full mt-2 w-60 rounded-lg border border-outline-variant/20 bg-white/95 p-1.5 shadow-[0_18px_48px_-28px_rgba(0,0,0,0.45)] backdrop-blur-xl"
               >
+                <Link
+                  href="/"
+                  role="menuitem"
+                  onClick={() => setDesktopOpen(false)}
+                  className={`${menuLinkClass} lg:hidden`}
+                >
+                  {t("explore")}
+                </Link>
+                <Link
+                  href="/investors"
+                  role="menuitem"
+                  onClick={() => setDesktopOpen(false)}
+                  className={`${menuLinkClass} lg:hidden`}
+                >
+                  {t("investors")}
+                </Link>
+                <Link
+                  href="/grow"
+                  role="menuitem"
+                  onClick={() => setDesktopOpen(false)}
+                  className={`${menuLinkClass} font-semibold text-emerald-700 hover:text-emerald-800 lg:hidden`}
+                >
+                  $GROW
+                </Link>
+                <div className="my-1 h-px bg-outline-variant/15 lg:hidden" />
                 <Link
                   href="/feed"
                   role="menuitem"

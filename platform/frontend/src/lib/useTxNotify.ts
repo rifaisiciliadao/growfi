@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { useToast } from "@/components/Toast";
-import { txUrl } from "@/lib/explorer";
+import { explorerName, txUrl } from "@/lib/explorer";
 
 /**
  * Thin wrapper around the toast system that panels can call from their
@@ -12,6 +12,7 @@ import { txUrl } from "@/lib/explorer";
  */
 export function useTxNotify() {
   const toast = useToast();
+  const label = `View on ${explorerName()}`;
 
   const success = useCallback(
     (title: string, hash?: `0x${string}`, message?: string) => {
@@ -19,12 +20,10 @@ export function useTxNotify() {
         kind: "success",
         title,
         message,
-        action: hash
-          ? { label: "View on BaseScan", href: txUrl(hash) }
-          : undefined,
+        action: hash ? { label, href: txUrl(hash) } : undefined,
       });
     },
-    [toast],
+    [label, toast],
   );
 
   const error = useCallback(
@@ -37,12 +36,10 @@ export function useTxNotify() {
         kind: "error",
         title,
         message: shortenMessage(msg),
-        action: hash
-          ? { label: "View on BaseScan", href: txUrl(hash) }
-          : undefined,
+        action: hash ? { label, href: txUrl(hash) } : undefined,
       });
     },
-    [toast],
+    [label, toast],
   );
 
   const info = useCallback(

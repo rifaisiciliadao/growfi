@@ -14,6 +14,7 @@ import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
+import { txUrl } from "@/lib/explorer";
 
 interface Props {
   campaignAddress: Address;
@@ -256,7 +257,7 @@ export function RefundPanel({
         <div className="mt-4 bg-primary-fixed/30 text-primary border border-primary/30 rounded-lg p-3 text-xs">
           {t("refundConfirmed")}{" "}
           <a
-            href={`https://sepolia.basescan.org/tx/${successHash}`}
+            href={txUrl(successHash)}
             target="_blank"
             rel="noreferrer"
             className="underline font-semibold"

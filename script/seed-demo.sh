@@ -147,6 +147,6 @@ fi
 
 echo ""
 echo "✓ Demo seed complete."
-echo "  campaign  : https://sepolia.basescan.org/address/$CAMPAIGN_ADDRESS"
+echo "  campaign  : https://sepolia.etherscan.io/address/$CAMPAIGN_ADDRESS"
 echo "  metadata  : $META_URL"
 echo "  profile   : $PROFILE_URL"

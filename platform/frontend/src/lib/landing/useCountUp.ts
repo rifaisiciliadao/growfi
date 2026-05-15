@@ -27,8 +27,10 @@ export function useCountUp({
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReduced) {
-      setValue(to);
-      return;
+      rafRef.current = requestAnimationFrame(() => setValue(to));
+      return () => {
+        if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+      };
     }
 
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);

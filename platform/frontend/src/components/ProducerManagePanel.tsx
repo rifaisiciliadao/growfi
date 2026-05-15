@@ -2,7 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
-import { useReadContract, useReadContracts, useWriteContract } from "wagmi";
+import {
+  useAccount,
+  useReadContract,
+  useReadContracts,
+  useWriteContract,
+} from "wagmi";
 import { formatUnits, parseUnits, zeroAddress, type Address } from "viem";
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
 import {
@@ -11,11 +16,18 @@ import {
   resolveTokenAddress,
 } from "@/contracts/tokens";
 import { erc20Abi } from "@/contracts/erc20";
+import {
+  campaignModuleHostAbi,
+  repaymentModuleAbi,
+  REPAYMENT_MODULE_KIND,
+  REPAYMENT_MODULE_TYPE,
+} from "@/contracts/repayment";
 import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
 import { fetchSnapshot, generateMerkleTree } from "@/lib/api";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
+import { addressUrl, txUrl } from "@/lib/explorer";
 
 const campaignAbi = abis.Campaign as never;
 
@@ -127,6 +139,13 @@ export function ProducerManagePanel({
 
       <section className="mt-8">
         <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
+          {t("repaymentTitle")}
+        </h3>
+        <RepaymentModuleManager campaignAddress={campaignAddress} />
+      </section>
+
+      <section className="mt-8">
+        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
           {t("acceptedTokensTitle")}
         </h3>
         <AcceptedTokensManager campaignAddress={campaignAddress} />
@@ -153,6 +172,517 @@ export function ProducerManagePanel({
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function RepaymentModuleManager({
+  campaignAddress,
+}: {
+  campaignAddress: Address;
+}) {
+  const t = useTranslations("detail.manage.repayment");
+  const notify = useTxNotify();
+  const { address: producer } = useAccount();
+  const { usdc, repaymentImpl } = getAddresses();
+  const { writeContractAsync } = useWriteContract();
+
+  const [initialBonus, setInitialBonus] = useState("0");
+  const [bonusInput, setBonusInput] = useState("");
+  const [fundAmount, setFundAmount] = useState("");
+  const [withdrawAmount, setWithdrawAmount] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<
+    | null
+    | {
+        kind: "enable" | "toggle" | "bonus" | "approve" | "fund" | "withdraw";
+        phase: "sig" | "chain";
+      }
+  >(null);
+
+  const {
+    data: slotData,
+    refetch: refetchSlot,
+  } = useReadContract({
+    address: campaignAddress,
+    abi: campaignModuleHostAbi,
+    functionName: "moduleSlot",
+    args: [REPAYMENT_MODULE_TYPE],
+    query: { refetchInterval: 20_000 },
+  });
+
+  const slot = slotData as
+    | readonly [Address, `0x${string}`, string, bigint, boolean]
+    | undefined;
+  const attachedImpl = slot?.[0] ?? zeroAddress;
+  const isAttached = attachedImpl !== zeroAddress;
+  const moduleEnabled = Boolean(slot?.[4]);
+  const hasImpl = Boolean(repaymentImpl && repaymentImpl !== zeroAddress);
+
+  const {
+    data: repaymentReads,
+    refetch: refetchRepayment,
+  } = useReadContracts({
+    contracts: isAttached
+      ? [
+          {
+            address: campaignAddress,
+            abi: repaymentModuleAbi,
+            functionName: "poolBalance",
+          },
+          {
+            address: campaignAddress,
+            abi: repaymentModuleAbi,
+            functionName: "principalPerCt",
+          },
+          {
+            address: campaignAddress,
+            abi: repaymentModuleAbi,
+            functionName: "bonusPerCt",
+          },
+          {
+            address: campaignAddress,
+            abi: repaymentModuleAbi,
+            functionName: "payoutPerCt",
+          },
+        ]
+      : [],
+    query: { enabled: isAttached, refetchInterval: 20_000 },
+  });
+
+  const { data: allowance, refetch: refetchAllowance } = useReadContract({
+    address: usdc,
+    abi: erc20Abi,
+    functionName: "allowance",
+    args: producer ? [producer, campaignAddress] : undefined,
+    query: { enabled: !!producer && usdc !== zeroAddress },
+  });
+
+  const { data: usdcBalance } = useReadContract({
+    address: usdc,
+    abi: erc20Abi,
+    functionName: "balanceOf",
+    args: producer ? [producer] : undefined,
+    query: { enabled: !!producer && usdc !== zeroAddress, refetchInterval: 20_000 },
+  });
+
+  const poolBalance = (repaymentReads?.[0]?.result as bigint | undefined) ?? 0n;
+  const principalPerCt =
+    (repaymentReads?.[1]?.result as bigint | undefined) ?? 0n;
+  const bonusPerCt = (repaymentReads?.[2]?.result as bigint | undefined) ?? 0n;
+  const payoutPerCt = (repaymentReads?.[3]?.result as bigint | undefined) ?? 0n;
+
+  const refresh = async () => {
+    await Promise.all([
+      refetchSlot(),
+      refetchRepayment(),
+      refetchAllowance(),
+    ]);
+  };
+
+  const parseUsdc = (value: string) => parseUnits(value || "0", USDC_DECIMALS);
+
+  const fail = (err: unknown, title: string) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/user (rejected|denied)/i.test(msg)) setError(msg);
+    notify.error(title, err);
+  };
+
+  const handleEnable = async () => {
+    setError(null);
+    try {
+      if (!repaymentImpl || repaymentImpl === zeroAddress) {
+        throw new Error(t("implMissing"));
+      }
+      const initialBonus6 = parseUsdc(initialBonus);
+
+      setPending({ kind: "enable", phase: "sig" });
+      const attachHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "attachModule",
+        args: [
+          REPAYMENT_MODULE_TYPE,
+          REPAYMENT_MODULE_KIND,
+          repaymentImpl,
+          "growfi://repayment/v1",
+        ],
+      });
+      setPending({ kind: "enable", phase: "chain" });
+      const attachReceipt = await waitForTx(attachHash);
+      if (attachReceipt.status !== "success") {
+        throw new Error("attachModule reverted");
+      }
+
+      setPending({ kind: "bonus", phase: "sig" });
+      const initHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: repaymentModuleAbi,
+        functionName: "initializeRepaymentByProducer",
+        args: [initialBonus6],
+      });
+      setPending({ kind: "bonus", phase: "chain" });
+      const initReceipt = await waitForTx(initHash);
+      if (initReceipt.status !== "success") {
+        throw new Error("initializeRepaymentByProducer reverted");
+      }
+      await refresh();
+      notify.success(t("enableConfirmed"), initHash);
+    } catch (err) {
+      fail(err, t("enableFailed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const handleToggle = async () => {
+    setError(null);
+    try {
+      setPending({ kind: "toggle", phase: "sig" });
+      const hash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "setModuleEnabled",
+        args: [REPAYMENT_MODULE_TYPE, !moduleEnabled],
+      });
+      setPending({ kind: "toggle", phase: "chain" });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") throw new Error("setModuleEnabled reverted");
+      await refresh();
+      notify.success(
+        moduleEnabled ? t("disabledConfirmed") : t("enabledConfirmed"),
+        hash,
+      );
+    } catch (err) {
+      fail(err, t("toggleFailed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const handleSetBonus = async () => {
+    setError(null);
+    try {
+      const amount = parseUsdc(bonusInput);
+      setPending({ kind: "bonus", phase: "sig" });
+      const hash = await writeContractAsync({
+        address: campaignAddress,
+        abi: repaymentModuleAbi,
+        functionName: "setBonusPerCt",
+        args: [amount],
+      });
+      setPending({ kind: "bonus", phase: "chain" });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") throw new Error("setBonusPerCt reverted");
+      setBonusInput("");
+      await refresh();
+      notify.success(t("bonusConfirmed"), hash);
+    } catch (err) {
+      fail(err, t("bonusFailed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const handleFund = async () => {
+    setError(null);
+    try {
+      const amount = parseUsdc(fundAmount);
+      if (amount === 0n) throw new Error(t("amountRequired"));
+      if (usdcBalance !== undefined && amount > (usdcBalance as bigint)) {
+        throw new Error(t("insufficientUsdc"));
+      }
+
+      if (((allowance as bigint | undefined) ?? 0n) < amount) {
+        setPending({ kind: "approve", phase: "sig" });
+        const approveHash = await writeContractAsync({
+          address: usdc,
+          abi: erc20Abi,
+          functionName: "approve",
+          args: [campaignAddress, amount],
+        });
+        setPending({ kind: "approve", phase: "chain" });
+        const approveReceipt = await waitForTx(approveHash);
+        if (approveReceipt.status !== "success") {
+          throw new Error("approve reverted");
+        }
+      }
+
+      setPending({ kind: "fund", phase: "sig" });
+      const fundHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: repaymentModuleAbi,
+        functionName: "fundPool",
+        args: [amount],
+      });
+      setPending({ kind: "fund", phase: "chain" });
+      const fundReceipt = await waitForTx(fundHash);
+      if (fundReceipt.status !== "success") throw new Error("fundPool reverted");
+      setFundAmount("");
+      await refresh();
+      notify.success(t("fundConfirmed"), fundHash);
+    } catch (err) {
+      fail(err, t("fundFailed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const handleWithdraw = async () => {
+    setError(null);
+    try {
+      const amount = parseUsdc(withdrawAmount);
+      if (amount === 0n) throw new Error(t("amountRequired"));
+      if (amount > poolBalance) throw new Error(t("withdrawTooHigh"));
+      setPending({ kind: "withdraw", phase: "sig" });
+      const hash = await writeContractAsync({
+        address: campaignAddress,
+        abi: repaymentModuleAbi,
+        functionName: "withdrawUnusedPool",
+        args: [amount],
+      });
+      setPending({ kind: "withdraw", phase: "chain" });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") {
+        throw new Error("withdrawUnusedPool reverted");
+      }
+      setWithdrawAmount("");
+      await refresh();
+      notify.success(t("withdrawConfirmed"), hash);
+    } catch (err) {
+      fail(err, t("withdrawFailed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const busy = pending !== null;
+  const enableLabel =
+    pending?.kind === "enable" && pending.phase === "sig"
+      ? t("enableSig")
+      : pending?.kind === "enable" && pending.phase === "chain"
+        ? t("enableChain")
+        : pending?.kind === "bonus"
+          ? pending.phase === "sig"
+            ? t("initializeSig")
+            : t("initializeChain")
+          : t("enableCta");
+  const fundLabel =
+    pending?.kind === "approve"
+      ? pending.phase === "sig"
+        ? t("approveSig")
+        : t("approveChain")
+      : pending?.kind === "fund"
+        ? pending.phase === "sig"
+          ? t("fundSig")
+          : t("fundChain")
+        : t("fundCta");
+
+  return (
+    <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isAttached
+                  ? moduleEnabled
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                  : "bg-outline"
+              }`}
+            />
+            <div className="text-sm font-bold text-on-surface">
+              {isAttached
+                ? moduleEnabled
+                  ? t("statusEnabled")
+                  : t("statusDisabled")
+                : t("statusMissing")}
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-on-surface-variant">
+            {isAttached ? t("attachedHint") : t("missingHint")}
+          </p>
+        </div>
+
+        {isAttached && (
+          <button
+            onClick={handleToggle}
+            disabled={busy}
+            className="h-9 rounded-full border border-outline-variant/20 bg-surface-container-lowest px-4 text-xs font-semibold text-on-surface hover:bg-surface-container transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+          >
+            {pending?.kind === "toggle" && <Spinner size={12} />}
+            {pending?.kind === "toggle"
+              ? pending.phase === "sig"
+                ? t("toggleSig")
+                : t("toggleChain")
+              : moduleEnabled
+                ? t("disableCta")
+                : t("enableToggleCta")}
+          </button>
+        )}
+      </div>
+
+      {!isAttached ? (
+        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3">
+          <label className="block">
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+              {t("initialBonus")}
+            </span>
+            <input
+              type="number"
+              min="0"
+              step="0.000001"
+              value={initialBonus}
+              onChange={(e) => setInitialBonus(e.target.value)}
+              disabled={busy || !hasImpl}
+              placeholder="0.005"
+              className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50 disabled:opacity-50"
+            />
+          </label>
+          <button
+            onClick={handleEnable}
+            disabled={busy || !hasImpl}
+            className="self-end regen-gradient h-10 rounded-full px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+          >
+            {busy && <Spinner size={14} />}
+            {enableLabel}
+          </button>
+          {!hasImpl && (
+            <p className="md:col-span-2 text-xs text-error">
+              {t("implMissing")}
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <RepaymentMetric label={t("pool")} value={formatUsdc6(poolBalance)} />
+            <RepaymentMetric
+              label={t("principalPerCt")}
+              value={formatUsdc6(principalPerCt)}
+            />
+            <RepaymentMetric label={t("bonusPerCt")} value={formatUsdc6(bonusPerCt)} />
+            <RepaymentMetric label={t("payoutPerCt")} value={formatUsdc6(payoutPerCt)} />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                {t("fundAmount")}
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.000001"
+                value={fundAmount}
+                onChange={(e) => setFundAmount(e.target.value)}
+                disabled={busy || !moduleEnabled}
+                placeholder="1000"
+                className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50 disabled:opacity-50"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                {t("newBonus")}
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.000001"
+                value={bonusInput}
+                onChange={(e) => setBonusInput(e.target.value)}
+                disabled={busy || !moduleEnabled}
+                placeholder={formatPlainUsdc6(bonusPerCt)}
+                className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50 disabled:opacity-50"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                {t("withdrawAmount")}
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="0.000001"
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+                disabled={busy || !moduleEnabled || poolBalance === 0n}
+                placeholder={formatPlainUsdc6(poolBalance)}
+                className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50 disabled:opacity-50"
+              />
+            </label>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleFund}
+              disabled={busy || !moduleEnabled || !fundAmount}
+              className="regen-gradient h-10 rounded-full px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            >
+              {(pending?.kind === "approve" || pending?.kind === "fund") && (
+                <Spinner size={14} />
+              )}
+              {fundLabel}
+            </button>
+            <button
+              onClick={handleSetBonus}
+              disabled={busy || !moduleEnabled || bonusInput === ""}
+              className="h-10 rounded-full border border-outline-variant/20 bg-surface-container-lowest px-5 text-sm font-semibold text-on-surface hover:bg-surface-container transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            >
+              {pending?.kind === "bonus" && <Spinner size={14} />}
+              {pending?.kind === "bonus"
+                ? pending.phase === "sig"
+                  ? t("bonusSig")
+                  : t("bonusChain")
+                : t("bonusCta")}
+            </button>
+            <button
+              onClick={handleWithdraw}
+              disabled={busy || !moduleEnabled || !withdrawAmount || poolBalance === 0n}
+              className="h-10 rounded-full border border-red-200 bg-red-50 px-5 text-sm font-semibold text-error hover:bg-red-100 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+            >
+              {pending?.kind === "withdraw" && <Spinner size={14} />}
+              {pending?.kind === "withdraw"
+                ? pending.phase === "sig"
+                  ? t("withdrawSig")
+                  : t("withdrawChain")
+                : t("withdrawCta")}
+            </button>
+          </div>
+        </>
+      )}
+
+      {attachedImpl !== zeroAddress && (
+        <div className="text-[11px] text-on-surface-variant">
+          {t("implementation")}{" "}
+          <a
+            href={addressUrl(attachedImpl)}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono underline decoration-dotted underline-offset-2"
+          >
+            {attachedImpl.slice(0, 6)}…{attachedImpl.slice(-4)}
+          </a>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-error">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function RepaymentMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-3">
+      <div className="text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-bold text-on-surface">{value}</div>
     </div>
   );
 }
@@ -702,7 +1232,7 @@ function LifecycleSection({
           </div>
         </div>
         <a
-          href={`https://sepolia.basescan.org/address/${campaignAddress}`}
+          href={addressUrl(campaignAddress)}
           target="_blank"
           rel="noreferrer"
           className="text-xs text-primary font-semibold hover:underline whitespace-nowrap"
@@ -962,7 +1492,7 @@ function ReportHarvestCard({
         <div className="mt-3 bg-primary-fixed/30 text-primary border border-primary/30 rounded-lg p-3 text-xs">
           {t("report.confirmed")}{" "}
           <a
-            href={`https://sepolia.basescan.org/tx/${stage.hash}`}
+            href={txUrl(stage.hash)}
             target="_blank"
             rel="noreferrer"
             className="underline font-semibold"
@@ -1349,7 +1879,7 @@ function ObligationCard({
             <div className="mt-3 bg-primary-fixed/30 text-primary border border-primary/30 rounded-lg p-3 text-xs">
               {t("depositConfirmed")}{" "}
               <a
-                href={`https://sepolia.basescan.org/tx/${stage.hash}`}
+                href={txUrl(stage.hash)}
                 target="_blank"
                 rel="noreferrer"
                 className="underline font-semibold"
@@ -1751,7 +2281,7 @@ function CollateralSection({
         {Number(coverage) === 1 ? "harvest" : "harvests"} of holder yield as a
         guarantee. The lock is one-way — there is no withdrawal path on chain.
         Anyone can call <code>settleSeasonShortfall(seasonId)</code> after each
-        season's <code>usdcDeadline</code> to draw from the reserve.
+        season&apos;s <code>usdcDeadline</code> to draw from the reserve.
         {harvestsToRepay !== null && (
           <>
             {" "}Investor-side payback at this yield ≈ {harvestsToRepay} harvests.
@@ -1817,4 +2347,19 @@ function CollateralStat({ label, value }: { label: string; value: string }) {
       <div className="text-sm font-bold text-on-surface">{value}</div>
     </div>
   );
+}
+
+function formatUsdc6(value: bigint) {
+  const n = Number(formatUnits(value, USDC_DECIMALS));
+  return `$${n.toLocaleString(undefined, {
+    maximumFractionDigits: n >= 100 ? 0 : 2,
+  })}`;
+}
+
+function formatPlainUsdc6(value: bigint) {
+  const n = Number(formatUnits(value, USDC_DECIMALS));
+  return n.toLocaleString(undefined, {
+    maximumFractionDigits: n >= 100 ? 0 : 6,
+    useGrouping: false,
+  });
 }

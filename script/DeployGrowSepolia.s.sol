@@ -110,9 +110,9 @@ contract DeployGrowSepolia is Script {
         factory.setGrowfiTokenTreasury(address(growTreasury));
 
         // 9. Add MockUSDC as accepted stablecoin in the Treasury
-        //    (scale 1e12: 6-dec -> 18-dec normalisation, $1 feed, 24h heartbeat,
+        //    (scale 1e12: 6-dec -> 18-dec normalisation, $1 feed, long testnet heartbeat,
         //     5% depeg band)
-        factory.addGrowfiTreasuryStablecoin(usdc, 1e12, address(usdFeed), 24 hours, 9_500, 10_500);
+        factory.addGrowfiTreasuryStablecoin(usdc, 1e12, address(usdFeed), 365 days, 9_500, 10_500);
 
         // 10. Treasury StakingPool wiring + automation
         factory.setGrowfiTreasuryStakingPool(address(stakingPool));

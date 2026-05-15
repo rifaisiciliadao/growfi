@@ -52,6 +52,17 @@ export interface SubgraphCampaign {
   metadataURI: string | null;
   metadataVersion: string;
   hidden: boolean;
+  repaymentPool?: {
+    initialized: boolean;
+    bonusPerCt: string;
+    poolBalance: string;
+    totalFunded: string;
+    totalWithdrawn: string;
+    totalRedeemed: string;
+    redeemCount: number;
+    initializedAt: string | null;
+    lastUpdatedAt: string;
+  } | null;
 }
 
 const CAMPAIGN_FIELDS = `
@@ -87,6 +98,17 @@ const CAMPAIGN_FIELDS = `
   metadataURI
   metadataVersion
   hidden
+  repaymentPool {
+    initialized
+    bonusPerCt
+    poolBalance
+    totalFunded
+    totalWithdrawn
+    totalRedeemed
+    redeemCount
+    initializedAt
+    lastUpdatedAt
+  }
 `;
 
 /**
