@@ -464,7 +464,7 @@
       "coverageValue": "{covered} / {total} raccolti",
       "prefunded": "Il coltivatore ha prefinanziato i raccolti {start}–{end} con collateral USDC.",
       "tailRisk": "La coda di {count, plural, one {# anno} other {# anni}} ({start}–{end}) mantiene il normale rischio di consegna.",
-      "noPrefund": "Il coltivatore ha pubblicato gli obiettivi ma non ha prefinanziato alcun raccolto. Gli holder mantengono il rischio di consegna completo.",
+      "noPrefund": "Il coltivatore ha pubblicato gli obiettivi ma non ha prefinanziato alcun raccolto. I detentori mantengono il rischio di consegna completo.",
       "locked": "Bloccati",
       "drawn": "Usati",
       "free": "Liberi",
