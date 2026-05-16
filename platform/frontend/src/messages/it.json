@@ -155,6 +155,8 @@
       "minProductHint": "Unità minime per ritiro fisico (es. litri)",
       "expectedAnnualHarvestUsd": "Raccolto Annuo Atteso (USD)",
       "expectedAnnualHarvestUsdHint": "Valore USD che il coltivatore si impegna a consegnare ogni anno (es. 5000 = $5.000/anno)",
+      "genericUnit": "unità",
+      "perYearShort": "anno",
       "expectedAnnualHarvestQty": "Raccolto Annuo Atteso ({unit})",
       "expectedAnnualHarvestQtyHint": "Quantità fisica all'anno (es. 250 {unit}/anno — combinata col valore USD sopra dà il prezzo implicito per unità)",
       "firstHarvestYear": "Anno Primo Raccolto",

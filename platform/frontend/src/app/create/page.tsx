@@ -21,7 +21,7 @@ import {
 import { uploadImage, uploadMetadata } from "@/lib/api";
 import { findCampaignByName } from "@/lib/subgraph";
 import { waitForTx } from "@/lib/waitForTx";
-import { encodeProductType, productUnitLabel } from "@/lib/productUnit";
+import { encodeProductType } from "@/lib/productUnit";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { Spinner } from "@/components/Spinner";
 
@@ -204,7 +204,7 @@ export default function CreateCampaign() {
     selectedAssetType && selectedProductType
       ? encodeProductType(selectedAssetType, selectedProductType)
       : selectedProductType;
-  const selectedProductUnit = productUnitLabel(encodedProductType);
+  const selectedProductUnit = t("step2.genericUnit");
   const assetReviewLabel =
     form.assetType === CUSTOM_KEY
       ? form.assetTypeCustom.trim()
@@ -1023,7 +1023,7 @@ export default function CreateCampaign() {
                       className="input pr-16 font-semibold tabular-nums"
                     />
                     <span className="absolute inset-y-0 right-0 flex items-center pr-4 pl-3 border-l border-outline-variant/15 text-[11px] font-semibold uppercase tracking-wider text-on-surface-variant pointer-events-none">
-                      {selectedProductUnit} / yr
+                      {selectedProductUnit} / {t("step2.perYearShort")}
                     </span>
                   </div>
                 </Field>
@@ -1079,7 +1079,7 @@ export default function CreateCampaign() {
                 pricePerToken={form.pricePerToken}
                 annualHarvestUsd={form.expectedAnnualHarvestUsd}
                 annualHarvestQty={form.expectedAnnualHarvest}
-                productType={encodedProductType}
+                productUnit={selectedProductUnit}
                 firstHarvestYear={form.firstHarvestYear}
                 coverageHarvests={form.coverageHarvests}
               />
@@ -1719,7 +1719,7 @@ function FeasibilitySummary({
   pricePerToken,
   annualHarvestUsd,
   annualHarvestQty,
-  productType,
+  productUnit,
   firstHarvestYear,
   coverageHarvests,
 }: {
@@ -1727,7 +1727,7 @@ function FeasibilitySummary({
   pricePerToken: string;
   annualHarvestUsd: string;
   annualHarvestQty: string;
-  productType: string;
+  productUnit: string;
   firstHarvestYear: string;
   coverageHarvests: string;
 }) {
@@ -1736,7 +1736,7 @@ function FeasibilitySummary({
   const annualQty = Number(annualHarvestQty);
   const firstYear = Number(firstHarvestYear);
   const cov = Number(coverageHarvests);
-  const unit = productUnitLabel(productType);
+  const unit = productUnit;
 
   if (!(maxRaise > 0 && annual > 0 && firstYear > 0)) return null;
 
