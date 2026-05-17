@@ -14,8 +14,8 @@
 > Vineyard of Etna ($0.10/CT, 500k maxCap). Both Active, tracked in
 > the Treasury with `automationEnabled=true`.
 >
-> Subgraph: `growfi/4.0.2` on Goldsky (NOT tagged `prod` — `prod` still
-> points at the archived Base Sepolia v3.3 index).
+> Subgraph: `growfi/4.0.2` on Goldsky. Goldsky cleanup on 2026-05-17
+> removed legacy versions and the stale `prod` tag; use the pinned endpoint.
 
 ### Core v4 (campaign factory + module impls + registries)
 
@@ -96,8 +96,9 @@ NEXT_PUBLIC_SUBGRAPH_URL=https://api.goldsky.com/api/public/project_cmo1ydnmbj6t
 > $5,000/yr commitment from year 2030, 3 harvests covered by $15,000
 > USDC of collateral; Alice + Bob both staked, season 1 running.
 >
-> Subgraph: tag `prod` now points at `growfi/2.9.0`, indexed from the
-> new factory deploy block.
+> Subgraph: the archived Goldsky index for this legacy deploy was removed
+> during the 2026-05-17 cleanup. No live Base Sepolia subgraph endpoint is
+> retained.
 >
 > Earlier deploys abandoned: `0xD5C6…79D` (v3.3 first), `0x91fD…6BDD`
 > (v3.0), `0xDE26…bF9f` (v3.1), `0x5178…FF64` (pre-v3).
@@ -186,10 +187,8 @@ Full UX spec in `docs/REDEEM_2STEP.md`.
 
 ## Subgraph
 
-- Version `2.9.0` (tagged `prod`)
-- Deployed: 2026-04-28
-- API: `https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/prod/gn`
-- Pin version: replace `prod` with `2.9.0` (useful during schema migrations so an older frontend can stick to a previous version).
+- Archived Goldsky index removed on 2026-05-17.
+- No live Base Sepolia subgraph endpoint is retained; the active indexed environment is Ethereum Sepolia `growfi/4.0.2`.
 
 ---
 
@@ -201,7 +200,7 @@ NEXT_PUBLIC_FACTORY_ADDRESS=0x26dfae1d399a737708aab1f9a116eb814e98ee87
 NEXT_PUBLIC_USDC_ADDRESS=0x9c92c69a92173548a8e62a412e963f4b93ee2a13
 NEXT_PUBLIC_REGISTRY_ADDRESS=0x40696756DE89c0C5DF59219e565b4a1F18e909ea
 NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0xe5ed3b78631a02EAB46477F67c2b41Ec31a97A21
-NEXT_PUBLIC_SUBGRAPH_URL=https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/prod/gn
+# No live Base Sepolia subgraph retained.
 NEXT_PUBLIC_BACKEND_URL=http://localhost:4001
 ```
 

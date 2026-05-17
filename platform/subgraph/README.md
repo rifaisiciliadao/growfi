@@ -32,17 +32,17 @@ Un `ContractIndex` risolve `vault address → Campaign` e `harvestManager addres
 
 ## Script
 
-| Comando | Descrizione |
+| Command | Description |
 |---------|-------------|
-| `npm run codegen` | Genera tipi TS dai contratti ABI + schema |
-| `npm run build` | Compila handlers AssemblyScript → WASM |
+| `npm run codegen` | Generate types from ABI files + schema |
+| `npm run build` | Compile AssemblyScript handlers to WASM |
 | `npm run prepare` | codegen + build |
 | `npm run goldsky:login` | Login CLI Goldsky |
-| `npm run deploy:goldsky` | Deploy su `growfi/<version>` |
-| `npm run deploy:goldsky:prod` | Deploy + tagga come `prod` |
-| `npm run deploy:goldsky:promote` | Tagga la version corrente come `prod` |
+| `npm run deploy:goldsky` | Deploy `growfi/<version>` |
+| `npm run deploy:goldsky:prod` | Deploy + tag as `prod`; do not use unless explicitly requested |
+| `npm run deploy:goldsky:promote` | Tag the current version as `prod`; do not use unless explicitly requested |
 | `npm run goldsky:logs` | Live log indexer |
-| `npm run goldsky:list` | Lista subgraph del team |
+| `npm run goldsky:list` | List team subgraphs |
 
 ## Deploy
 

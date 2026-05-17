@@ -1,83 +1,84 @@
-# GrowFi Subgraph — Deploy su Goldsky
+# GrowFi Subgraph — Goldsky Deploy
 
-**Team:** turinglabs · **Progetto:** growfi · **Network:** base-sepolia
+**Team:** turinglabs · **Project:** growfi · **Network:** sepolia
 
-## Deployments indicizzati
+## Indexed Deployment
 
-| Parametro | Valore |
+| Parameter | Value |
 |-----------|--------|
-| Chain | Base Sepolia (id 84532) |
-| Factory | [`0x3fA41528a22645Bef478E9eBae83981C02e98f74`](https://sepolia.basescan.org/address/0x3fA41528a22645Bef478E9eBae83981C02e98f74) |
-| Start block | `40322865` |
+| Chain | Ethereum Sepolia (id 11155111) |
+| Factory | [`0xB804de4d151E5A8a9EBa61a9904EC3588c8EFb56`](https://sepolia.etherscan.io/address/0xB804de4d151E5A8a9EBa61a9904EC3588c8EFb56) |
+| Start block | `10845295` |
 
-Già configurato in `subgraph.yaml`. Vedi `CONTRACTS.md` alla root del repo per tutto il resto.
+Already configured in `subgraph.yaml`. See root `CONTRACTS.md` for the full address set.
 
 ---
 
-## 1. Install + login
+## 1. Install And Login
 
 ```bash
 cd platform/subgraph
 npm install
-npm run goldsky:login     # incolla la tua API key
+npm run goldsky:login
 ```
 
-API key reperibile da https://app.goldsky.com → Settings → API Keys.
+API keys are available at https://app.goldsky.com -> Settings -> API Keys.
 
 ---
 
-## 2. Build + deploy
+## 2. Build And Deploy
 
 ```bash
 npm run prepare            # codegen + build in build/
-npm run deploy:goldsky:prod
+npm run deploy:goldsky
 ```
 
-Questo pubblica `growfi/1.0.0` e lo tagga come `prod`.
+This publishes `growfi/<package.json version>`. Do not tag or promote `prod` unless explicitly requested. The 2026-05-17 cleanup removed legacy versions and the stale `prod` tag; production uses the pinned version endpoint.
 
-Dopo il deploy Goldsky stampa un `PROJECT_ID`. Salvalo nel `.env.local` del frontend:
+After deploy, save the pinned endpoint in the frontend/backend environment:
 
 ```
-NEXT_PUBLIC_SUBGRAPH_URL=https://api.goldsky.com/api/public/<PROJECT_ID>/subgraphs/growfi/prod/gn
+NEXT_PUBLIC_SUBGRAPH_URL=https://api.goldsky.com/api/public/<PROJECT_ID>/subgraphs/growfi/<VERSION>/gn
+SUBGRAPH_URL=https://api.goldsky.com/api/public/<PROJECT_ID>/subgraphs/growfi/<VERSION>/gn
 ```
 
 ---
 
-## 3. Aggiornamento di una nuova versione
+## 3. Deploying A New Version
 
-1. Incrementa `version` in `package.json` (semver)
+1. Bump `version` in `package.json` using semver.
 2. `npm run prepare && npm run deploy:goldsky`
-3. (opz.) `npm run deploy:goldsky:promote` per spostare il tag `prod` a questa versione
+3. Update app envs to the new pinned endpoint.
 
-Goldsky mantiene più versioni in parallelo — utile per rollback.
+Goldsky can retain multiple versions for rollback, but this project currently keeps only the live pinned version to avoid stale indexes.
 
 ---
 
-## 4. Log e debug
+## 4. Logs And Debugging
 
 ```bash
-npm run goldsky:logs       # live log indexer
-npm run goldsky:list       # lista subgraph del team
+npm run goldsky:logs
+npm run goldsky:list
 ```
 
 ---
 
-## Problemi noti
+## Common Issues
 
-| Sintomo | Cosa controllare |
+| Symptom | Check |
 |---------|------------------|
-| `401 Unauthorized` | Re-esegui `goldsky login` |
-| `Subgraph name already taken` | Incrementa `version` in `package.json` |
-| Indexer fermo al block di start | Verifica che la factory emetta eventi (crea una campagna o chiama USDC.mint per debug) |
-| Handler vanno in overflow / crash | `npm run goldsky:logs` per stack trace, poi `npm run codegen` dopo modifiche agli ABI |
-| Schema change breaking | Bump **minor** in semver, i dati vecchi restano sulla versione precedente |
+| `401 Unauthorized` | Re-run `goldsky login` |
+| `Subgraph name already taken` | Bump `version` in `package.json` |
+| Indexer stuck at start block | Verify the factory emits events by creating a campaign |
+| Handler overflow / crash | Read `npm run goldsky:logs`, then run `npm run codegen` after ABI changes |
+| Breaking schema change | Bump **minor** in semver |
 
 ---
 
 ## Teardown
 
 ```bash
-npm run goldsky:delete    # ATTENZIONE: elimina gli indici della versione corrente
+npm run goldsky:delete    # Deletes the current package.json version
 ```
 
 ## v4 — GROW system + rename
