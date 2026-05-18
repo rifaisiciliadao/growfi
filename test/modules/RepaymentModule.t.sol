@@ -43,6 +43,7 @@ contract RepaymentModuleTest is Test {
     uint256 internal constant PRICE_PER_TOKEN_USD18 = 0.144e18;
     /// @dev Expected principal payout per 1e18 CT in USDC-6.
     uint256 internal constant EXPECTED_PRINCIPAL_USDC6 = 0.144e6;
+    uint16 internal constant REPAYMENT_PROTOCOL_FEE_BPS = 200;
     uint256 internal constant INITIAL_POOL = 10_000e6;
 
     function setUp() public {
@@ -128,6 +129,14 @@ contract RepaymentModuleTest is Test {
         vm.stopPrank();
     }
 
+    function _protocolFee(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout * REPAYMENT_PROTOCOL_FEE_BPS / 10_000;
+    }
+
+    function _netPayout(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout - _protocolFee(grossPayout);
+    }
+
     // ------------------------------------------------------------------
     // Initial state + init
     // ------------------------------------------------------------------
@@ -136,6 +145,8 @@ contract RepaymentModuleTest is Test {
         assertEq(_r().principalPerCt(), EXPECTED_PRINCIPAL_USDC6, "principal per CT from pricePerToken");
         assertEq(_r().bonusPerCt(), 0, "initial bonus must be 0");
         assertEq(_r().payoutPerCt(), EXPECTED_PRINCIPAL_USDC6, "payout = principal + 0");
+        assertEq(_r().repaymentProtocolFeeBps(), REPAYMENT_PROTOCOL_FEE_BPS, "protocol fee bps");
+        assertEq(_r().netPayoutPerCt(), _netPayout(EXPECTED_PRINCIPAL_USDC6), "net payout after fee");
         assertEq(_r().poolBalance(), 0);
     }
 
@@ -188,6 +199,12 @@ contract RepaymentModuleTest is Test {
         vm.expectRevert(RepaymentModule.OnlyProducer.selector);
         _r().fundPool(100e6);
         vm.stopPrank();
+    }
+
+    function test_creditPoolFromCampaign_rejectsExternalCall() public {
+        vm.prank(producer);
+        vm.expectRevert(RepaymentModule.OnlyCampaignSelf.selector);
+        _r().creditPoolFromCampaign(1);
     }
 
     function test_withdrawUnusedPool_works() public {
@@ -269,19 +286,23 @@ contract RepaymentModuleTest is Test {
 
         uint256 amount = 200e18;
         // Expected: 200 CT * $0.144 = $28.80 → 28_800_000 USDC-6
-        uint256 expectedPayout = amount * EXPECTED_PRINCIPAL_USDC6 / 1e18;
-        assertEq(expectedPayout, 28_800_000);
+        uint256 expectedGross = amount * EXPECTED_PRINCIPAL_USDC6 / 1e18;
+        uint256 expectedFee = _protocolFee(expectedGross);
+        uint256 expectedNet = expectedGross - expectedFee;
+        assertEq(expectedGross, 28_800_000);
 
         uint256 aliceCtBefore = campaignToken.balanceOf(alice);
         uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+        uint256 feeRecipientBefore = usdc.balanceOf(feeRecipient);
 
         vm.prank(alice);
         _r().redeem(amount, new uint256[](0));
 
         assertEq(campaignToken.balanceOf(alice), aliceCtBefore - amount);
-        assertEq(usdc.balanceOf(alice), aliceUsdcBefore + expectedPayout);
-        assertEq(_r().poolBalance(), INITIAL_POOL - expectedPayout);
-        assertEq(_r().claimedByUser(alice), expectedPayout);
+        assertEq(usdc.balanceOf(alice), aliceUsdcBefore + expectedNet);
+        assertEq(usdc.balanceOf(feeRecipient), feeRecipientBefore + expectedFee);
+        assertEq(_r().poolBalance(), INITIAL_POOL - expectedGross);
+        assertEq(_r().claimedByUser(alice), expectedNet);
     }
 
     function test_redeem_emitsRepaidWithSplit() public {
@@ -292,12 +313,16 @@ contract RepaymentModuleTest is Test {
         uint256 amount = 100e18;
         uint256 expectedPrincipal = amount * EXPECTED_PRINCIPAL_USDC6 / 1e18;
         uint256 expectedBonus = amount * 0.05e6 / 1e18;
-        uint256 expectedPayout = expectedPrincipal + expectedBonus;
+        uint256 expectedGross = expectedPrincipal + expectedBonus;
+        uint256 expectedFee = _protocolFee(expectedGross);
+        uint256 expectedNet = expectedGross - expectedFee;
 
         vm.prank(alice);
         vm.expectEmit(true, true, true, true);
+        emit RepaymentModule.RepaymentProtocolFeeTransferred(alice, expectedFee, feeRecipient);
+        vm.expectEmit(true, true, true, true);
         emit RepaymentModule.Repaid(
-            alice, amount, expectedPrincipal, expectedBonus, INITIAL_POOL - expectedPayout, expectedPayout
+            alice, amount, expectedPrincipal, expectedBonus, INITIAL_POOL - expectedGross, expectedNet
         );
         _r().redeem(amount, new uint256[](0));
     }
@@ -314,14 +339,19 @@ contract RepaymentModuleTest is Test {
         uint256 amount = 500e18;
         uint256 expectedPrincipal = amount * EXPECTED_PRINCIPAL_USDC6 / 1e18; // 72e6
         uint256 expectedBonus = amount * 0.02e6 / 1e18; // 10e6
-        uint256 expectedPayout = expectedPrincipal + expectedBonus; // 82e6
+        uint256 expectedGross = expectedPrincipal + expectedBonus; // 82e6
+        uint256 expectedFee = _protocolFee(expectedGross);
+        uint256 expectedNet = expectedGross - expectedFee;
 
         uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+        uint256 feeRecipientBefore = usdc.balanceOf(feeRecipient);
         vm.prank(alice);
         _r().redeem(amount, new uint256[](0));
 
-        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, expectedPayout);
-        assertEq(_r().claimedByUser(alice), expectedPayout);
+        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, expectedNet);
+        assertEq(usdc.balanceOf(feeRecipient) - feeRecipientBefore, expectedFee);
+        assertEq(_r().claimedByUser(alice), expectedNet);
+        assertEq(_r().poolBalance(), INITIAL_POOL - expectedGross);
     }
 
     function test_redeem_bonusChangesMidStream() public {
@@ -333,7 +363,7 @@ contract RepaymentModuleTest is Test {
         vm.prank(alice);
         _r().redeem(amount, new uint256[](0));
         uint256 aliceGot = usdc.balanceOf(alice) - aliceUsdcBefore;
-        assertEq(aliceGot, amount * EXPECTED_PRINCIPAL_USDC6 / 1e18);
+        assertEq(aliceGot, _netPayout(amount * EXPECTED_PRINCIPAL_USDC6 / 1e18));
 
         // Producer raises bonus, Bob exits at +bonus
         vm.prank(producer);
@@ -344,7 +374,7 @@ contract RepaymentModuleTest is Test {
         vm.prank(bob);
         _r().redeem(bobAmount, new uint256[](0));
         uint256 bobGot = usdc.balanceOf(bob) - bobUsdcBefore;
-        assertEq(bobGot, bobAmount * (EXPECTED_PRINCIPAL_USDC6 + 0.05e6) / 1e18);
+        assertEq(bobGot, _netPayout(bobAmount * (EXPECTED_PRINCIPAL_USDC6 + 0.05e6) / 1e18));
 
         // Bob got strictly more per CT than Alice
         assertGt(bobGot, aliceGot);
@@ -439,10 +469,10 @@ contract RepaymentModuleTest is Test {
         vm.prank(bob);
         _r().redeem(bobAmt, new uint256[](0));
 
-        assertEq(_r().claimedByUser(alice), aliceAmt * ratePerCt / 1e18);
-        assertEq(_r().claimedByUser(bob), bobAmt * ratePerCt / 1e18);
-        uint256 totalOut = (aliceAmt + bobAmt) * ratePerCt / 1e18;
-        assertEq(_r().poolBalance(), INITIAL_POOL - totalOut);
+        assertEq(_r().claimedByUser(alice), _netPayout(aliceAmt * ratePerCt / 1e18));
+        assertEq(_r().claimedByUser(bob), _netPayout(bobAmt * ratePerCt / 1e18));
+        uint256 totalGross = (aliceAmt + bobAmt) * ratePerCt / 1e18;
+        assertEq(_r().poolBalance(), INITIAL_POOL - totalGross);
     }
 
     function test_redeem_repeatedByOneHolder_accumulatesClaimed() public {
@@ -453,7 +483,7 @@ contract RepaymentModuleTest is Test {
         _r().redeem(50e18, new uint256[](0));
         vm.stopPrank();
 
-        uint256 expectedTotal = 150e18 * EXPECTED_PRINCIPAL_USDC6 / 1e18;
+        uint256 expectedTotal = _netPayout(150e18 * EXPECTED_PRINCIPAL_USDC6 / 1e18);
         assertEq(_r().claimedByUser(alice), expectedTotal);
     }
 
@@ -464,7 +494,10 @@ contract RepaymentModuleTest is Test {
     function test_quoteRepayment_matchesActualPayout_noBonus() public {
         _fundPool(INITIAL_POOL);
         uint256 quote = _r().quoteRepayment(300e18);
-        assertEq(quote, 300e18 * EXPECTED_PRINCIPAL_USDC6 / 1e18);
+        uint256 gross = 300e18 * EXPECTED_PRINCIPAL_USDC6 / 1e18;
+        assertEq(_r().quoteRepaymentGross(300e18), gross);
+        assertEq(_r().quoteRepaymentProtocolFee(300e18), _protocolFee(gross));
+        assertEq(quote, _netPayout(gross));
 
         uint256 aliceUsdcBefore = usdc.balanceOf(alice);
         vm.prank(alice);
@@ -478,7 +511,10 @@ contract RepaymentModuleTest is Test {
         _r().setBonusPerCt(0.03e6);
 
         uint256 quote = _r().quoteRepayment(250e18);
-        uint256 expected = 250e18 * (EXPECTED_PRINCIPAL_USDC6 + 0.03e6) / 1e18;
+        uint256 gross = 250e18 * (EXPECTED_PRINCIPAL_USDC6 + 0.03e6) / 1e18;
+        uint256 expected = _netPayout(gross);
+        assertEq(_r().quoteRepaymentGross(250e18), gross);
+        assertEq(_r().quoteRepaymentProtocolFee(250e18), _protocolFee(gross));
         assertEq(quote, expected);
 
         uint256 aliceUsdcBefore = usdc.balanceOf(alice);

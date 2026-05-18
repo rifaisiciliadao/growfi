@@ -118,6 +118,39 @@ describe("renderEmail · investor_request", () => {
   });
 });
 
+describe("renderEmail · ecommerce_receipt", () => {
+  it("renders order, payment, repayment and transaction details", () => {
+    const r = renderEmail({
+      to: "alice@example.com",
+      kind: "ecommerce_receipt",
+      data: {
+        appUrl: APP,
+        receipt: {
+          campaignName: "Ecommerce Olive Demo",
+          productName: "Extra virgin olive oil 500ml",
+          quantity: "2",
+          paymentAmount: "36.00",
+          paymentToken: "USDC",
+          protocolFee: "0.00",
+          repaymentAllocated: "3.60",
+          producerNet: "32.40",
+          orderHash: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          txHash: "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          txUrl: "https://sepolia.etherscan.io/tx/0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          buyer: ADDR,
+          shippingSummary: "Ship to Ragusa",
+        },
+      },
+    });
+    assert.equal(r.subject, "GrowFi receipt — Extra virgin olive oil 500ml");
+    assert.match(r.html, /Ecommerce Olive Demo/);
+    assert.match(r.html, /Repayment allocation/);
+    assert.match(r.text, /3\.60 USDC/);
+    assert.match(r.text, /Ship to Ragusa/);
+    assert.match(r.html, /sepolia\.etherscan\.io/);
+  });
+});
+
 describe("renderEmail · rejected", () => {
   it("includes the optional admin note when present", () => {
     const r = renderEmail({

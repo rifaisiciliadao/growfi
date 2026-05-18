@@ -44,6 +44,7 @@ type ChainAddresses = {
   growFeeSplitter?: Address;
   growStakingPool?: Address;
   repaymentImpl?: Address;
+  ecommerceImpl?: Address;
 };
 
 const ZERO: Address = "0x0000000000000000000000000000000000000000";
@@ -67,6 +68,8 @@ export const addresses: Record<number, ChainAddresses> = {
       process.env.NEXT_PUBLIC_GROW_STAKING_POOL as Address | undefined,
     repaymentImpl:
       process.env.NEXT_PUBLIC_REPAYMENT_IMPL as Address | undefined,
+    ecommerceImpl:
+      process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined,
   },
   // Base Sepolia (live testnet deployment, see CONTRACTS.md)
   84532: {
@@ -93,6 +96,8 @@ export const addresses: Record<number, ChainAddresses> = {
       process.env.NEXT_PUBLIC_GROW_STAKING_POOL as Address | undefined,
     repaymentImpl:
       process.env.NEXT_PUBLIC_REPAYMENT_IMPL as Address | undefined,
+    ecommerceImpl:
+      process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined,
   },
   // Ethereum Sepolia (L1 testnet, pre-mainnet target)
   11155111: {
@@ -113,6 +118,8 @@ export const addresses: Record<number, ChainAddresses> = {
     repaymentImpl:
       (process.env.NEXT_PUBLIC_REPAYMENT_IMPL as Address | undefined) ||
       "0x1b0a76431b3CfD55b3be22497F03920C71623c47",
+    ecommerceImpl:
+      process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined,
   },
   // Ethereum Mainnet (production target)
   1: {
@@ -132,6 +139,8 @@ export const addresses: Record<number, ChainAddresses> = {
       process.env.NEXT_PUBLIC_GROW_STAKING_POOL as Address | undefined,
     repaymentImpl:
       process.env.NEXT_PUBLIC_REPAYMENT_IMPL as Address | undefined,
+    ecommerceImpl:
+      process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined,
   },
   // Base Mainnet (future)
   8453: {

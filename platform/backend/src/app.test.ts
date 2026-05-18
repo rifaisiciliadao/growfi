@@ -4,6 +4,7 @@ import type { FastifyInstance } from "fastify";
 import { getAddress } from "viem";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { buildApp, type AppDeps } from "./app.js";
+import type { EmailPayload } from "./email.js";
 import type { SnapshotResult } from "./snapshot.js";
 
 const ALICE = getAddress("0xAaaaAaaAAaaAAaAaaAAaaaAaaaaaaAAaaAAaAaAa");
@@ -11,6 +12,7 @@ const BOB = getAddress("0xBbbbbbBBbBbbbBBBbbBBbbBbbbbbBBBbbbbBBbBb");
 const CAMPAIGN = getAddress("0x1111111111111111111111111111111111111111");
 const VAULT = getAddress("0x2222222222222222222222222222222222222222");
 const YIELD = getAddress("0x3333333333333333333333333333333333333333");
+const SKU = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
 interface TestHarness {
   app: FastifyInstance;
@@ -240,6 +242,182 @@ describe("POST /api/producer", () => {
     assert.equal(body.profile.bio, "");
     assert.equal(body.profile.avatar, null);
     assert.equal(puts.length, 1);
+  });
+});
+
+describe("POST /api/ecommerce/catalog", () => {
+  it("503 without credentials", async () => {
+    const { app } = await makeApp({
+      config: {
+        spacesBucket: "x",
+        spacesPublicBase: "y",
+        hasCredentials: false,
+      },
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/ecommerce/catalog",
+      payload: { campaign: CAMPAIGN, items: [{ skuId: SKU, name: "Oil" }] },
+    });
+    assert.equal(res.statusCode, 503);
+  });
+
+  it("400 when campaign or sku ids are invalid", async () => {
+    const { app } = await makeApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/ecommerce/catalog",
+      payload: { campaign: "bad", items: [{ skuId: "oil", name: "Oil" }] },
+    });
+    assert.equal(res.statusCode, 400);
+  });
+
+  it("200 stores public catalog JSON under ecommerce/catalogs", async () => {
+    const { app, puts } = await makeApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/ecommerce/catalog",
+      payload: {
+        campaign: CAMPAIGN,
+        title: "Olive campaign shop",
+        description: "Product catalog",
+        repaymentAllocationBps: 1500,
+        items: [
+          {
+            skuId: SKU,
+            name: "Extra virgin olive oil 500ml",
+            image: "https://cdn.example/oil.png",
+          },
+        ],
+      },
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = res.json();
+    assert.match(body.key, new RegExp(`^ecommerce/catalogs/${CAMPAIGN.toLowerCase()}/.+\\.json$`));
+    assert.equal(body.url, `https://cdn.example/test-bucket/${body.key}`);
+    assert.equal(body.catalog.repaymentAllocationBps, 1500);
+    assert.equal(body.catalog.items[0].skuId, SKU);
+    assert.equal(puts.length, 1);
+    assert.equal(puts[0].input.ACL, "public-read");
+    assert.equal(puts[0].input.ContentType, "application/json");
+
+    const stored = JSON.parse(puts[0].input.Body as string);
+    assert.equal(stored.schema, "growfi.ecommerce.catalog.v1");
+    assert.equal(stored.campaign, CAMPAIGN);
+  });
+});
+
+describe("POST /api/ecommerce/order-draft", () => {
+  it("400 when required fields are invalid", async () => {
+    const { app } = await makeApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/ecommerce/order-draft",
+      payload: { campaign: CAMPAIGN, buyer: BOB, skuId: SKU, quantity: "0" },
+    });
+    assert.equal(res.statusCode, 400);
+  });
+
+  it("200 stores private order draft and returns a bytes32 order hash", async () => {
+    const { app, puts } = await makeApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/ecommerce/order-draft",
+      payload: {
+        campaign: CAMPAIGN,
+        buyer: ALICE,
+        skuId: SKU,
+        quantity: "2",
+        checkout: { email: "alice@example.com" },
+        fulfillment: { method: "shipping", country: "IT" },
+      },
+    });
+
+    assert.equal(res.statusCode, 200);
+    const body = res.json();
+    assert.match(body.orderHash, /^0x[0-9a-f]{64}$/);
+    assert.match(
+      body.key,
+      new RegExp(`^ecommerce/orders/${CAMPAIGN.toLowerCase()}/0x[0-9a-f]{64}\\.json$`),
+    );
+    assert.equal(body.key.endsWith(`${body.orderHash}.json`), true);
+    assert.equal(body.order.buyer, ALICE);
+    assert.equal(body.order.quantity, "2");
+    assert.equal(puts.length, 1);
+    assert.equal(puts[0].input.ACL, "private");
+    assert.equal(puts[0].input.CacheControl, "no-store");
+
+    const stored = JSON.parse(puts[0].input.Body as string);
+    assert.equal(stored.schema, "growfi.ecommerce.order.v1");
+    assert.equal(stored.orderHash, body.orderHash);
+    assert.equal(stored.fulfillment.country, "IT");
+  });
+});
+
+describe("POST /api/ecommerce/purchase-receipt", () => {
+  it("400 when receipt identity fields are invalid", async () => {
+    const { app } = await makeApp({
+      email: {
+        async send() {
+          throw new Error("should not send");
+        },
+      },
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/ecommerce/purchase-receipt",
+      payload: {
+        email: "bad",
+        buyer: BOB,
+        orderHash: SKU,
+        txHash: SKU,
+        quantity: "1",
+      },
+    });
+    assert.equal(res.statusCode, 400);
+  });
+
+  it("201 sends a receipt email with payment and order details", async () => {
+    const sent: EmailPayload[] = [];
+    const { app } = await makeApp({
+      appUrl: "https://growfi.test",
+      email: {
+        async send(payload) {
+          sent.push(payload);
+          return { delivered: true, id: "email_1" };
+        },
+      },
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/ecommerce/purchase-receipt",
+      payload: {
+        email: "alice@example.com",
+        campaignName: "Ecommerce Olive Demo",
+        productName: "Extra virgin olive oil 500ml",
+        quantity: "2",
+        paymentAmount: "36.00",
+        paymentToken: "USDC",
+        protocolFee: "0.00",
+        repaymentAllocated: "3.60",
+        producerNet: "32.40",
+        orderHash: SKU,
+        txHash: SKU,
+        buyer: ALICE,
+        shippingSummary: "Ship to Ragusa",
+      },
+    });
+
+    assert.equal(res.statusCode, 201);
+    assert.deepEqual(res.json(), { ok: true, emailDelivered: true });
+    assert.equal(sent.length, 1);
+    assert.equal(sent[0].to, "alice@example.com");
+    assert.equal(sent[0].kind, "ecommerce_receipt");
+    assert.equal(sent[0].data.receipt?.campaignName, "Ecommerce Olive Demo");
+    assert.equal(sent[0].data.receipt?.quantity, "2");
+    assert.equal(sent[0].data.receipt?.repaymentAllocated, "3.60");
+    assert.equal(sent[0].data.receipt?.buyer, ALICE);
   });
 });
 

@@ -52,6 +52,7 @@ contract RepaymentSystemicTest is Test {
 
     uint256 internal constant PRICE = 0.144e18;
     uint256 internal constant FIXED_RATE = 144_000;
+    uint16 internal constant REPAYMENT_PROTOCOL_FEE_BPS = 200;
     uint256 internal constant MIN_CAP = 1_000e18;
     uint256 internal constant MAX_CAP = 50_000e18;
 
@@ -136,6 +137,14 @@ contract RepaymentSystemicTest is Test {
 
     function _r() internal view returns (RepaymentModule) {
         return RepaymentModule(payable(campaignAddr));
+    }
+
+    function _protocolFee(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout * REPAYMENT_PROTOCOL_FEE_BPS / 10_000;
+    }
+
+    function _netPayout(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout - _protocolFee(grossPayout);
     }
 
     // ------------------------------------------------------------------
@@ -262,7 +271,9 @@ contract RepaymentSystemicTest is Test {
         vm.prank(alice);
         _r().redeem(200e18, new uint256[](0));
         assertEq(
-            usdc.balanceOf(alice) - aliceUsdcBefore, 200e18 * FIXED_RATE / 1e18, "redeem paid principal even in Buyback"
+            usdc.balanceOf(alice) - aliceUsdcBefore,
+            _netPayout(200e18 * FIXED_RATE / 1e18),
+            "redeem paid net principal even in Buyback"
         );
     }
 
@@ -463,8 +474,8 @@ contract RepaymentSystemicTest is Test {
         vm.prank(carol);
         _r().redeem(1_000e18, cPos);
         uint256 carolGotUsdc = usdc.balanceOf(carol) - carolUsdcBefore;
-        // Carol got principal + bonus: 1000 * 0.144 + 1000 * 0.02 = 164 USDC
-        assertEq(carolGotUsdc, 164e6);
+        // Carol got principal + bonus, net of protocol fee: (1000 * 0.144 + 1000 * 0.02) * 98%
+        assertEq(carolGotUsdc, _netPayout(164e6));
 
         // Season ends; Bob never claims so his yield is fully owed
         vm.warp(block.timestamp + 4 days);

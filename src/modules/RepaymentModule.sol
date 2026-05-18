@@ -50,6 +50,7 @@ contract RepaymentModule {
 
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;
+    uint16 public constant PROTOCOL_FEE_BPS = 200; // 2%
 
     // ------------------------------------------------------------------
     // Errors
@@ -65,6 +66,9 @@ contract RepaymentModule {
     error PoolBalanceUnderflow();
     error PrincipalNotSet();
     error NotPositionOwner();
+    error OnlyCampaignSelf();
+    error NotInitialized();
+    error InsufficientCampaignBalance();
 
     // ------------------------------------------------------------------
     // Events
@@ -72,8 +76,10 @@ contract RepaymentModule {
 
     event RepaymentInitialized(uint256 initialBonusPerCt);
     event RepaymentPoolFunded(address indexed producer, uint256 amount, uint256 newPoolBalance);
+    event RepaymentPoolCredited(address indexed source, uint256 amount, uint256 newPoolBalance);
     event RepaymentPoolWithdrawn(address indexed producer, uint256 amount, uint256 newPoolBalance);
     event RepaymentBonusSet(uint256 oldBonusPerCt, uint256 newBonusPerCt);
+    event RepaymentProtocolFeeTransferred(address indexed holder, uint256 amount, address indexed recipient);
     event Repaid(
         address indexed holder,
         uint256 campaignTokensBurned,
@@ -167,6 +173,24 @@ contract RepaymentModule {
         emit RepaymentPoolFunded(msg.sender, amount, s.poolBalance);
     }
 
+    /// @notice Internal Campaign-to-Campaign accounting path used by other
+    ///         modules that already pulled USDC into the Campaign address.
+    ///         External users cannot call it: in delegatecall context the
+    ///         only valid caller is the Campaign itself.
+    function creditPoolFromCampaign(uint256 amount) external {
+        if (msg.sender != address(this)) revert OnlyCampaignSelf();
+        if (amount == 0) revert ZeroAmount();
+        Layout storage s = _s();
+        if (!s.initialized) revert NotInitialized();
+        CampaignStorage.Layout storage cs = CampaignStorage.layout();
+        uint256 nextPoolBalance = s.poolBalance + amount;
+        if (IERC20(cs.usdc).balanceOf(address(this)) < nextPoolBalance) {
+            revert InsufficientCampaignBalance();
+        }
+        s.poolBalance = nextPoolBalance;
+        emit RepaymentPoolCredited(msg.sender, amount, s.poolBalance);
+    }
+
     function withdrawUnusedPool(uint256 amount) external onlyProducer nonReentrant {
         if (amount == 0) revert ZeroAmount();
         Layout storage s = _s();
@@ -209,9 +233,12 @@ contract RepaymentModule {
         uint256 principal = (amount * pricePerToken) / 1e30;
         // bonus in USDC-6: amount(1e18 CT) * bonusPerCt(USDC-6 per 1e18 CT) / 1e18
         uint256 bonus = (amount * s.bonusPerCt) / 1e18;
-        uint256 payout = principal + bonus;
-        if (payout == 0) revert ZeroAmount();
-        if (payout > s.poolBalance) revert PoolInsufficient();
+        uint256 grossPayout = principal + bonus;
+        if (grossPayout == 0) revert ZeroAmount();
+        if (grossPayout > s.poolBalance) revert PoolInsufficient();
+        uint256 protocolFee = _protocolFee(grossPayout);
+        uint256 netPayout = grossPayout - protocolFee;
+        if (netPayout == 0) revert ZeroAmount();
 
         // Force-unstake each position the caller wants to clear. The
         // vault mints accrued $YIELD to the owner and returns principal
@@ -237,9 +264,13 @@ contract RepaymentModule {
         // `onlyCampaignOrVault`.
         IGrowfiCampaignTokenMint(cs.campaignToken).burn(msg.sender, amount);
 
-        s.poolBalance -= payout;
-        s.claimedByUser[msg.sender] += payout;
-        IERC20(cs.usdc).safeTransfer(msg.sender, payout);
+        s.poolBalance -= grossPayout;
+        s.claimedByUser[msg.sender] += netPayout;
+        if (protocolFee > 0) {
+            IERC20(cs.usdc).safeTransfer(cs.protocolFeeRecipient, protocolFee);
+            emit RepaymentProtocolFeeTransferred(msg.sender, protocolFee, cs.protocolFeeRecipient);
+        }
+        IERC20(cs.usdc).safeTransfer(msg.sender, netPayout);
 
         emit Repaid(msg.sender, amount, principal, bonus, s.poolBalance, s.claimedByUser[msg.sender]);
     }
@@ -257,26 +288,55 @@ contract RepaymentModule {
         return _s().bonusPerCt;
     }
 
+    function repaymentProtocolFeeBps() external pure returns (uint16) {
+        return PROTOCOL_FEE_BPS;
+    }
+
     /// @notice On-chain-derived principal payout per 1e18 CT (USDC-6).
     ///         Returns 0 if SaleClassicModule is not initialized.
     function principalPerCt() external view returns (uint256) {
         return _readPricePerToken() / 1e12;
     }
 
-    /// @notice Effective payout per 1e18 CT (principal + bonus, USDC-6).
+    /// @notice Gross payout per 1e18 CT before protocol fee (principal + bonus, USDC-6).
     function payoutPerCt() external view returns (uint256) {
         return (_readPricePerToken() / 1e12) + _s().bonusPerCt;
+    }
+
+    /// @notice Net payout per 1e18 CT after protocol fee (USDC-6).
+    function netPayoutPerCt() external view returns (uint256) {
+        uint256 gross = (_readPricePerToken() / 1e12) + _s().bonusPerCt;
+        return gross - _protocolFee(gross);
     }
 
     function claimedByUser(address user) external view returns (uint256) {
         return _s().claimedByUser[user];
     }
 
-    /// @notice Preview total USDC payout for redeeming `amount` CT.
+    /// @notice Preview net USDC payout for redeeming `amount` CT.
     function quoteRepayment(uint256 amount) external view returns (uint256) {
+        uint256 gross = _quoteGross(amount);
+        return gross - _protocolFee(gross);
+    }
+
+    /// @notice Preview gross USDC pool draw for redeeming `amount` CT.
+    function quoteRepaymentGross(uint256 amount) external view returns (uint256) {
+        return _quoteGross(amount);
+    }
+
+    /// @notice Preview protocol fee retained from the gross payout.
+    function quoteRepaymentProtocolFee(uint256 amount) external view returns (uint256) {
+        return _protocolFee(_quoteGross(amount));
+    }
+
+    function _quoteGross(uint256 amount) internal view returns (uint256) {
         uint256 price = _readPricePerToken();
         uint256 principal = (amount * price) / 1e30;
         uint256 bonus = (amount * _s().bonusPerCt) / 1e18;
         return principal + bonus;
+    }
+
+    function _protocolFee(uint256 grossPayout) internal pure returns (uint256) {
+        return (grossPayout * PROTOCOL_FEE_BPS) / 10_000;
     }
 }

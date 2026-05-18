@@ -152,6 +152,125 @@ export async function generateMerkleTree(input: {
   return res.json();
 }
 
+export interface EcommerceCatalogItem {
+  skuId: `0x${string}`;
+  name?: string;
+  description?: string;
+  image?: string;
+  unit?: string;
+  [key: string]: unknown;
+}
+
+export interface EcommerceCatalog {
+  schema: "growfi.ecommerce.catalog.v1";
+  campaign: string;
+  title: string | null;
+  description: string | null;
+  currency: string;
+  repaymentAllocationBps: number;
+  items: EcommerceCatalogItem[];
+  createdAt: number;
+}
+
+export interface EcommerceCatalogResult {
+  key: string;
+  url: string;
+  catalog: EcommerceCatalog;
+}
+
+export async function uploadEcommerceCatalog(input: {
+  campaign: string;
+  title?: string;
+  description?: string;
+  repaymentAllocationBps?: number;
+  items: EcommerceCatalogItem[];
+}): Promise<EcommerceCatalogResult> {
+  const res = await fetch(`${BACKEND_URL}/api/ecommerce/catalog`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ error: "Ecommerce catalog upload failed" }));
+    throw new Error(err.error || "Ecommerce catalog upload failed");
+  }
+  return res.json();
+}
+
+export interface EcommerceOrderDraftResult {
+  orderHash: `0x${string}`;
+  key: string;
+  order: {
+    id: string;
+    campaign: string;
+    buyer: string;
+    skuId: `0x${string}`;
+    quantity: string;
+    createdAt: number;
+  };
+}
+
+export async function createEcommerceOrderDraft(input: {
+  campaign: string;
+  buyer: string;
+  skuId: `0x${string}`;
+  quantity: string;
+  checkout?: unknown;
+  customer?: unknown;
+  fulfillment?: unknown;
+  metadata?: unknown;
+}): Promise<EcommerceOrderDraftResult> {
+  const res = await fetch(`${BACKEND_URL}/api/ecommerce/order-draft`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ error: "Order draft failed" }));
+    throw new Error(err.error || "Order draft failed");
+  }
+  return res.json();
+}
+
+export interface EcommerceReceiptResult {
+  ok: boolean;
+  emailDelivered: boolean;
+}
+
+export async function sendEcommercePurchaseReceipt(input: {
+  email: string;
+  campaignName: string;
+  productName: string;
+  quantity: string;
+  paymentAmount: string;
+  paymentToken: string;
+  protocolFee: string;
+  repaymentAllocated: string;
+  producerNet: string;
+  orderHash: `0x${string}`;
+  txHash: `0x${string}`;
+  txUrl: string;
+  buyer: string;
+  shippingSummary?: string;
+}): Promise<EcommerceReceiptResult> {
+  const res = await fetch(`${BACKEND_URL}/api/ecommerce/purchase-receipt`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ error: "Purchase receipt failed" }));
+    throw new Error(err.error || "Purchase receipt failed");
+  }
+  return res.json();
+}
+
 export interface InviteRequestInput {
   email: string;
   ethAddress: string;

@@ -6,7 +6,8 @@ export type EmailKind =
   | "rejected"
   | "admin_notify"
   | "investor_request"
-  | "notifications_digest";
+  | "notifications_digest"
+  | "ecommerce_receipt";
 
 export interface DigestItem {
   /** Short single-line summary, e.g. "New buy on Olive IGP Sicily". */
@@ -37,6 +38,22 @@ export interface EmailPayload {
     digest?: {
       items: DigestItem[];
       unsubscribeUrl: string;
+    };
+    /** Set on `ecommerce_receipt`. */
+    receipt?: {
+      campaignName: string;
+      productName: string;
+      quantity: string;
+      paymentAmount: string;
+      paymentToken: string;
+      protocolFee: string;
+      repaymentAllocated: string;
+      producerNet: string;
+      orderHash: string;
+      txHash: string;
+      txUrl: string;
+      buyer: string;
+      shippingSummary?: string;
     };
   };
 }
@@ -279,6 +296,84 @@ export function renderEmail(payload: EmailPayload): RenderedEmail {
           "",
           message,
         ].join("\n"),
+      };
+    }
+    case "ecommerce_receipt": {
+      const r = payload.data.receipt;
+      const subject = r
+        ? `GrowFi receipt — ${r.productName}`
+        : "GrowFi purchase receipt";
+      const body = r
+        ? `
+        <h1 style="font-size:22px;margin:0 0 14px 0;font-weight:700;">Purchase confirmed</h1>
+        <p>Your GrowFi ecommerce purchase has been confirmed on-chain.</p>
+        <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:13px;margin-top:14px;">
+          <tr>
+            <td style="padding:8px 0;color:#6b7d6f;width:150px;">Campaign</td>
+            <td style="padding:8px 0;font-weight:600;">${escapeHtml(r.campaignName)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Product</td>
+            <td style="padding:8px 0;border-top:1px solid #eef0ec;">${escapeHtml(r.quantity)} × ${escapeHtml(r.productName)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Paid</td>
+            <td style="padding:8px 0;border-top:1px solid #eef0ec;font-weight:600;">${escapeHtml(r.paymentAmount)} ${escapeHtml(r.paymentToken)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Protocol fee</td>
+            <td style="padding:8px 0;border-top:1px solid #eef0ec;">${escapeHtml(r.protocolFee)} ${escapeHtml(r.paymentToken)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Repayment allocation</td>
+            <td style="padding:8px 0;border-top:1px solid #eef0ec;">${escapeHtml(r.repaymentAllocated)} ${escapeHtml(r.paymentToken)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Grower net</td>
+            <td style="padding:8px 0;border-top:1px solid #eef0ec;">${escapeHtml(r.producerNet)} ${escapeHtml(r.paymentToken)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Buyer</td>
+            <td style="padding:8px 0;border-top:1px solid #eef0ec;font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;word-break:break-all;">${escapeHtml(r.buyer)}</td>
+          </tr>
+          <tr>
+            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Order hash</td>
+            <td style="padding:8px 0;border-top:1px solid #eef0ec;font-family:'SFMono-Regular',Consolas,monospace;font-size:12px;word-break:break-all;">${escapeHtml(r.orderHash)}</td>
+          </tr>
+          ${
+            r.shippingSummary
+              ? `<tr>
+            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Delivery</td>
+            <td style="padding:8px 0;border-top:1px solid #eef0ec;">${escapeHtml(r.shippingSummary)}</td>
+          </tr>`
+              : ""
+          }
+        </table>
+        <p style="text-align:center;margin:24px 0 8px 0;">
+          <a href="${escapeHtml(r.txUrl)}" style="display:inline-block;padding:12px 22px;background:#2e6b3a;color:#fff;border-radius:10px;text-decoration:none;font-weight:600;">View transaction →</a>
+        </p>
+      `
+        : `<p>Your GrowFi ecommerce purchase has been confirmed on-chain.</p>`;
+      return {
+        subject,
+        html: shellHtml(subject, body),
+        text: r
+          ? [
+              "Purchase confirmed",
+              `Campaign: ${r.campaignName}`,
+              `Product: ${r.quantity} × ${r.productName}`,
+              `Paid: ${r.paymentAmount} ${r.paymentToken}`,
+              `Protocol fee: ${r.protocolFee} ${r.paymentToken}`,
+              `Repayment allocation: ${r.repaymentAllocated} ${r.paymentToken}`,
+              `Grower net: ${r.producerNet} ${r.paymentToken}`,
+              `Buyer: ${r.buyer}`,
+              `Order hash: ${r.orderHash}`,
+              r.shippingSummary ? `Delivery: ${r.shippingSummary}` : "",
+              `Transaction: ${r.txUrl}`,
+            ]
+              .filter(Boolean)
+              .join("\n")
+          : "Your GrowFi ecommerce purchase has been confirmed on-chain.",
       };
     }
     case "rejected": {

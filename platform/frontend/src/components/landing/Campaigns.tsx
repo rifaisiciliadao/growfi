@@ -104,7 +104,7 @@ function LiveCampaignCard({
       {
         address: campaign.id as Address,
         abi: repaymentModuleAbi,
-        functionName: "payoutPerCt",
+        functionName: "netPayoutPerCt",
       },
     ],
     query: { refetchInterval: 30_000 },

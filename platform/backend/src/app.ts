@@ -19,6 +19,7 @@ import {
   type NotificationStore,
 } from "./notifications-store.js";
 import { registerNotificationRoutes } from "./notifications.js";
+import { registerEcommerceRoutes } from "./ecommerce.js";
 
 export interface AppConfig {
   spacesBucket: string;
@@ -175,6 +176,13 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       signatureMaxAgeMs: deps.signatureMaxAgeMs,
     });
   }
+
+  registerEcommerceRoutes(app, {
+    config,
+    putObject,
+    email: deps.email,
+    appUrl: deps.appUrl ?? "https://growfi.app",
+  });
 
   app.post("/api/upload", async (req, reply) => {
     if (!config.hasCredentials) {

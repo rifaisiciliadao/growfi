@@ -46,6 +46,7 @@ contract RepaymentIntegrationTest is Test {
 
     uint256 internal constant PRICE_PER_TOKEN_USD18 = 0.144e18; // $0.144 per CT
     uint256 internal constant USDC_FIXED_RATE = 144_000; // 0.144 USDC-6 per CT
+    uint16 internal constant REPAYMENT_PROTOCOL_FEE_BPS = 200;
     uint256 internal constant MIN_CAP = 1_000e18;
     uint256 internal constant MAX_CAP = 50_000e18;
 
@@ -139,6 +140,14 @@ contract RepaymentIntegrationTest is Test {
         return RepaymentModule(payable(campaignAddr));
     }
 
+    function _protocolFee(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout * REPAYMENT_PROTOCOL_FEE_BPS / 10_000;
+    }
+
+    function _netPayout(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout - _protocolFee(grossPayout);
+    }
+
     // ------------------------------------------------------------------
     // Smoke: principal derived live from SaleClassic.pricePerToken
     // ------------------------------------------------------------------
@@ -148,6 +157,8 @@ contract RepaymentIntegrationTest is Test {
         assertEq(_r().principalPerCt(), 144_000, "principal mirrors pricePerToken / 1e12");
         assertEq(_r().bonusPerCt(), 0);
         assertEq(_r().payoutPerCt(), 144_000);
+        assertEq(_r().repaymentProtocolFeeBps(), REPAYMENT_PROTOCOL_FEE_BPS);
+        assertEq(_r().netPayoutPerCt(), _netPayout(144_000));
     }
 
     // ------------------------------------------------------------------
@@ -170,6 +181,7 @@ contract RepaymentIntegrationTest is Test {
         uint256 aliceCtBefore = campaignToken.balanceOf(alice); // 5_000e18 (the un-staked half)
         uint256 aliceYieldBefore = yieldToken.balanceOf(alice);
         uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+        uint256 feeRecipientBefore = usdc.balanceOf(feeRecipient);
         uint256 poolBefore = _r().poolBalance();
         uint256 vaultCtBefore = campaignToken.balanceOf(address(stakingVault));
 
@@ -197,11 +209,14 @@ contract RepaymentIntegrationTest is Test {
         assertEq(stakingVault.totalStaked(), 0, "totalStaked drained");
 
         // 3) USDC paid: principal only (bonus = 0)
-        uint256 expectedPayout = redeemAmt * 144_000 / 1e18; // 2000 * 0.144 = 288 USDC
-        assertEq(expectedPayout, 288e6);
-        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, expectedPayout, "alice paid 288 USDC");
-        assertEq(_r().poolBalance(), poolBefore - expectedPayout, "pool drained by payout");
-        assertEq(_r().claimedByUser(alice), expectedPayout);
+        uint256 expectedGross = redeemAmt * 144_000 / 1e18; // 2000 * 0.144 = 288 USDC gross
+        uint256 expectedFee = _protocolFee(expectedGross);
+        uint256 expectedNet = expectedGross - expectedFee;
+        assertEq(expectedGross, 288e6);
+        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, expectedNet, "alice paid net USDC");
+        assertEq(usdc.balanceOf(feeRecipient) - feeRecipientBefore, expectedFee, "protocol fee paid");
+        assertEq(_r().poolBalance(), poolBefore - expectedGross, "pool drained by gross payout");
+        assertEq(_r().claimedByUser(alice), expectedNet);
 
         // 4) Position is closed
         (,,,,, bool active) = stakingVault.positions(posId);
@@ -217,12 +232,14 @@ contract RepaymentIntegrationTest is Test {
         uint256 redeemAmt = 1_000e18;
         uint256 expectedPrincipal = redeemAmt * 144_000 / 1e18; // 144e6
         uint256 expectedBonus = redeemAmt * 0.05e6 / 1e18; // 50e6
-        uint256 expectedPayout = expectedPrincipal + expectedBonus; // 194e6
+        uint256 expectedGross = expectedPrincipal + expectedBonus; // 194e6
 
         uint256 aliceUsdcBefore = usdc.balanceOf(alice);
+        uint256 feeRecipientBefore = usdc.balanceOf(feeRecipient);
         vm.prank(alice);
         _r().redeem(redeemAmt, new uint256[](0));
-        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, expectedPayout, "principal + bonus");
+        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, _netPayout(expectedGross), "net principal + bonus");
+        assertEq(usdc.balanceOf(feeRecipient) - feeRecipientBefore, _protocolFee(expectedGross), "protocol fee");
     }
 
     function test_redeem_withoutUnstakeFirst_revertsIfStakedCtNeeded() public {
@@ -314,7 +331,7 @@ contract RepaymentIntegrationTest is Test {
         _r().redeem(redeemAmt, new uint256[](0));
         vm.stopPrank();
 
-        assertEq(_r().claimedByUser(alice), expectedPerCall * 3);
+        assertEq(_r().claimedByUser(alice), _netPayout(expectedPerCall) * 3);
     }
 
     function test_redeem_setBonusToZero_stillRefundsPrincipal() public {
@@ -327,6 +344,6 @@ contract RepaymentIntegrationTest is Test {
         uint256 aliceUsdcBefore = usdc.balanceOf(alice);
         vm.prank(alice);
         _r().redeem(redeemAmt, new uint256[](0));
-        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, redeemAmt * 144_000 / 1e18);
+        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, _netPayout(redeemAmt * 144_000 / 1e18));
     }
 }

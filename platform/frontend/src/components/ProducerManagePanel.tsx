@@ -24,6 +24,7 @@ import {
 } from "@/contracts/repayment";
 import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
 import { fetchSnapshot, generateMerkleTree } from "@/lib/api";
+import { EcommerceModuleManager } from "./EcommerceShopPanel";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
@@ -146,6 +147,13 @@ export function ProducerManagePanel({
 
       <section className="mt-8">
         <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
+          {t("ecommerceTitle")}
+        </h3>
+        <EcommerceModuleManager campaignAddress={campaignAddress} />
+      </section>
+
+      <section className="mt-8">
+        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
           {t("acceptedTokensTitle")}
         </h3>
         <AcceptedTokensManager campaignAddress={campaignAddress} />
@@ -245,6 +253,16 @@ function RepaymentModuleManager({
             abi: repaymentModuleAbi,
             functionName: "payoutPerCt",
           },
+          {
+            address: campaignAddress,
+            abi: repaymentModuleAbi,
+            functionName: "netPayoutPerCt",
+          },
+          {
+            address: campaignAddress,
+            abi: repaymentModuleAbi,
+            functionName: "repaymentProtocolFeeBps",
+          },
         ]
       : [],
     query: { enabled: isAttached, refetchInterval: 20_000 },
@@ -271,6 +289,13 @@ function RepaymentModuleManager({
     (repaymentReads?.[1]?.result as bigint | undefined) ?? 0n;
   const bonusPerCt = (repaymentReads?.[2]?.result as bigint | undefined) ?? 0n;
   const payoutPerCt = (repaymentReads?.[3]?.result as bigint | undefined) ?? 0n;
+  const netPayoutPerCt =
+    (repaymentReads?.[4]?.result as bigint | undefined) ?? payoutPerCt;
+  const protocolFeeBpsRaw = repaymentReads?.[5]?.result as number | bigint | undefined;
+  const protocolFeeBps =
+    typeof protocolFeeBpsRaw === "bigint"
+      ? Number(protocolFeeBpsRaw)
+      : (protocolFeeBpsRaw ?? 0);
 
   const refresh = async () => {
     await Promise.all([
@@ -556,14 +581,15 @@ function RepaymentModuleManager({
         </div>
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             <RepaymentMetric label={t("pool")} value={formatUsdc6(poolBalance)} />
             <RepaymentMetric
               label={t("principalPerCt")}
               value={formatUsdc6(principalPerCt)}
             />
             <RepaymentMetric label={t("bonusPerCt")} value={formatUsdc6(bonusPerCt)} />
-            <RepaymentMetric label={t("payoutPerCt")} value={formatUsdc6(payoutPerCt)} />
+            <RepaymentMetric label={t("payoutPerCt")} value={formatUsdc6(netPayoutPerCt)} />
+            <RepaymentMetric label={t("protocolFee")} value={`${protocolFeeBps / 100}%`} />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

@@ -72,9 +72,8 @@ contract CreateRepaymentCampaignSepolia is Script {
         c.buy(address(usdc), SELF_BUY_USDC6);
         c.startSeason();
 
-        GrowfiCampaign(payable(campaign)).attachModule(
-            REPAY_TYPE, REPAY_KIND, repaymentImpl, "ipfs://growfi-repayment-demo"
-        );
+        GrowfiCampaign(payable(campaign))
+            .attachModule(REPAY_TYPE, REPAY_KIND, repaymentImpl, "ipfs://growfi-repayment-demo");
         RepaymentModule(payable(campaign)).initializeRepaymentByProducer(BONUS_USDC6_PER_CT);
         RepaymentModule(payable(campaign)).fundPool(REPAYMENT_POOL_USDC6);
 

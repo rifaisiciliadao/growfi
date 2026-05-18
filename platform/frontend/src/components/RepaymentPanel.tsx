@@ -47,6 +47,8 @@ export function RepaymentPanel({
       { address: campaignAddress, abi: repaymentModuleAbi, functionName: "poolBalance" },
       { address: campaignAddress, abi: repaymentModuleAbi, functionName: "bonusPerCt" },
       { address: campaignAddress, abi: repaymentModuleAbi, functionName: "payoutPerCt" },
+      { address: campaignAddress, abi: repaymentModuleAbi, functionName: "netPayoutPerCt" },
+      { address: campaignAddress, abi: repaymentModuleAbi, functionName: "repaymentProtocolFeeBps" },
       ...(user
         ? [
             {
@@ -98,8 +100,16 @@ export function RepaymentPanel({
     BigInt(repaymentPool?.bonusPerCt ?? "0");
   const payoutPerCt =
     ((reads?.[2] as ReadResult | undefined)?.result as bigint | undefined) ?? 0n;
-  const claimedByUser = ((reads?.[3] as ReadResult | undefined)?.result as bigint | undefined) ?? 0n;
-  const freeBalance = ((reads?.[4] as ReadResult | undefined)?.result as bigint | undefined) ?? 0n;
+  const netPayoutPerCt =
+    ((reads?.[3] as ReadResult | undefined)?.result as bigint | undefined) ?? payoutPerCt;
+  const protocolFeeBpsRaw =
+    (reads?.[4] as ReadResult | undefined)?.result as number | bigint | undefined;
+  const protocolFeeBps =
+    typeof protocolFeeBpsRaw === "bigint"
+      ? Number(protocolFeeBpsRaw)
+      : (protocolFeeBpsRaw ?? 0);
+  const claimedByUser = ((reads?.[5] as ReadResult | undefined)?.result as bigint | undefined) ?? 0n;
+  const freeBalance = ((reads?.[6] as ReadResult | undefined)?.result as bigint | undefined) ?? 0n;
 
   const { data: quoteRaw } = useReadContract({
     address: campaignAddress,
@@ -108,14 +118,30 @@ export function RepaymentPanel({
     args: [parsedAmount],
     query: { enabled: attached && parsedAmount > 0n },
   });
+  const { data: quoteGrossRaw } = useReadContract({
+    address: campaignAddress,
+    abi: repaymentModuleAbi,
+    functionName: "quoteRepaymentGross",
+    args: [parsedAmount],
+    query: { enabled: attached && parsedAmount > 0n },
+  });
+  const { data: quoteFeeRaw } = useReadContract({
+    address: campaignAddress,
+    abi: repaymentModuleAbi,
+    functionName: "quoteRepaymentProtocolFee",
+    args: [parsedAmount],
+    query: { enabled: attached && parsedAmount > 0n },
+  });
 
   if (!attached) return null;
 
   const symbol = (symbolRaw as string | undefined) ?? "CT";
   const quote = (quoteRaw as bigint | undefined) ?? 0n;
+  const quoteGross = (quoteGrossRaw as bigint | undefined) ?? quote;
+  const quoteFee = (quoteFeeRaw as bigint | undefined) ?? 0n;
   const poolCoversCt = payoutPerCt > 0n ? (poolBalance * 10n ** 18n) / payoutPerCt : 0n;
   const tooMuchBalance = parsedAmount > freeBalance;
-  const poolTooSmall = quote > poolBalance;
+  const poolTooSmall = quoteGross > poolBalance;
   const ended = currentState === 3;
   const canRedeem =
     isConnected &&
@@ -190,9 +216,10 @@ export function RepaymentPanel({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <Metric label={t("payoutPerCt")} value={formatUsdc6(payoutPerCt)} />
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        <Metric label={t("netPayoutPerCt")} value={formatUsdc6(netPayoutPerCt)} />
         <Metric label={t("bonusPerCt")} value={formatUsdc6(bonusPerCt)} />
+        <Metric label={t("protocolFee")} value={`${protocolFeeBps / 100}%`} />
         <Metric label={t("poolCovers")} value={`${formatCt(poolCoversCt)} ${symbol}`} />
         <Metric
           label={t("redeemed")}
@@ -231,7 +258,10 @@ export function RepaymentPanel({
         <div className="mt-3 flex flex-col gap-2 text-xs text-on-surface-variant sm:flex-row sm:items-center sm:justify-between">
           <span>
             {parsedAmount > 0n
-              ? t("quote", { amount: formatUsdc6(quote) })
+              ? t("quoteWithFee", {
+                  amount: formatUsdc6(quote),
+                  fee: formatUsdc6(quoteFee),
+                })
               : isConnected
                 ? t("idleHint")
                 : t("connectHint")}

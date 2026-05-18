@@ -29,15 +29,18 @@ import { ProductiveAssetCard } from "@/components/ProductiveAssetCard";
 import { RefundPanel, TriggerBuybackCta } from "@/components/RefundPanel";
 import { SellBackPanel } from "@/components/SellBackPanel";
 import { RepaymentPanel } from "@/components/RepaymentPanel";
+import { EcommerceShopPanel } from "@/components/EcommerceShopPanel";
 import { InvestorList } from "@/components/InvestorList";
 import { ActivateCtaBanner } from "@/components/ActivateCtaBanner";
 import { KycBadge } from "@/components/KycBadge";
 import { Spinner } from "@/components/Spinner";
 import { waitForTx } from "@/lib/waitForTx";
+import { ECOMMERCE_MODULE_TYPE } from "@/contracts/ecommerce";
+import { campaignModuleHostAbi } from "@/contracts/repayment";
 
 const STATE_LABELS = ["funding", "active", "buyback", "ended"] as const;
 
-type Tab = "invest" | "stake" | "harvest" | "info" | "manage";
+type Tab = "invest" | "shop" | "stake" | "harvest" | "info" | "manage";
 const TAB_KEYS: Tab[] = ["invest", "stake", "harvest", "info"];
 // Manage tab is appended dynamically when the connected wallet is the producer.
 
@@ -52,7 +55,7 @@ export default function CampaignDetail({
   const searchParams = useSearchParams();
   const initialTab = ((): Tab => {
     const q = searchParams.get("tab");
-    return q === "stake" || q === "harvest" || q === "info" || q === "manage"
+    return q === "shop" || q === "stake" || q === "harvest" || q === "info" || q === "manage"
       ? q
       : "invest";
   })();
@@ -60,7 +63,7 @@ export default function CampaignDetail({
 
   useEffect(() => {
     const q = searchParams.get("tab");
-    if (q === "stake" || q === "harvest" || q === "info" || q === "manage") {
+    if (q === "shop" || q === "stake" || q === "harvest" || q === "info" || q === "manage") {
       setActiveTab(q as Tab);
     }
   }, [searchParams]);
@@ -119,6 +122,20 @@ export default function CampaignDetail({
   const metadataMissing =
     !!sgCampaign && (!sgCampaign.metadataURI || sgCampaign.metadataURI === "");
 
+  const { data: ecommerceSlotData } = useReadContract({
+    address: isValidAddress ? campaignAddress : undefined,
+    abi: campaignModuleHostAbi,
+    functionName: "moduleSlot",
+    args: [ECOMMERCE_MODULE_TYPE],
+    query: { enabled: isValidAddress, refetchInterval: 20_000 },
+  });
+  const ecommerceSlot = ecommerceSlotData as
+    | readonly [Address, `0x${string}`, string, bigint, boolean]
+    | undefined;
+  const hasEcommerce =
+    Boolean(ecommerceSlot?.[4]) &&
+    ecommerceSlot?.[0] !== "0x0000000000000000000000000000000000000000";
+
   const displayName =
     metadata?.name ||
     (isValidAddress
@@ -176,7 +193,9 @@ export default function CampaignDetail({
       <div className="sticky top-16 z-40 bg-surface/90 backdrop-blur-md border-b border-outline-variant/15">
         <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 flex gap-4 md:gap-8 overflow-x-auto no-scrollbar">
           {[
-            ...TAB_KEYS,
+            ...TAB_KEYS.slice(0, 1),
+            ...(hasEcommerce ? (["shop"] as Tab[]) : []),
+            ...TAB_KEYS.slice(1),
             ...(isProducerViewing ? (["manage"] as Tab[]) : []),
           ].map((key) => (
             <button
@@ -340,6 +359,14 @@ export default function CampaignDetail({
                 />
               )}
             </>
+          )}
+
+          {activeTab === "shop" && hasOnChainData && hasEcommerce && (
+            <EcommerceShopPanel
+              campaignAddress={campaignAddress}
+              currentState={stateIdx}
+              campaignName={displayName}
+            />
           )}
 
           {activeTab === "stake" && hasOnChainData && sgCampaign && (

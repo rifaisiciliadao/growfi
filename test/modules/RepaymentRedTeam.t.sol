@@ -53,6 +53,7 @@ contract RepaymentRedTeamTest is Test {
 
     uint256 internal constant PRICE = 0.144e18;
     uint256 internal constant FIXED_RATE = 144_000;
+    uint16 internal constant REPAYMENT_PROTOCOL_FEE_BPS = 200;
     uint256 internal constant POOL_SIZE = 10_000e6;
 
     function setUp() public {
@@ -135,6 +136,14 @@ contract RepaymentRedTeamTest is Test {
 
     function _r() internal view returns (RepaymentModule) {
         return RepaymentModule(payable(campaignAddr));
+    }
+
+    function _protocolFee(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout * REPAYMENT_PROTOCOL_FEE_BPS / 10_000;
+    }
+
+    function _netPayout(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout - _protocolFee(grossPayout);
     }
 
     // ------------------------------------------------------------------
@@ -471,7 +480,7 @@ contract RepaymentRedTeamTest is Test {
         uint256 aliceUsdcBefore = usdc.balanceOf(alice);
         vm.prank(alice);
         _r().redeem(100e18, new uint256[](0));
-        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, 100e18 * 144_000 / 1e18);
+        assertEq(usdc.balanceOf(alice) - aliceUsdcBefore, _netPayout(100e18 * 144_000 / 1e18));
     }
 
     // ------------------------------------------------------------------
@@ -543,13 +552,14 @@ contract RepaymentRedTeamTest is Test {
         vm.prank(alice);
         _r().redeem(100e18, new uint256[](0));
 
-        assertEq(_r().claimedByUser(alice), 100e18 * 144_000 / 1e18, "only the successful redeem counted");
+        assertEq(_r().claimedByUser(alice), _netPayout(100e18 * 144_000 / 1e18), "only the successful redeem counted");
     }
 
     /// @dev Multi-holder sanity: two holders independently redeem, the
-    ///      pool drains to the sum of their claimed amounts.
+    ///      pool drains to holder claims + protocol fees.
     function test_redteam_multiHolder_poolDrainMatchesClaims() public {
         uint256 poolBefore = _r().poolBalance();
+        uint256 feeBefore = usdc.balanceOf(feeRecipient);
 
         vm.prank(alice);
         _r().redeem(300e18, new uint256[](0));
@@ -557,7 +567,8 @@ contract RepaymentRedTeamTest is Test {
         _r().redeem(200e18, new uint256[](0));
 
         uint256 totalClaimed = _r().claimedByUser(alice) + _r().claimedByUser(bob);
-        assertEq(_r().poolBalance(), poolBefore - totalClaimed, "pool drain == sum of claims");
+        uint256 totalFees = usdc.balanceOf(feeRecipient) - feeBefore;
+        assertEq(_r().poolBalance(), poolBefore - totalClaimed - totalFees, "pool drain == claims + fees");
     }
 
     // ------------------------------------------------------------------

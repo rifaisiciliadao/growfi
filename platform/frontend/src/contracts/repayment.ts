@@ -93,7 +93,21 @@ export const repaymentModuleAbi = [
   },
   {
     type: "function",
+    name: "repaymentProtocolFeeBps",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint16" }],
+  },
+  {
+    type: "function",
     name: "payoutPerCt",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "netPayoutPerCt",
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "uint256" }],
@@ -108,6 +122,20 @@ export const repaymentModuleAbi = [
   {
     type: "function",
     name: "quoteRepayment",
+    stateMutability: "view",
+    inputs: [{ name: "amount", type: "uint256" }],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "quoteRepaymentGross",
+    stateMutability: "view",
+    inputs: [{ name: "amount", type: "uint256" }],
+    outputs: [{ type: "uint256" }],
+  },
+  {
+    type: "function",
+    name: "quoteRepaymentProtocolFee",
     stateMutability: "view",
     inputs: [{ name: "amount", type: "uint256" }],
     outputs: [{ type: "uint256" }],

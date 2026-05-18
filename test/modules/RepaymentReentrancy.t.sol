@@ -41,6 +41,8 @@ contract RepaymentReentrancyTest is Test {
     GrowfiCampaignToken internal campaignToken;
     GrowfiStakingVault internal stakingVault;
 
+    uint16 internal constant REPAYMENT_PROTOCOL_FEE_BPS = 200;
+
     function setUp() public {
         usdc = new ReentrantUSDC();
         factory = Deployer.deployProtocol(protocolOwner, feeRecipient, address(usdc), address(0));
@@ -112,6 +114,14 @@ contract RepaymentReentrancyTest is Test {
         return RepaymentModule(payable(campaignAddr));
     }
 
+    function _protocolFee(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout * REPAYMENT_PROTOCOL_FEE_BPS / 10_000;
+    }
+
+    function _netPayout(uint256 grossPayout) internal pure returns (uint256) {
+        return grossPayout - _protocolFee(grossPayout);
+    }
+
     /// @dev On redeem payout, a malicious USDC tries to re-enter
     ///      redeem itself. nonReentrant must catch and bubble up.
     function test_reent_redeemReentryBlocked() public {
@@ -131,9 +141,9 @@ contract RepaymentReentrancyTest is Test {
 
         // Exactly one redeem worth of state change
         assertEq(campaignToken.balanceOf(alice), aliceCtBefore - 100e18, "exactly one burn");
-        uint256 expected = 100e18 * 144_000 / 1e18;
-        assertEq(_r().poolBalance(), poolBefore - expected, "pool drained by exactly one payout");
-        assertEq(_r().claimedByUser(alice), expected, "claimed = one redeem only");
+        uint256 expectedGross = 100e18 * 144_000 / 1e18;
+        assertEq(_r().poolBalance(), poolBefore - expectedGross, "pool drained by exactly one gross payout");
+        assertEq(_r().claimedByUser(alice), _netPayout(expectedGross), "claimed = one net redeem only");
     }
 
     /// @dev fundPool re-entered during transferFrom callback. The
@@ -188,8 +198,8 @@ contract RepaymentReentrancyTest is Test {
         // Pool went DOWN by the payout (redeem ran). The cross-function
         // reentry into fundPool was caught by the shared reentrancyStatus
         // guard — pool did NOT also gain 100e6.
-        uint256 expectedPayout = 100e18 * 144_000 / 1e18;
-        assertEq(_r().poolBalance(), poolBefore - expectedPayout, "pool drain only, no spurious fund");
+        uint256 expectedGross = 100e18 * 144_000 / 1e18;
+        assertEq(_r().poolBalance(), poolBefore - expectedGross, "pool drain only, no spurious fund");
     }
 
     /// @dev Cross-function reentry: fundPool reentering redeem. The
