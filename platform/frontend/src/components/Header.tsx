@@ -121,6 +121,7 @@ export function Header() {
             ) : (
               <Link
                 href={`/grower/${account.address}`}
+                prefetch={false}
                 className={pillBase}
                 title={t("profile")}
               >
@@ -141,18 +142,18 @@ export function Header() {
   return (
     <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl border-b border-outline-variant/15">
       <div className="relative flex justify-between items-center px-4 md:px-8 h-16 max-w-7xl mx-auto w-full gap-2 md:gap-6">
-        <Link href="/" className="relative z-10 flex items-center gap-1 shrink-0 min-w-0">
+        <Link href="/" prefetch={false} className="relative z-10 flex items-center gap-1 shrink-0 min-w-0">
           <Logo />
         </Link>
 
         <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-5 lg:flex">
-          <Link href="/" className={linkClass}>
+          <Link href="/" prefetch={false} className={linkClass}>
             {t("explore")}
           </Link>
-          <Link href="/investors" className={linkClass}>
+          <Link href="/investors" prefetch={false} className={linkClass}>
             {t("investors")}
           </Link>
-          <Link href="/grow" className={linkClass}>
+          <Link href="/grow" prefetch={false} className={linkClass}>
             $GROW
           </Link>
         </div>

@@ -20,7 +20,7 @@ import { KNOWN_TOKENS } from "@/contracts/tokens";
 import { getAddresses } from "@/contracts";
 import { txUrl } from "@/lib/explorer";
 
-const FEED_LIMIT = 60;
+const FEED_LIMIT = 30;
 const LEADERBOARD_LIMIT = 20;
 
 // ---- payment-token decimals + symbol lookup (raw paymentAmount on Purchase
@@ -238,6 +238,7 @@ function FeedRow({
           ) : (
             <Link
               href={`/grower/${item.user}`}
+              prefetch={false}
               className="font-semibold hover:underline inline-flex items-center gap-1"
             >
               {profile?.avatar ? (
@@ -260,6 +261,7 @@ function FeedRow({
               {description.preposition}{" "}
               <Link
                 href={`/campaign/${item.campaign.id}`}
+                prefetch={false}
                 className="font-semibold text-primary hover:underline"
               >
                 {campaignName}
@@ -460,6 +462,7 @@ function LeaderboardRow({
       ) : (
         <Link
           href={`/grower/${entry.id}`}
+          prefetch={false}
           className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-surface-container-low transition-colors"
         >
           {RowInner}

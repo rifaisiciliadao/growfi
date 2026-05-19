@@ -38,7 +38,7 @@ export function LandingFooter() {
         },
         {
           label: t("linkSubgraph"),
-          href: "https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/4.0.3/gn",
+          href: "https://ugraph.growfi.dev/subgraphs/growfi/latest/gn",
           external: true,
         },
       ],
