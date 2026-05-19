@@ -193,6 +193,7 @@ export function Header() {
               >
                 <Link
                   href="/"
+                  prefetch={false}
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={`${menuLinkClass} lg:hidden`}
@@ -201,6 +202,7 @@ export function Header() {
                 </Link>
                 <Link
                   href="/investors"
+                  prefetch={false}
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={`${menuLinkClass} lg:hidden`}
@@ -209,6 +211,7 @@ export function Header() {
                 </Link>
                 <Link
                   href="/grow"
+                  prefetch={false}
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={`${menuLinkClass} font-semibold text-emerald-700 hover:text-emerald-800 lg:hidden`}
@@ -218,6 +221,7 @@ export function Header() {
                 <div className="my-1 h-px bg-outline-variant/15 lg:hidden" />
                 <Link
                   href="/feed"
+                  prefetch={false}
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={menuLinkClass}
@@ -226,6 +230,7 @@ export function Header() {
                 </Link>
                 <Link
                   href="/portfolio"
+                  prefetch={false}
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={menuLinkClass}
@@ -235,6 +240,7 @@ export function Header() {
                 {approved ? (
                   <Link
                     href="/create"
+                    prefetch={false}
                     role="menuitem"
                     onClick={() => setDesktopOpen(false)}
                     className={menuLinkClass}
@@ -244,6 +250,7 @@ export function Header() {
                 ) : (
                   <Link
                     href="/?openInvite=1"
+                    prefetch={false}
                     role="menuitem"
                     onClick={() => setDesktopOpen(false)}
                     className={menuLinkClass}
@@ -282,6 +289,7 @@ export function Header() {
           <div className="flex flex-col gap-1 px-4 py-3 max-w-7xl mx-auto">
             <Link
               href="/"
+              prefetch={false}
               onClick={() => setMobileOpen(false)}
               className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
             >
@@ -289,6 +297,7 @@ export function Header() {
             </Link>
             <Link
               href="/feed"
+              prefetch={false}
               onClick={() => setMobileOpen(false)}
               className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
             >
@@ -296,6 +305,7 @@ export function Header() {
             </Link>
             <Link
               href="/portfolio"
+              prefetch={false}
               onClick={() => setMobileOpen(false)}
               className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
             >
@@ -303,6 +313,7 @@ export function Header() {
             </Link>
             <Link
               href="/investors"
+              prefetch={false}
               onClick={() => setMobileOpen(false)}
               className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
             >
@@ -310,6 +321,7 @@ export function Header() {
             </Link>
             <Link
               href="/grow"
+              prefetch={false}
               onClick={() => setMobileOpen(false)}
               className="rounded-lg px-3 py-3 text-base font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
             >
@@ -318,6 +330,7 @@ export function Header() {
             {approved ? (
               <Link
                 href="/create"
+                prefetch={false}
                 onClick={() => setMobileOpen(false)}
                 className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
               >
@@ -326,6 +339,7 @@ export function Header() {
             ) : (
               <Link
                 href="/?openInvite=1"
+                prefetch={false}
                 onClick={() => setMobileOpen(false)}
                 className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
               >
