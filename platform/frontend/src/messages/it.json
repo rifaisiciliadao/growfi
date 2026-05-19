@@ -9,6 +9,14 @@
     "connect": "Connetti",
     "investors": "Investitori"
   },
+  "network": {
+    "title": "Rete sbagliata",
+    "body": "Il wallet è connesso a {current}. GrowFi in questo momento usa {expected}.",
+    "action": "Passa a {chain}",
+    "switchShort": "Passa a {chain}",
+    "switching": "Cambio rete…",
+    "switchError": "Cambio rete automatico non riuscito. Apri il wallet e aggiungi {chain} manualmente."
+  },
   "feed": {
     "title": "Feed Community",
     "subtitle": "Ogni azione onchain su ogni campagna — in tempo reale.",
@@ -18,6 +26,7 @@
       "empty": "Nessuna attività ancora. Sii il primo a finanziare una campagna.",
       "verbs": {
         "bought": "ha investito",
+        "shopBought": "ha acquistato dal negozio",
         "sellback": "ha richiesto sellback di",
         "staked": "ha messo in stake",
         "unstaked": "ha ritirato dallo stake",
@@ -499,6 +508,7 @@
       "closeCheckout": "Chiudi checkout",
       "orderSummary": "Riepilogo ordine",
       "connect": "Connetti portafoglio",
+      "switchNetwork": "Passa a {chain}",
       "inactiveCampaign": "Il negozio apre quando la campagna è attiva",
       "skuMissing": "SKU non configurato on-chain",
       "skuInactive": "Prodotto non disponibile",

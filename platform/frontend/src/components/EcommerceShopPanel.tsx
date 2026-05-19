@@ -28,6 +28,8 @@ import {
 import { txUrl } from "@/lib/explorer";
 import { waitForTx } from "@/lib/waitForTx";
 import { useTxNotify } from "@/lib/useTxNotify";
+import { EXPECTED_CHAIN_ID } from "@/lib/chains";
+import { useExpectedChain } from "@/lib/useExpectedChain";
 import { Spinner } from "./Spinner";
 
 const USDC_DECIMALS = 6;
@@ -172,6 +174,12 @@ export function EcommerceShopPanel({
   const locale = useLocale();
   const notify = useTxNotify();
   const { address: user, isConnected } = useAccount();
+  const {
+    expectedChain,
+    isSwitching,
+    isWrongChain,
+    switchToExpectedChain,
+  } = useExpectedChain();
   const { usdc } = getAddresses();
   const { writeContractAsync } = useWriteContract();
 
@@ -179,6 +187,7 @@ export function EcommerceShopPanel({
     address: campaignAddress,
     abi: ecommerceModuleAbi,
     functionName: "catalogURI",
+    chainId: EXPECTED_CHAIN_ID,
     query: { refetchInterval: 20_000 },
   }) as { data?: string };
 
@@ -203,6 +212,7 @@ export function EcommerceShopPanel({
       abi: ecommerceModuleAbi,
       functionName: "sku",
       args: [item.skuId] as const,
+      chainId: EXPECTED_CHAIN_ID,
     })),
     query: {
       enabled: items.length > 0,
@@ -248,6 +258,7 @@ export function EcommerceShopPanel({
       abi: ecommerceModuleAbi,
       functionName: "quoteSku",
       args: [line.item.skuId, line.quantityBig] as const,
+      chainId: EXPECTED_CHAIN_ID,
     })),
     query: {
       enabled: pricedCartLines.length > 0,
@@ -267,12 +278,19 @@ export function EcommerceShopPanel({
     contracts:
       user && usdc !== zeroAddress
         ? [
-            { address: usdc, abi: erc20Abi, functionName: "balanceOf", args: [user] },
+            {
+              address: usdc,
+              abi: erc20Abi,
+              functionName: "balanceOf",
+              args: [user],
+              chainId: EXPECTED_CHAIN_ID,
+            },
             {
               address: usdc,
               abi: erc20Abi,
               functionName: "allowance",
               args: [user, campaignAddress],
+              chainId: EXPECTED_CHAIN_ID,
             },
           ]
         : [],
@@ -287,6 +305,7 @@ export function EcommerceShopPanel({
   const [status, setStatus] = useState<TxStatus>({ kind: "idle" });
 
   const busy = status.kind !== "idle" && status.kind !== "success" && status.kind !== "error";
+  const interactionBusy = busy || isSwitching;
   const cartRows = useMemo(
     () =>
       cartLines.map((line) => {
@@ -331,9 +350,10 @@ export function EcommerceShopPanel({
     !cartInvalid &&
     quotesReady &&
     totals.gross > 0n &&
-    !busy;
+    !interactionBusy;
   const canBuy =
     isConnected &&
+    !isWrongChain &&
     currentState === 1 &&
     cartRows.length > 0 &&
     !cartInvalid &&
@@ -343,10 +363,13 @@ export function EcommerceShopPanel({
     /\S+@\S+\.\S+/.test(email) &&
     fullName.trim().length > 1 &&
     shipping.trim().length > 4 &&
-    !busy;
+    !interactionBusy;
+  const canSwitchNetwork = isConnected && isWrongChain && !busy && !isSwitching;
 
   const checkoutLabel = !isConnected
-    ? t("connect")
+      ? t("connect")
+    : isWrongChain
+      ? t("switchNetwork", { chain: expectedChain.name })
     : currentState !== 1
       ? t("inactiveCampaign")
       : cartRows.length === 0
@@ -357,7 +380,7 @@ export function EcommerceShopPanel({
             ? t("quotesLoading")
             : balance < totals.gross
               ? t("insufficientUsdc")
-              : busy
+              : interactionBusy
                 ? "current" in status && status.current && "total" in status && status.total && status.total > 1
                   ? t("processingStep", {
                       action: t(status.kind),
@@ -368,6 +391,16 @@ export function EcommerceShopPanel({
                 : needsApproval
                   ? t("approveAndPlaceOrder")
                   : t("placeOrder");
+
+  const handleSwitchNetwork = async () => {
+    try {
+      await switchToExpectedChain();
+      setStatus({ kind: "idle" });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setStatus({ kind: "error", message });
+    }
+  };
 
   const setCartQuantity = (skuId: string, nextQuantity: number, maxQuantity: number) => {
     setCart((current) => {
@@ -385,6 +418,10 @@ export function EcommerceShopPanel({
 
   const handleMintUsdc = async () => {
     if (!user) return;
+    if (isWrongChain) {
+      await handleSwitchNetwork();
+      return;
+    }
     try {
       setStatus({ kind: "mint-sig" });
       const hash = await writeContractAsync({
@@ -392,6 +429,7 @@ export function EcommerceShopPanel({
         abi: mockUsdcMintAbi,
         functionName: "mint",
         args: [user, 10_000n * 10n ** 6n],
+        chainId: EXPECTED_CHAIN_ID,
       });
       setStatus({ kind: "mint-chain" });
       const receipt = await waitForTx(hash);
@@ -407,7 +445,12 @@ export function EcommerceShopPanel({
   };
 
   const handleCheckout = async () => {
-    if (!user || !canBuy) return;
+    if (!user) return;
+    if (isWrongChain) {
+      await handleSwitchNetwork();
+      return;
+    }
+    if (!canBuy) return;
     const rows = cartRows;
     const orderTotals = totals;
     try {
@@ -418,6 +461,7 @@ export function EcommerceShopPanel({
           abi: erc20Abi,
           functionName: "approve",
           args: [campaignAddress, orderTotals.gross],
+          chainId: EXPECTED_CHAIN_ID,
         });
         setStatus({ kind: "approve-chain" });
         const approveReceipt = await waitForTx(approveHash);
@@ -459,6 +503,7 @@ export function EcommerceShopPanel({
           abi: ecommerceModuleAbi,
           functionName: "buySku",
           args: [row.item.skuId, row.quantityBig, draft.orderHash],
+          chainId: EXPECTED_CHAIN_ID,
         });
         setStatus({ kind: "buy-chain", current: step, total: rows.length });
         const buyReceipt = await waitForTx(buyHash);
@@ -635,7 +680,7 @@ export function EcommerceShopPanel({
                           onClick={() => setCartQuantity(item.skuId, quantity - 1, max)}
                           className="flex items-center justify-center text-lg font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
                           aria-label={t("decreaseQty")}
-                          disabled={busy}
+                          disabled={interactionBusy}
                         >
                           −
                         </button>
@@ -647,7 +692,7 @@ export function EcommerceShopPanel({
                           onClick={() => setCartQuantity(item.skuId, quantity + 1, max)}
                           className="flex items-center justify-center text-lg font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
                           aria-label={t("increaseQty")}
-                          disabled={busy || quantity >= max}
+                          disabled={interactionBusy || quantity >= max}
                         >
                           +
                         </button>
@@ -659,7 +704,7 @@ export function EcommerceShopPanel({
                           setCartQuantity(item.skuId, 1, max);
                           setCartOpen(true);
                         }}
-                        disabled={busy || max === 0}
+                        disabled={interactionBusy || max === 0}
                         className="flex h-12 w-full items-center justify-center rounded-full bg-on-surface px-5 text-sm font-bold text-surface transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         {max === 0 ? t("soldOut") : t("addToCart")}
@@ -730,7 +775,7 @@ export function EcommerceShopPanel({
                           type="button"
                           onClick={() => setCartQuantity(row.item.skuId, 0, 0)}
                           className="rounded-full px-2 py-1 text-xs font-bold text-on-surface-variant transition hover:bg-surface-container hover:text-on-surface"
-                          disabled={busy}
+                          disabled={interactionBusy}
                         >
                           {t("remove")}
                         </button>
@@ -741,7 +786,7 @@ export function EcommerceShopPanel({
                           onClick={() => setCartQuantity(row.item.skuId, row.quantity - 1, inventoryLimit(row.sku))}
                           className="flex items-center justify-center text-base font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
                           aria-label={t("decreaseQty")}
-                          disabled={busy}
+                          disabled={interactionBusy}
                         >
                           −
                         </button>
@@ -753,7 +798,7 @@ export function EcommerceShopPanel({
                           onClick={() => setCartQuantity(row.item.skuId, row.quantity + 1, inventoryLimit(row.sku))}
                           className="flex items-center justify-center text-base font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
                           aria-label={t("increaseQty")}
-                          disabled={busy || row.quantity >= inventoryLimit(row.sku)}
+                          disabled={interactionBusy || row.quantity >= inventoryLimit(row.sku)}
                         >
                           +
                         </button>
@@ -775,7 +820,7 @@ export function EcommerceShopPanel({
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-on-surface-variant">
                 <button
                   onClick={handleMintUsdc}
-                  disabled={!user || busy}
+                  disabled={!user || interactionBusy || isWrongChain}
                   className="font-semibold text-primary disabled:opacity-50"
                 >
                   {t("mintUsdc")}
@@ -827,7 +872,7 @@ export function EcommerceShopPanel({
                 <button
                   type="button"
                   onClick={() => setCheckoutOpen(false)}
-                  disabled={busy}
+                  disabled={interactionBusy}
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-outline-variant/15 text-lg font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
                   aria-label={t("closeCheckout")}
                 >
@@ -895,11 +940,11 @@ export function EcommerceShopPanel({
                 <Line label={t("growerNet")} value={`${formatUsdc(totals.producerNet)} USDC`} strong />
               </div>
               <button
-                onClick={handleCheckout}
-                disabled={!canBuy}
+                onClick={isWrongChain ? handleSwitchNetwork : handleCheckout}
+                disabled={isWrongChain ? !canSwitchNetwork : !canBuy}
                 className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-on-surface text-sm font-bold text-surface transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {busy && <Spinner size={16} />}
+                {interactionBusy && <Spinner size={16} />}
                 {checkoutLabel}
               </button>
               {status.kind === "error" && (
@@ -954,6 +999,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
     abi: campaignModuleHostAbi,
     functionName: "moduleSlot",
     args: [ECOMMERCE_MODULE_TYPE],
+    chainId: EXPECTED_CHAIN_ID,
     query: { refetchInterval: 20_000 },
   });
   const slot = slotData as readonly [Address, `0x${string}`, string, bigint, boolean] | undefined;
@@ -964,11 +1010,11 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
   const { data: reads, refetch: refetchReads } = useReadContracts({
     contracts: isAttached
       ? [
-          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "catalogURI" },
-          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "protocolFeeBps" },
-          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "repaymentAllocationBps" },
-          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "grossSales" },
-          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "repaymentAllocated" },
+          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "catalogURI", chainId: EXPECTED_CHAIN_ID },
+          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "protocolFeeBps", chainId: EXPECTED_CHAIN_ID },
+          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "repaymentAllocationBps", chainId: EXPECTED_CHAIN_ID },
+          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "grossSales", chainId: EXPECTED_CHAIN_ID },
+          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "repaymentAllocated", chainId: EXPECTED_CHAIN_ID },
         ]
       : [],
     query: { enabled: isAttached, refetchInterval: 20_000 },
@@ -1026,6 +1072,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
             ecommerceImpl,
             "growfi://ecommerce/v1",
           ],
+          chainId: EXPECTED_CHAIN_ID,
         });
         setPending(t("attachChain"));
         const attachReceipt = await waitForTx(attachHash);
@@ -1037,6 +1084,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
           abi: ecommerceModuleAbi,
           functionName: "initializeEcommerceByProducer",
           args: [protocolFee, catalog.url],
+          chainId: EXPECTED_CHAIN_ID,
         });
         setPending(t("initializeChain"));
         const initReceipt = await waitForTx(initHash);
@@ -1048,6 +1096,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
           abi: ecommerceModuleAbi,
           functionName: "setCatalogURI",
           args: [catalog.url],
+          chainId: EXPECTED_CHAIN_ID,
         });
         setPending(t("catalogChain"));
         const catalogReceipt = await waitForTx(catalogHash);
@@ -1060,6 +1109,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
             abi: ecommerceModuleAbi,
             functionName: "setProtocolFeeBps",
             args: [protocolFee],
+            chainId: EXPECTED_CHAIN_ID,
           });
           setPending(t("feeChain"));
           const feeReceipt = await waitForTx(feeHash);
@@ -1073,6 +1123,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
         abi: ecommerceModuleAbi,
         functionName: "setRepaymentAllocationBps",
         args: [repayment],
+        chainId: EXPECTED_CHAIN_ID,
       });
       setPending(t("repaymentChain"));
       const repaymentReceipt = await waitForTx(repaymentHash);
@@ -1084,6 +1135,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
         abi: ecommerceModuleAbi,
         functionName: "setSku",
         args: [skuId, priceUsdc, inventoryUnits, true],
+        chainId: EXPECTED_CHAIN_ID,
       });
       setPending(t("skuChain"));
       const skuReceipt = await waitForTx(skuHash);

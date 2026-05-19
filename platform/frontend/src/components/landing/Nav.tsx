@@ -8,13 +8,21 @@ import { LanguageSwitcher } from "../LanguageSwitcher";
 import { LandingLogo } from "./LandingLogo";
 import { useInviteGate } from "@/lib/inviteGate";
 import { useInviteModal } from "@/lib/inviteModal";
+import { useExpectedChain } from "@/lib/useExpectedChain";
 
 export function Nav() {
   const t = useTranslations("landing.nav");
   const tNav = useTranslations("nav");
+  const tNetwork = useTranslations("network");
   const tInvite = useTranslations("landing.invite");
   const { state } = useInviteGate();
   const { openModal } = useInviteModal();
+  const {
+    expectedChain,
+    isSwitching,
+    isWrongChain,
+    switchToExpectedChain,
+  } = useExpectedChain();
   const approved = state === "approved";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(false);
@@ -66,7 +74,7 @@ export function Nav() {
     "flex w-full items-center rounded-md px-3 py-2.5 text-left text-sm font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors";
   const walletControl = (
     <ConnectButton.Custom>
-      {({ account, chain, openConnectModal, mounted }) => {
+      {({ account, chain, openChainModal, openConnectModal, mounted }) => {
         const ready = mounted;
         const connected = ready && account && chain;
         return !connected ? (
@@ -78,6 +86,19 @@ export function Nav() {
           >
             <span className="hidden sm:inline">{t("connectWallet")}</span>
             <span className="sm:hidden">{t("connect")}</span>
+          </button>
+        ) : chain.unsupported || isWrongChain ? (
+          <button
+            type="button"
+            onClick={() => {
+              void switchToExpectedChain().catch(() => openChainModal?.());
+            }}
+            className="inline-flex items-center rounded-full bg-black px-4 md:px-6 h-10 md:h-11 text-xs md:text-sm font-bold text-white shadow-[0_4px_16px_-4px_rgba(0,0,0,0.25)] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.4)] whitespace-nowrap"
+            style={{ fontFamily: "var(--font-header)" }}
+          >
+            {isSwitching
+              ? tNetwork("switching")
+              : tNetwork("switchShort", { chain: expectedChain.name })}
           </button>
         ) : (
           <Link

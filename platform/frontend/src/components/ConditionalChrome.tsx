@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Header } from "./Header";
 import { Footer } from "./Footer";
 import { InviteGate } from "./InviteGate";
+import { NetworkGuard } from "./NetworkGuard";
 
 export function ConditionalChrome({
   children,
@@ -14,12 +15,18 @@ export function ConditionalChrome({
   const isLanding = pathname === "/";
 
   if (isLanding) {
-    return <main className="flex-grow">{children}</main>;
+    return (
+      <>
+        <NetworkGuard />
+        <main className="flex-grow">{children}</main>
+      </>
+    );
   }
 
   return (
     <>
       <Header />
+      <NetworkGuard />
       <main className="flex-grow pt-16">
         <InviteGate>{children}</InviteGate>
       </main>

@@ -716,8 +716,8 @@ export function useSubgraphMeta() {
 // -----------------------------------------------------------------------
 // Public activity feed + leaderboard
 //
-// `useFeed` batches the 5 user-facing event streams (Purchase, Position,
-// Claim, SellBackOrder, Campaign created) in one GraphQL round-trip,
+// `useFeed` batches the user-facing event streams (Purchase, EcommerceOrder,
+// Position, Claim, SellBackOrder, Campaign created) in one GraphQL round-trip,
 // normalizes them into a discriminated union sorted by timestamp desc.
 // `useLeaderboard` reads the pre-aggregated `User` entity from the
 // subgraph (totalInvested + purchasesCount) ordered by spend.
@@ -735,6 +735,16 @@ export type FeedItem =
       paymentAmount: string;
       paymentToken: string;
       campaignTokensOut: string;
+      txHash: string | null;
+    }
+  | {
+      kind: "shop";
+      id: string;
+      timestamp: number;
+      user: string;
+      campaign: CampaignRef;
+      quantity: string;
+      grossPaid: string;
       txHash: string | null;
     }
   | {
@@ -804,6 +814,15 @@ export function useFeed(limit = 50) {
           transactionHash: string;
           campaign: { id: string; metadataURI: string | null; metadataVersion: string };
         }>;
+        ecommerceOrders: Array<{
+          id: string;
+          buyer: string;
+          quantity: string;
+          grossPaid: string;
+          timestamp: string;
+          transactionHash: string;
+          campaign: { id: string; metadataURI: string | null; metadataVersion: string };
+        }>;
         sellBackOrders: Array<{
           id: string;
           user: string;
@@ -857,6 +876,10 @@ export function useFeed(limit = 50) {
             id buyer paymentAmount paymentToken campaignTokensOut timestamp transactionHash
             campaign { ${FEED_CAMPAIGN_FIELDS} }
           }
+          ecommerceOrders(first: $limit, orderBy: timestamp, orderDirection: desc) {
+            id buyer quantity grossPaid timestamp transactionHash
+            campaign { ${FEED_CAMPAIGN_FIELDS} }
+          }
           sellBackOrders(first: $limit, orderBy: requestedAt, orderDirection: desc) {
             id user amount status requestedAt requestTx
             campaign { ${FEED_CAMPAIGN_FIELDS} }
@@ -893,6 +916,18 @@ export function useFeed(limit = 50) {
           paymentToken: p.paymentToken,
           campaignTokensOut: p.campaignTokensOut,
           txHash: p.transactionHash,
+        });
+      }
+      for (const o of data.ecommerceOrders) {
+        items.push({
+          kind: "shop",
+          id: `shop-${o.id}`,
+          timestamp: Number(o.timestamp),
+          user: o.buyer,
+          campaign: o.campaign,
+          quantity: o.quantity,
+          grossPaid: o.grossPaid,
+          txHash: o.transactionHash,
         });
       }
       for (const s of data.sellBackOrders) {

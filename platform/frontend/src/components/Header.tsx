@@ -7,11 +7,19 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { Logo } from "./Logo";
 import { LanguageSwitcher } from "./LanguageSwitcher";
 import { useInviteGate } from "@/lib/inviteGate";
+import { useExpectedChain } from "@/lib/useExpectedChain";
 
 export function Header() {
   const t = useTranslations("nav");
+  const tNetwork = useTranslations("network");
   const tInvite = useTranslations("landing.invite");
   const { state } = useInviteGate();
+  const {
+    expectedChain,
+    isSwitching,
+    isWrongChain,
+    switchToExpectedChain,
+  } = useExpectedChain();
   const approved = state === "approved";
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopOpen, setDesktopOpen] = useState(false);
@@ -88,11 +96,27 @@ export function Header() {
               </button>
             ) : chain.unsupported ? (
               <button
-                onClick={openChainModal}
+                onClick={() => {
+                  void switchToExpectedChain().catch(() => openChainModal?.());
+                }}
                 type="button"
                 className="h-10 px-3 md:px-4 rounded-full text-xs md:text-sm font-semibold bg-error text-on-error flex items-center gap-2 whitespace-nowrap"
               >
-                Wrong network
+                {isSwitching
+                  ? tNetwork("switching")
+                  : tNetwork("switchShort", { chain: expectedChain.name })}
+              </button>
+            ) : isWrongChain ? (
+              <button
+                onClick={() => {
+                  void switchToExpectedChain().catch(() => openChainModal?.());
+                }}
+                type="button"
+                className="h-10 px-3 md:px-4 rounded-full text-xs md:text-sm font-semibold bg-error text-on-error flex items-center gap-2 whitespace-nowrap"
+              >
+                {isSwitching
+                  ? tNetwork("switching")
+                  : tNetwork("switchShort", { chain: expectedChain.name })}
               </button>
             ) : (
               <Link

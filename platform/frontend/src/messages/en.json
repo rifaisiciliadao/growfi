@@ -9,6 +9,14 @@
     "connect": "Connect",
     "investors": "Investors"
   },
+  "network": {
+    "title": "Wrong network",
+    "body": "Your wallet is connected to {current}. GrowFi is currently running on {expected}.",
+    "action": "Switch to {chain}",
+    "switchShort": "Switch to {chain}",
+    "switching": "Switching…",
+    "switchError": "Could not switch automatically. Open your wallet and add {chain} manually."
+  },
   "feed": {
     "title": "Community Feed",
     "subtitle": "Every onchain action across every campaign — live.",
@@ -18,6 +26,7 @@
       "empty": "No activity yet. Be the first to back a campaign.",
       "verbs": {
         "bought": "invested",
+        "shopBought": "bought from the shop",
         "sellback": "requested sellback of",
         "staked": "staked",
         "unstaked": "unstaked",
@@ -499,6 +508,7 @@
       "closeCheckout": "Close checkout",
       "orderSummary": "Order summary",
       "connect": "Connect wallet",
+      "switchNetwork": "Switch to {chain}",
       "inactiveCampaign": "Shop opens when campaign is active",
       "skuMissing": "SKU not configured on-chain",
       "skuInactive": "Product unavailable",

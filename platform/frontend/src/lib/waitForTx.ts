@@ -14,7 +14,7 @@ import { config } from "@/app/providers";
  *   - `confirmations: 2` — wait for a second block after the one that mined
  *     the tx, so reorgs on Base Sepolia can't make a "success" become "fail"
  *     after we already flipped the UI.
- *   - `timeout: 90_000` — explicit 90s timeout so the UI doesn't hang forever
+ *   - `timeout: 180_000` — explicit timeout so the UI doesn't hang forever
  *     on a dropped mempool tx; the caller surfaces the error.
  *   - Minimum visible wait (`minVisibleMs`, default 1200ms) — even if the
  *     receipt lands instantly (e.g. cached), the promise doesn't resolve
@@ -24,16 +24,21 @@ import { config } from "@/app/providers";
  */
 export async function waitForTx(
   hash: `0x${string}`,
-  opts: { minVisibleMs?: number; confirmations?: number } = {},
+  opts: {
+    minVisibleMs?: number;
+    confirmations?: number;
+    timeout?: number;
+  } = {},
 ): Promise<TransactionReceipt> {
   const minVisibleMs = opts.minVisibleMs ?? 1200;
   const confirmations = opts.confirmations ?? 2;
+  const timeout = opts.timeout ?? 180_000;
 
   const started = Date.now();
   const receipt = await waitForTransactionReceipt(config, {
     hash,
     confirmations,
-    timeout: 90_000,
+    timeout,
   });
 
   const elapsed = Date.now() - started;

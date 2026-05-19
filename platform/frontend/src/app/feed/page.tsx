@@ -320,6 +320,12 @@ function renderDescription(
         preposition: t("activity.prepositions.in"),
       };
     }
+    case "shop":
+      return {
+        verb: t("activity.verbs.shopBought"),
+        amount: `${formatRaw(item.grossPaid, 6)} USDC`,
+        preposition: t("activity.prepositions.in"),
+      };
     case "sellback":
       return {
         verb: t("activity.verbs.sellback"),
@@ -369,6 +375,7 @@ function ActionIcon({
 }) {
   const map: Record<FeedItem["kind"], { bg: string; emoji: string }> = {
     buy: { bg: "bg-emerald-50 text-emerald-700", emoji: "🌱" },
+    shop: { bg: "bg-lime-50 text-lime-700", emoji: "🛒" },
     sellback: { bg: "bg-amber-50 text-amber-700", emoji: "↩️" },
     stake: { bg: "bg-sky-50 text-sky-700", emoji: "🪴" },
     unstake: { bg: "bg-zinc-50 text-zinc-700", emoji: "🏃" },
