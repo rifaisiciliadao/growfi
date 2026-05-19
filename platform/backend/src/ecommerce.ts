@@ -37,6 +37,7 @@ interface EcommercePurchaseReceiptBody {
   campaignName?: string;
   productName?: string;
   quantity?: string | number;
+  lineItems?: unknown;
   paymentAmount?: string;
   paymentToken?: string;
   protocolFee?: string;
@@ -122,6 +123,21 @@ function validateCatalogItems(items: unknown[]): Array<Record<string, unknown> &
     normalized.push({ ...item, skuId });
   }
   return normalized;
+}
+
+function normalizeReceiptLineItems(value: unknown): Array<{ productName: string; quantity: string }> | undefined {
+  if (!Array.isArray(value)) return undefined;
+
+  const lines: Array<{ productName: string; quantity: string }> = [];
+  for (const item of value) {
+    if (!isRecord(item)) continue;
+    const productName = cleanString(item.productName, 180);
+    const quantity = normalizeQuantity(item.quantity);
+    if (productName && quantity) lines.push({ productName, quantity });
+    if (lines.length >= 30) break;
+  }
+
+  return lines.length > 0 ? lines : undefined;
 }
 
 export function registerEcommerceRoutes(
@@ -270,6 +286,7 @@ export function registerEcommerceRoutes(
       campaignName: cleanString(req.body.campaignName, 160) || "GrowFi campaign",
       productName: cleanString(req.body.productName, 180) || "GrowFi product",
       quantity,
+      lineItems: normalizeReceiptLineItems(req.body.lineItems),
       paymentAmount: cleanString(req.body.paymentAmount, 48) || "0",
       paymentToken,
       protocolFee: cleanString(req.body.protocolFee, 48) || "0",

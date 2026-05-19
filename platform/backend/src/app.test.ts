@@ -395,8 +395,12 @@ describe("POST /api/ecommerce/purchase-receipt", () => {
       payload: {
         email: "alice@example.com",
         campaignName: "Ecommerce Olive Demo",
-        productName: "Extra virgin olive oil 500ml",
-        quantity: "2",
+        productName: "2 products",
+        quantity: "3",
+        lineItems: [
+          { productName: "Extra virgin olive oil 500ml", quantity: "2" },
+          { productName: "Olive leaf tea", quantity: "1" },
+        ],
         paymentAmount: "36.00",
         paymentToken: "USDC",
         protocolFee: "0.00",
@@ -415,7 +419,9 @@ describe("POST /api/ecommerce/purchase-receipt", () => {
     assert.equal(sent[0].to, "alice@example.com");
     assert.equal(sent[0].kind, "ecommerce_receipt");
     assert.equal(sent[0].data.receipt?.campaignName, "Ecommerce Olive Demo");
-    assert.equal(sent[0].data.receipt?.quantity, "2");
+    assert.equal(sent[0].data.receipt?.quantity, "3");
+    assert.equal(sent[0].data.receipt?.lineItems?.length, 2);
+    assert.equal(sent[0].data.receipt?.lineItems?.[1]?.productName, "Olive leaf tea");
     assert.equal(sent[0].data.receipt?.repaymentAllocated, "3.60");
     assert.equal(sent[0].data.receipt?.buyer, ALICE);
   });

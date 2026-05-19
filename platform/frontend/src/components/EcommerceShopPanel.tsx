@@ -57,15 +57,29 @@ type SkuView = {
   exists: boolean;
 };
 
+type QuoteView = {
+  gross: bigint;
+  protocolFee: bigint;
+  repayment: bigint;
+  producerNet: bigint;
+};
+
 type TxStatus =
   | { kind: "idle" }
-  | { kind: "mint-sig" | "mint-chain" }
-  | { kind: "approve-sig" | "approve-chain" }
-  | { kind: "draft" }
-  | { kind: "buy-sig" | "buy-chain" }
+  | { kind: "mint-sig" | "mint-chain"; current?: number; total?: number }
+  | { kind: "approve-sig" | "approve-chain"; current?: number; total?: number }
+  | { kind: "draft"; current?: number; total?: number }
+  | { kind: "buy-sig" | "buy-chain"; current?: number; total?: number }
   | { kind: "receipt" }
   | { kind: "success"; hash: `0x${string}`; emailDelivered: boolean }
   | { kind: "error"; message: string };
+
+const ZERO_QUOTE: QuoteView = {
+  gross: 0n,
+  protocolFee: 0n,
+  repayment: 0n,
+  producerNet: 0n,
+};
 
 function readSku(raw: unknown): SkuView | null {
   if (!raw) return null;
@@ -86,6 +100,35 @@ function readSku(raw: unknown): SkuView | null {
     active: Boolean(r.active),
     exists: Boolean(r.exists),
   };
+}
+
+function readQuote(raw: unknown): QuoteView {
+  if (!Array.isArray(raw)) return ZERO_QUOTE;
+  return {
+    gross: (raw[0] as bigint | undefined) ?? 0n,
+    protocolFee: (raw[1] as bigint | undefined) ?? 0n,
+    repayment: (raw[2] as bigint | undefined) ?? 0n,
+    producerNet: (raw[3] as bigint | undefined) ?? 0n,
+  };
+}
+
+function addQuotes(a: QuoteView, b: QuoteView): QuoteView {
+  return {
+    gross: a.gross + b.gross,
+    protocolFee: a.protocolFee + b.protocolFee,
+    repayment: a.repayment + b.repayment,
+    producerNet: a.producerNet + b.producerNet,
+  };
+}
+
+function cartKey(skuId: string): string {
+  return skuId.toLowerCase();
+}
+
+function inventoryLimit(sku: SkuView | null): number {
+  if (!sku?.exists || !sku.active) return 0;
+  if (sku.inventory > BigInt(Number.MAX_SAFE_INTEGER)) return Number.MAX_SAFE_INTEGER;
+  return Number(sku.inventory);
 }
 
 function formatUsdc(value: bigint): string {
@@ -149,50 +192,75 @@ export function EcommerceShopPanel({
     },
   });
 
-  const items = catalog?.items ?? [];
-  const [selectedSku, setSelectedSku] = useState<`0x${string}` | null>(null);
-  const selectedItem = useMemo(() => {
-    if (items.length === 0) return null;
-    const current = selectedSku
-      ? items.find((item) => item.skuId.toLowerCase() === selectedSku.toLowerCase())
-      : null;
-    return current ?? items[0];
-  }, [items, selectedSku]);
+  const items = useMemo(() => catalog?.items ?? [], [catalog?.items]);
+  const [cart, setCart] = useState<Record<string, number>>({});
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
 
-  const [quantity, setQuantity] = useState("1");
-  const quantityBig = useMemo(() => {
-    if (!/^[0-9]+$/.test(quantity)) return 0n;
-    const parsed = BigInt(quantity);
-    return parsed > 0n ? parsed : 0n;
-  }, [quantity]);
-
-  const { data: skuRaw, refetch: refetchSku } = useReadContract({
-    address: campaignAddress,
-    abi: ecommerceModuleAbi,
-    functionName: "sku",
-    args: selectedItem ? [selectedItem.skuId] : undefined,
+  const { data: skuReads, refetch: refetchSkus } = useReadContracts({
+    contracts: items.map((item) => ({
+      address: campaignAddress,
+      abi: ecommerceModuleAbi,
+      functionName: "sku",
+      args: [item.skuId] as const,
+    })),
     query: {
-      enabled: Boolean(selectedItem),
+      enabled: items.length > 0,
       refetchInterval: 15_000,
     },
   });
-  const sku = readSku(skuRaw);
 
-  const { data: quoteRaw } = useReadContract({
-    address: campaignAddress,
-    abi: ecommerceModuleAbi,
-    functionName: "quoteSku",
-    args: selectedItem && quantityBig > 0n ? [selectedItem.skuId, quantityBig] : undefined,
-    query: { enabled: Boolean(selectedItem && quantityBig > 0n) },
+  const skuById = useMemo(() => {
+    const map = new Map<string, SkuView | null>();
+    items.forEach((item, index) => {
+      map.set(cartKey(item.skuId), readSku(skuReads?.[index]?.result));
+    });
+    return map;
+  }, [items, skuReads]);
+
+  const cartLines = useMemo(
+    () =>
+      items
+        .map((item) => {
+          const quantity = cart[cartKey(item.skuId)] ?? 0;
+          const sku = skuById.get(cartKey(item.skuId)) ?? null;
+          return { item, sku, quantity, quantityBig: BigInt(quantity) };
+        })
+        .filter((line) => line.quantity > 0),
+    [items, cart, skuById],
+  );
+
+  const pricedCartLines = useMemo(
+    () =>
+      cartLines.filter(
+        (line) =>
+          line.sku?.exists &&
+          line.sku.active &&
+          line.quantityBig > 0n &&
+          line.quantityBig <= line.sku.inventory,
+      ),
+    [cartLines],
+  );
+
+  const { data: quoteReads, refetch: refetchQuotes } = useReadContracts({
+    contracts: pricedCartLines.map((line) => ({
+      address: campaignAddress,
+      abi: ecommerceModuleAbi,
+      functionName: "quoteSku",
+      args: [line.item.skuId, line.quantityBig] as const,
+    })),
+    query: {
+      enabled: pricedCartLines.length > 0,
+      refetchInterval: 15_000,
+    },
   });
-  const quote = Array.isArray(quoteRaw)
-    ? {
-        gross: (quoteRaw[0] as bigint | undefined) ?? 0n,
-        protocolFee: (quoteRaw[1] as bigint | undefined) ?? 0n,
-        repayment: (quoteRaw[2] as bigint | undefined) ?? 0n,
-        producerNet: (quoteRaw[3] as bigint | undefined) ?? 0n,
-      }
-    : { gross: 0n, protocolFee: 0n, repayment: 0n, producerNet: 0n };
+
+  const quoteById = useMemo(() => {
+    const map = new Map<string, QuoteView>();
+    pricedCartLines.forEach((line, index) => {
+      map.set(cartKey(line.item.skuId), readQuote(quoteReads?.[index]?.result));
+    });
+    return map;
+  }, [pricedCartLines, quoteReads]);
 
   const { data: balanceAllowance, refetch: refetchBalance } = useReadContracts({
     contracts:
@@ -216,52 +284,103 @@ export function EcommerceShopPanel({
   const [fullName, setFullName] = useState("");
   const [shipping, setShipping] = useState("");
   const [status, setStatus] = useState<TxStatus>({ kind: "idle" });
-  const selectedProductName = selectedItem
-    ? localizedText(
-        selectedItem.name,
-        (selectedItem as Record<string, unknown>).nameI18n,
-        locale,
-        shortHash(selectedItem.skuId),
-        { [DEMO_PRODUCT_NAME]: t("defaultProductName") },
-      )
-    : "";
 
   const busy = status.kind !== "idle" && status.kind !== "success" && status.kind !== "error";
-  const needsApproval = quote.gross > 0n && allowance < quote.gross;
+  const cartRows = useMemo(
+    () =>
+      cartLines.map((line) => {
+        const name = localizedText(
+          line.item.name,
+          (line.item as Record<string, unknown>).nameI18n,
+          locale,
+          shortHash(line.item.skuId),
+          { [DEMO_PRODUCT_NAME]: t("defaultProductName") },
+        );
+        const description = localizedText(
+          line.item.description,
+          (line.item as Record<string, unknown>).descriptionI18n,
+          locale,
+          line.item.skuId,
+          {
+            [DEMO_PRODUCT_DESCRIPTION]: t("defaultProductDescription"),
+            [DEMO_PRODUCT_DESCRIPTION_ALT]: t("defaultProductDescription"),
+          },
+        );
+        return {
+          ...line,
+          name,
+          description,
+          quote: quoteById.get(cartKey(line.item.skuId)) ?? ZERO_QUOTE,
+        };
+      }),
+    [cartLines, locale, quoteById, t],
+  );
+  const totals = cartRows.reduce((acc, row) => addQuotes(acc, row.quote), ZERO_QUOTE);
+  const cartQuantity = cartRows.reduce((acc, row) => acc + row.quantity, 0);
+  const cartInvalid = cartRows.some(
+    (row) => !row.sku?.exists || !row.sku.active || row.quantityBig > (row.sku?.inventory ?? 0n),
+  );
+  const quotesReady =
+    pricedCartLines.length === 0 ||
+    pricedCartLines.every((line) => quoteById.has(cartKey(line.item.skuId)));
+  const needsApproval = totals.gross > 0n && allowance < totals.gross;
+  const canOpenCheckout =
+    currentState === 1 &&
+    cartRows.length > 0 &&
+    !cartInvalid &&
+    quotesReady &&
+    totals.gross > 0n &&
+    !busy;
   const canBuy =
     isConnected &&
     currentState === 1 &&
-    selectedItem &&
-    sku?.exists &&
-    sku.active &&
-    quantityBig > 0n &&
-    quantityBig <= sku.inventory &&
-    quote.gross > 0n &&
-    balance >= quote.gross &&
+    cartRows.length > 0 &&
+    !cartInvalid &&
+    quotesReady &&
+    totals.gross > 0n &&
+    balance >= totals.gross &&
     /\S+@\S+\.\S+/.test(email) &&
     fullName.trim().length > 1 &&
     shipping.trim().length > 4 &&
     !busy;
 
-  const buttonLabel = !isConnected
+  const checkoutLabel = !isConnected
     ? t("connect")
     : currentState !== 1
       ? t("inactiveCampaign")
-      : !selectedItem
-        ? t("empty")
-        : !sku?.exists
-          ? t("skuMissing")
-          : !sku.active
-            ? t("skuInactive")
-            : quantityBig > (sku?.inventory ?? 0n)
-              ? t("soldOut")
-              : balance < quote.gross
-                ? t("insufficientUsdc")
-                : busy
-                  ? t(status.kind)
-                  : needsApproval
-                    ? t("approveAndBuy")
-                    : t("checkout");
+      : cartRows.length === 0
+        ? t("cartEmpty")
+        : cartInvalid
+          ? t("cartLocked")
+          : !quotesReady
+            ? t("quotesLoading")
+            : balance < totals.gross
+              ? t("insufficientUsdc")
+              : busy
+                ? "current" in status && status.current && "total" in status && status.total && status.total > 1
+                  ? t("processingStep", {
+                      action: t(status.kind),
+                      current: status.current,
+                      total: status.total,
+                    })
+                  : t(status.kind)
+                : needsApproval
+                  ? t("approveAndPlaceOrder")
+                  : t("placeOrder");
+
+  const setCartQuantity = (skuId: string, nextQuantity: number, maxQuantity: number) => {
+    setCart((current) => {
+      const key = cartKey(skuId);
+      const quantity = Math.max(0, Math.min(nextQuantity, maxQuantity));
+      const next = { ...current };
+      if (quantity === 0) {
+        delete next[key];
+      } else {
+        next[key] = quantity;
+      }
+      return next;
+    });
+  };
 
   const handleMintUsdc = async () => {
     if (!user) return;
@@ -287,7 +406,9 @@ export function EcommerceShopPanel({
   };
 
   const handleCheckout = async () => {
-    if (!user || !selectedItem || !sku || quote.gross === 0n) return;
+    if (!user || !canBuy) return;
+    const rows = cartRows;
+    const orderTotals = totals;
     try {
       if (needsApproval) {
         setStatus({ kind: "approve-sig" });
@@ -295,62 +416,88 @@ export function EcommerceShopPanel({
           address: usdc,
           abi: erc20Abi,
           functionName: "approve",
-          args: [campaignAddress, quote.gross],
+          args: [campaignAddress, orderTotals.gross],
         });
         setStatus({ kind: "approve-chain" });
         const approveReceipt = await waitForTx(approveHash);
         if (approveReceipt.status !== "success") throw new Error("USDC approval reverted");
       }
 
-      setStatus({ kind: "draft" });
-      const draft = await createEcommerceOrderDraft({
-        campaign: campaignAddress,
-        buyer: user,
-        skuId: selectedItem.skuId,
-        quantity: quantityBig.toString(),
-        customer: { email: email.trim().toLowerCase(), name: fullName.trim() },
-        fulfillment: { notes: shipping.trim() },
-        checkout: {
-          gross: quote.gross.toString(),
-          protocolFee: quote.protocolFee.toString(),
-          repaymentAllocated: quote.repayment.toString(),
-          producerNet: quote.producerNet.toString(),
-        },
-        metadata: { productName: selectedProductName || selectedItem.skuId },
-      });
+      const purchases: Array<{
+        row: (typeof rows)[number];
+        draft: Awaited<ReturnType<typeof createEcommerceOrderDraft>>;
+        hash: `0x${string}`;
+      }> = [];
 
-      setStatus({ kind: "buy-sig" });
-      const buyHash = await writeContractAsync({
-        address: campaignAddress,
-        abi: ecommerceModuleAbi,
-        functionName: "buySku",
-        args: [selectedItem.skuId, quantityBig, draft.orderHash],
-      });
-      setStatus({ kind: "buy-chain" });
-      const buyReceipt = await waitForTx(buyHash);
-      if (buyReceipt.status !== "success") throw new Error("Ecommerce purchase reverted");
+      for (const [index, row] of rows.entries()) {
+        const step = index + 1;
+        setStatus({ kind: "draft", current: step, total: rows.length });
+        const draft = await createEcommerceOrderDraft({
+          campaign: campaignAddress,
+          buyer: user,
+          skuId: row.item.skuId,
+          quantity: row.quantityBig.toString(),
+          customer: { email: email.trim().toLowerCase(), name: fullName.trim() },
+          fulfillment: { notes: shipping.trim() },
+          checkout: {
+            gross: row.quote.gross.toString(),
+            protocolFee: row.quote.protocolFee.toString(),
+            repaymentAllocated: row.quote.repayment.toString(),
+            producerNet: row.quote.producerNet.toString(),
+          },
+          metadata: {
+            productName: row.name || row.item.skuId,
+            cartSize: rows.length,
+            cartTotalGross: orderTotals.gross.toString(),
+          },
+        });
+
+        setStatus({ kind: "buy-sig", current: step, total: rows.length });
+        const buyHash = await writeContractAsync({
+          address: campaignAddress,
+          abi: ecommerceModuleAbi,
+          functionName: "buySku",
+          args: [row.item.skuId, row.quantityBig, draft.orderHash],
+        });
+        setStatus({ kind: "buy-chain", current: step, total: rows.length });
+        const buyReceipt = await waitForTx(buyHash);
+        if (buyReceipt.status !== "success") throw new Error("Ecommerce purchase reverted");
+        purchases.push({ row, draft, hash: buyHash });
+      }
+
+      const lastPurchase = purchases[purchases.length - 1];
+      if (!lastPurchase) throw new Error("No purchase was executed");
 
       setStatus({ kind: "receipt" });
       const receipt = await sendEcommercePurchaseReceipt({
         email: email.trim().toLowerCase(),
         campaignName,
-        productName: selectedProductName || selectedItem.skuId,
-        quantity: quantityBig.toString(),
-        paymentAmount: formatUsdc(quote.gross),
+        productName:
+          rows.length === 1
+            ? rows[0].name || rows[0].item.skuId
+            : t("receiptProductSummary", { count: rows.length }),
+        quantity: cartQuantity.toString(),
+        lineItems: rows.map((row) => ({
+          productName: row.name || row.item.skuId,
+          quantity: row.quantityBig.toString(),
+        })),
+        paymentAmount: formatUsdc(orderTotals.gross),
         paymentToken: "USDC",
-        protocolFee: formatUsdc(quote.protocolFee),
-        repaymentAllocated: formatUsdc(quote.repayment),
-        producerNet: formatUsdc(quote.producerNet),
-        orderHash: draft.orderHash,
-        txHash: buyHash,
-        txUrl: txUrl(buyHash),
+        protocolFee: formatUsdc(orderTotals.protocolFee),
+        repaymentAllocated: formatUsdc(orderTotals.repayment),
+        producerNet: formatUsdc(orderTotals.producerNet),
+        orderHash: lastPurchase.draft.orderHash,
+        txHash: lastPurchase.hash,
+        txUrl: txUrl(lastPurchase.hash),
         buyer: user,
         shippingSummary: shipping.trim(),
       });
 
-      await Promise.all([refetchSku(), refetchBalance()]);
-      notify.success(t("purchaseConfirmed"), buyHash);
-      setStatus({ kind: "success", hash: buyHash, emailDelivered: receipt.emailDelivered });
+      await Promise.all([refetchSkus(), refetchQuotes(), refetchBalance()]);
+      notify.success(t("purchaseConfirmed"), lastPurchase.hash);
+      setCart({});
+      setCheckoutOpen(false);
+      setStatus({ kind: "success", hash: lastPurchase.hash, emailDelivered: receipt.emailDelivered });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       setStatus(/user (rejected|denied)/i.test(message) ? { kind: "idle" } : { kind: "error", message });
@@ -367,7 +514,7 @@ export function EcommerceShopPanel({
   }
 
   const activeCatalog = catalog;
-  if (!catalogURI || !activeCatalog || items.length === 0 || !selectedItem) {
+  if (!catalogURI || !activeCatalog || items.length === 0) {
     return (
       <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-8 text-sm text-on-surface-variant">
         {t("emptyCatalog")}
@@ -396,28 +543,26 @@ export function EcommerceShopPanel({
   );
 
   return (
-    <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-5 md:p-8">
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.16em] text-primary">{t("eyebrow")}</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-tight text-on-surface">
-            {catalogTitle}
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm text-on-surface-variant">
-            {catalogDescription}
-          </p>
+    <div className="rounded-[28px] border border-outline-variant/15 bg-[#fffdf7] p-4 shadow-[0_24px_80px_rgba(20,35,24,0.07)] md:p-6">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4 border-b border-outline-variant/10 pb-5">
+        <div className="max-w-2xl">
+          <p className="text-xs font-bold uppercase text-primary">{t("eyebrow")}</p>
+          <h2 className="mt-2 text-2xl font-bold text-on-surface md:text-3xl">{catalogTitle}</h2>
+          <p className="mt-2 text-sm leading-6 text-on-surface-variant">{catalogDescription}</p>
         </div>
-        <div className="rounded-full bg-primary-fixed px-3 py-1 text-xs font-bold text-on-primary-fixed-variant">
+        <div className="rounded-full border border-primary/20 bg-primary-fixed px-4 py-2 text-xs font-bold text-on-primary-fixed-variant">
           {activeCatalog.repaymentAllocationBps > 0
             ? t("repaymentSplit", { pct: activeCatalog.repaymentAllocationBps / 100 })
             : t("directSplit")}
         </div>
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="grid content-start gap-3">
+      <div className="grid items-start gap-6 2xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="grid content-start gap-4 [grid-template-columns:repeat(auto-fit,minmax(min(100%,260px),1fr))]">
           {items.map((item) => {
-            const active = item.skuId === selectedItem.skuId;
+            const sku = skuById.get(cartKey(item.skuId)) ?? null;
+            const max = inventoryLimit(sku);
+            const quantity = cart[cartKey(item.skuId)] ?? 0;
             const itemName = localizedText(
               item.name,
               (item as Record<string, unknown>).nameI18n,
@@ -436,16 +581,11 @@ export function EcommerceShopPanel({
               },
             );
             return (
-              <button
+              <article
                 key={item.skuId}
-                onClick={() => setSelectedSku(item.skuId)}
-                className={`grid gap-4 rounded-xl border p-4 text-left transition md:grid-cols-[104px_1fr] ${
-                  active
-                    ? "border-primary bg-primary-fixed/20"
-                    : "border-outline-variant/15 bg-surface-container-low hover:border-primary/30"
-                }`}
+                className="flex min-h-[430px] flex-col overflow-hidden rounded-2xl border border-outline-variant/15 bg-white shadow-[0_12px_36px_rgba(20,35,24,0.06)]"
               >
-                <div className="h-24 overflow-hidden rounded-lg bg-surface-container-high">
+                <div className="aspect-[4/3] bg-surface-container-high">
                   {item.image ? (
                     <img src={item.image} alt="" className="h-full w-full object-cover" />
                   ) : (
@@ -454,86 +594,150 @@ export function EcommerceShopPanel({
                     </div>
                   )}
                 </div>
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="font-bold text-on-surface">{itemName}</h3>
-                    {active && sku?.exists && (
-                      <span className="text-sm font-bold text-primary">
-                        ${formatUsdc(sku.priceUsdc)}
-                      </span>
+                <div className="flex flex-1 flex-col gap-5 p-4">
+                  <div className="flex-1">
+                    <div className="grid gap-2">
+                      <h3 className="text-lg font-bold leading-tight text-on-surface">{itemName}</h3>
+                      {sku?.exists && (
+                        <span className="w-fit rounded-full bg-primary-fixed px-3 py-1 text-sm font-bold text-on-primary-fixed-variant">
+                          ${formatUsdc(sku.priceUsdc)}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 line-clamp-3 text-sm leading-6 text-on-surface-variant">
+                      {itemDescription}
+                    </p>
+                  </div>
+
+                  <div>
+                    <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-on-surface-variant">
+                      <span>{sku?.exists ? t("inventory", { count: sku.inventory.toString() }) : t("skuMissing")}</span>
+                      {sku?.exists && <span>{t("sold", { count: sku.sold.toString() })}</span>}
+                    </div>
+                    {quantity > 0 ? (
+                      <div className="grid h-12 grid-cols-[48px_1fr_48px] overflow-hidden rounded-full border border-outline-variant/15 bg-surface-container-lowest">
+                        <button
+                          type="button"
+                          onClick={() => setCartQuantity(item.skuId, quantity - 1, max)}
+                          className="flex items-center justify-center text-lg font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
+                          aria-label={t("decreaseQty")}
+                          disabled={busy}
+                        >
+                          −
+                        </button>
+                        <div className="flex items-center justify-center text-sm font-bold text-on-surface">
+                          {quantity}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCartQuantity(item.skuId, quantity + 1, max)}
+                          className="flex items-center justify-center text-lg font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
+                          aria-label={t("increaseQty")}
+                          disabled={busy || quantity >= max}
+                        >
+                          +
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setCartQuantity(item.skuId, 1, max)}
+                        disabled={busy || max === 0}
+                        className="flex h-12 w-full items-center justify-center rounded-full bg-on-surface px-5 text-sm font-bold text-surface transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
+                      >
+                        {max === 0 ? t("soldOut") : t("addToCart")}
+                      </button>
                     )}
                   </div>
-                  <p className="mt-1 line-clamp-2 text-sm text-on-surface-variant">
-                    {itemDescription}
-                  </p>
-                  {active && sku?.exists && (
-                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-on-surface-variant">
-                      <span>{t("inventory", { count: sku.inventory.toString() })}</span>
-                      <span>·</span>
-                      <span>{t("sold", { count: sku.sold.toString() })}</span>
-                    </div>
-                  )}
                 </div>
-              </button>
+              </article>
             );
           })}
         </div>
 
-        <aside className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-4">
-          <h3 className="text-sm font-bold uppercase tracking-wider text-on-surface-variant">
-            {t("cart")}
-          </h3>
+        <aside className="rounded-2xl border border-outline-variant/15 bg-white p-4 shadow-[0_18px_50px_rgba(20,35,24,0.08)] 2xl:sticky 2xl:top-24">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h3 className="text-lg font-bold text-on-surface">{t("cart")}</h3>
+              <p className="text-sm text-on-surface-variant">
+                {cartQuantity > 0 ? t("cartCount", { count: cartQuantity }) : t("cartEmptyHint")}
+              </p>
+            </div>
+            <div className="rounded-full bg-surface-container px-3 py-1 text-sm font-bold text-on-surface">
+              {cartQuantity}
+            </div>
+          </div>
 
-          <div className="mt-4 space-y-3">
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-on-surface-variant">{t("quantity")}</span>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                className="w-full rounded-lg border border-outline-variant/15 bg-surface-container-lowest px-3 py-2 text-sm outline-none focus:border-primary/60"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-on-surface-variant">{t("email")}</span>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                className="w-full rounded-lg border border-outline-variant/15 bg-surface-container-lowest px-3 py-2 text-sm outline-none focus:border-primary/60"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-on-surface-variant">{t("name")}</span>
-              <input
-                type="text"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="w-full rounded-lg border border-outline-variant/15 bg-surface-container-lowest px-3 py-2 text-sm outline-none focus:border-primary/60"
-              />
-            </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-semibold text-on-surface-variant">{t("shipping")}</span>
-              <textarea
-                rows={3}
-                value={shipping}
-                onChange={(e) => setShipping(e.target.value)}
-                className="w-full rounded-lg border border-outline-variant/15 bg-surface-container-lowest px-3 py-2 text-sm outline-none focus:border-primary/60"
-              />
-            </label>
+          <div className="mt-5 max-h-[360px] space-y-3 overflow-auto pr-1">
+            {cartRows.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-outline-variant/25 bg-surface-container-lowest p-5 text-sm text-on-surface-variant">
+                {t("cartEmptyHint")}
+              </div>
+            ) : (
+              cartRows.map((row) => (
+                <div key={row.item.skuId} className="rounded-2xl border border-outline-variant/12 bg-surface-container-lowest p-3">
+                  <div className="flex items-start gap-3">
+                    <div className="h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-surface-container-high">
+                      {row.item.image ? (
+                        <img src={row.item.image} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-[10px] text-on-surface-variant">
+                          {t("noImage")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold leading-snug text-on-surface">{row.name}</div>
+                      <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-on-surface-variant">
+                        <span>{t("quantity")}: {row.quantity}</span>
+                        <span>{t("lineTotal")}: {formatUsdc(row.quote.gross)} USDC</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCartQuantity(row.item.skuId, 0, 0)}
+                      className="rounded-full px-2 py-1 text-xs font-bold text-on-surface-variant transition hover:bg-surface-container hover:text-on-surface"
+                      disabled={busy}
+                    >
+                      {t("remove")}
+                    </button>
+                  </div>
+                  <div className="mt-3 grid h-10 grid-cols-[40px_1fr_40px] overflow-hidden rounded-full border border-outline-variant/15 bg-white">
+                    <button
+                      type="button"
+                      onClick={() => setCartQuantity(row.item.skuId, row.quantity - 1, inventoryLimit(row.sku))}
+                      className="flex items-center justify-center text-base font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
+                      aria-label={t("decreaseQty")}
+                      disabled={busy}
+                    >
+                      −
+                    </button>
+                    <div className="flex items-center justify-center text-sm font-bold text-on-surface">
+                      {row.quantity}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCartQuantity(row.item.skuId, row.quantity + 1, inventoryLimit(row.sku))}
+                      className="flex items-center justify-center text-base font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
+                      aria-label={t("increaseQty")}
+                      disabled={busy || row.quantity >= inventoryLimit(row.sku)}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           <div className="mt-5 space-y-2 border-t border-outline-variant/15 pt-4 text-sm">
-            <Line label={t("gross")} value={`${formatUsdc(quote.gross)} USDC`} />
-            <Line label={t("protocolFee")} value={`${formatUsdc(quote.protocolFee)} USDC`} />
-            <Line label={t("repayment")} value={`${formatUsdc(quote.repayment)} USDC`} />
-            <Line label={t("growerNet")} value={`${formatUsdc(quote.producerNet)} USDC`} strong />
+            <Line label={t("gross")} value={`${formatUsdc(totals.gross)} USDC`} />
+            <Line label={t("protocolFee")} value={`${formatUsdc(totals.protocolFee)} USDC`} />
+            <Line label={t("repayment")} value={`${formatUsdc(totals.repayment)} USDC`} />
+            <Line label={t("growerNet")} value={`${formatUsdc(totals.producerNet)} USDC`} strong />
           </div>
 
-          <div className="mt-4 flex items-center justify-between text-xs text-on-surface-variant">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-on-surface-variant">
             <button
               onClick={handleMintUsdc}
               disabled={!user || busy}
@@ -545,12 +749,11 @@ export function EcommerceShopPanel({
           </div>
 
           <button
-            onClick={handleCheckout}
-            disabled={!canBuy}
+            onClick={() => setCheckoutOpen(true)}
+            disabled={!canOpenCheckout}
             className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-on-surface text-surface text-sm font-bold transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {busy && <Spinner size={16} />}
-            {buttonLabel}
+            {t("reviewCheckout")}
           </button>
 
           {status.kind === "error" && (
@@ -571,6 +774,101 @@ export function EcommerceShopPanel({
           )}
         </aside>
       </div>
+
+      {checkoutOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/45 p-3 backdrop-blur-sm md:items-center md:p-6">
+          <div className="grid max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-[28px] bg-white shadow-[0_32px_120px_rgba(0,0,0,0.24)] md:grid-cols-[minmax(0,1fr)_360px]">
+            <div className="overflow-auto p-5 md:p-7">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-bold uppercase text-primary">{t("checkout")}</p>
+                  <h3 className="mt-1 text-2xl font-bold text-on-surface">{t("checkoutTitle")}</h3>
+                  <p className="mt-2 max-w-xl text-sm leading-6 text-on-surface-variant">
+                    {t("checkoutSubtitle")}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCheckoutOpen(false)}
+                  disabled={busy}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-outline-variant/15 text-lg font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
+                  aria-label={t("closeCheckout")}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className="mt-6 grid gap-4">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold uppercase text-on-surface-variant">{t("email")}</span>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="you@example.com"
+                    className="h-12 w-full rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-4 text-sm outline-none focus:border-primary/60"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold uppercase text-on-surface-variant">{t("name")}</span>
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="h-12 w-full rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-4 text-sm outline-none focus:border-primary/60"
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-bold uppercase text-on-surface-variant">{t("deliveryDetails")}</span>
+                  <textarea
+                    rows={5}
+                    value={shipping}
+                    onChange={(e) => setShipping(e.target.value)}
+                    className="w-full rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-4 py-3 text-sm outline-none focus:border-primary/60"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-5 rounded-2xl border border-primary/20 bg-primary-fixed/20 p-4 text-sm leading-6 text-on-primary-fixed-variant">
+                {t("checkoutNote")}
+              </div>
+            </div>
+
+            <div className="border-t border-outline-variant/15 bg-surface-container-low p-5 md:border-l md:border-t-0 md:p-6">
+              <h4 className="text-sm font-bold uppercase text-on-surface-variant">{t("orderSummary")}</h4>
+              <div className="mt-4 space-y-3">
+                {cartRows.map((row) => (
+                  <div key={row.item.skuId} className="flex items-start justify-between gap-3 text-sm">
+                    <div className="min-w-0">
+                      <div className="font-bold text-on-surface">{row.name}</div>
+                      <div className="text-xs text-on-surface-variant">
+                        {row.quantity} × {formatUsdc(row.sku?.priceUsdc ?? 0n)} USDC
+                      </div>
+                    </div>
+                    <div className="shrink-0 font-bold text-on-surface">
+                      {formatUsdc(row.quote.gross)} USDC
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 space-y-2 border-t border-outline-variant/15 pt-4 text-sm">
+                <Line label={t("gross")} value={`${formatUsdc(totals.gross)} USDC`} />
+                <Line label={t("protocolFee")} value={`${formatUsdc(totals.protocolFee)} USDC`} />
+                <Line label={t("repayment")} value={`${formatUsdc(totals.repayment)} USDC`} />
+                <Line label={t("growerNet")} value={`${formatUsdc(totals.producerNet)} USDC`} strong />
+              </div>
+              <button
+                onClick={handleCheckout}
+                disabled={!canBuy}
+                className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-on-surface text-sm font-bold text-surface transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {busy && <Spinner size={16} />}
+                {checkoutLabel}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

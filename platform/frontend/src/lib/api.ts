@@ -246,6 +246,7 @@ export async function sendEcommercePurchaseReceipt(input: {
   campaignName: string;
   productName: string;
   quantity: string;
+  lineItems?: Array<{ productName: string; quantity: string }>;
   paymentAmount: string;
   paymentToken: string;
   protocolFee: string;

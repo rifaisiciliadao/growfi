@@ -127,8 +127,12 @@ describe("renderEmail · ecommerce_receipt", () => {
         appUrl: APP,
         receipt: {
           campaignName: "Ecommerce Olive Demo",
-          productName: "Extra virgin olive oil 500ml",
-          quantity: "2",
+          productName: "2 products",
+          quantity: "3",
+          lineItems: [
+            { productName: "Extra virgin olive oil 500ml", quantity: "2" },
+            { productName: "Olive leaf tea", quantity: "1" },
+          ],
           paymentAmount: "36.00",
           paymentToken: "USDC",
           protocolFee: "0.00",
@@ -142,9 +146,13 @@ describe("renderEmail · ecommerce_receipt", () => {
         },
       },
     });
-    assert.equal(r.subject, "GrowFi receipt — Extra virgin olive oil 500ml");
+    assert.equal(r.subject, "GrowFi receipt — 2 products");
     assert.match(r.html, /Ecommerce Olive Demo/);
+    assert.match(r.html, /Extra virgin olive oil 500ml/);
+    assert.match(r.html, /Olive leaf tea/);
     assert.match(r.html, /Repayment allocation/);
+    assert.match(r.text, /2 × Extra virgin olive oil 500ml/);
+    assert.match(r.text, /1 × Olive leaf tea/);
     assert.match(r.text, /3\.60 USDC/);
     assert.match(r.text, /Ship to Ragusa/);
     assert.match(r.html, /sepolia\.etherscan\.io/);

@@ -44,6 +44,7 @@ export interface EmailPayload {
       campaignName: string;
       productName: string;
       quantity: string;
+      lineItems?: Array<{ productName: string; quantity: string }>;
       paymentAmount: string;
       paymentToken: string;
       protocolFee: string;
@@ -300,8 +301,25 @@ export function renderEmail(payload: EmailPayload): RenderedEmail {
     }
     case "ecommerce_receipt": {
       const r = payload.data.receipt;
+      const lineItems = r?.lineItems?.length
+        ? r.lineItems
+        : r
+          ? [{ productName: r.productName, quantity: r.quantity }]
+          : [];
+      const productSummary =
+        lineItems.length === 1
+          ? lineItems[0].productName
+          : lineItems.length > 1
+            ? `${lineItems.length} products`
+            : "purchase";
+      const productHtml = lineItems
+        .map((line) => `${escapeHtml(line.quantity)} × ${escapeHtml(line.productName)}`)
+        .join("<br />");
+      const productText = lineItems
+        .map((line) => `${line.quantity} × ${line.productName}`)
+        .join("\n");
       const subject = r
-        ? `GrowFi receipt — ${r.productName}`
+        ? `GrowFi receipt — ${productSummary}`
         : "GrowFi purchase receipt";
       const body = r
         ? `
@@ -313,8 +331,8 @@ export function renderEmail(payload: EmailPayload): RenderedEmail {
             <td style="padding:8px 0;font-weight:600;">${escapeHtml(r.campaignName)}</td>
           </tr>
           <tr>
-            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Product</td>
-            <td style="padding:8px 0;border-top:1px solid #eef0ec;">${escapeHtml(r.quantity)} × ${escapeHtml(r.productName)}</td>
+            <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Products</td>
+            <td style="padding:8px 0;border-top:1px solid #eef0ec;">${productHtml}</td>
           </tr>
           <tr>
             <td style="padding:8px 0;color:#6b7d6f;border-top:1px solid #eef0ec;">Paid</td>
@@ -361,7 +379,7 @@ export function renderEmail(payload: EmailPayload): RenderedEmail {
           ? [
               "Purchase confirmed",
               `Campaign: ${r.campaignName}`,
-              `Product: ${r.quantity} × ${r.productName}`,
+              `Products:\n${productText}`,
               `Paid: ${r.paymentAmount} ${r.paymentToken}`,
               `Protocol fee: ${r.protocolFee} ${r.paymentToken}`,
               `Repayment allocation: ${r.repaymentAllocated} ${r.paymentToken}`,
