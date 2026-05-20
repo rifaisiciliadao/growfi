@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocale, useTranslations } from "next-intl";
 import {
@@ -303,6 +303,15 @@ export function EcommerceShopPanel({
   const [fullName, setFullName] = useState("");
   const [shipping, setShipping] = useState("");
   const [status, setStatus] = useState<TxStatus>({ kind: "idle" });
+
+  useEffect(() => {
+    if (!cartOpen && !checkoutOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [cartOpen, checkoutOpen]);
 
   const busy = status.kind !== "idle" && status.kind !== "success" && status.kind !== "error";
   const interactionBusy = busy || isSwitching;
@@ -858,10 +867,26 @@ export function EcommerceShopPanel({
       )}
 
       {checkoutOpen && (
-        <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/45 p-3 backdrop-blur-sm md:items-center md:p-6">
-          <div className="grid max-h-[92vh] w-full max-w-5xl overflow-hidden rounded-[28px] bg-white shadow-[0_32px_120px_rgba(0,0,0,0.24)] md:grid-cols-[minmax(0,1fr)_360px]">
-            <div className="overflow-auto p-5 md:p-7">
-              <div className="flex items-start justify-between gap-4">
+        <div className="fixed inset-0 z-[60] bg-white md:flex md:items-center md:justify-center md:bg-black/45 md:p-6 md:backdrop-blur-sm">
+          <div className="flex h-[100dvh] w-screen max-w-none flex-col overflow-hidden bg-white shadow-[0_32px_120px_rgba(0,0,0,0.24)] md:grid md:h-auto md:max-h-[92vh] md:w-full md:max-w-5xl md:grid-cols-[minmax(0,1fr)_360px] md:rounded-[28px]">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-outline-variant/15 px-5 py-4 md:hidden">
+              <div>
+                <p className="text-xs font-bold uppercase text-primary">{t("checkout")}</p>
+                <h3 className="mt-1 text-xl font-bold leading-tight text-on-surface">{t("checkoutTitle")}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCheckoutOpen(false)}
+                disabled={interactionBusy}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-outline-variant/15 text-lg font-bold text-on-surface transition hover:bg-surface-container disabled:opacity-40"
+                aria-label={t("closeCheckout")}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto p-5 pb-6 md:overflow-auto md:p-7">
+              <div className="hidden items-start justify-between gap-4 md:flex">
                 <div>
                   <p className="text-xs font-bold uppercase text-primary">{t("checkout")}</p>
                   <h3 className="mt-1 text-2xl font-bold text-on-surface">{t("checkoutTitle")}</h3>
@@ -878,6 +903,17 @@ export function EcommerceShopPanel({
                 >
                   ×
                 </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 md:hidden">
+                <div className="rounded-xl border border-on-surface bg-on-surface p-3 text-surface">
+                  <div className="text-[11px] font-bold uppercase opacity-70">01</div>
+                  <div className="mt-1 text-sm font-bold">{t("checkout")}</div>
+                </div>
+                <div className="rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-3">
+                  <div className="text-[11px] font-bold uppercase text-on-surface-variant">02</div>
+                  <div className="mt-1 text-sm font-bold text-on-surface">{t("orderSummary")}</div>
+                </div>
               </div>
 
               <div className="mt-6 grid gap-4">
@@ -910,13 +946,9 @@ export function EcommerceShopPanel({
                   />
                 </label>
               </div>
-
-              <div className="mt-5 rounded-2xl border border-primary/20 bg-primary-fixed/20 p-4 text-sm leading-6 text-on-primary-fixed-variant">
-                {t("checkoutNote")}
-              </div>
             </div>
 
-            <div className="border-t border-outline-variant/15 bg-surface-container-low p-5 md:border-l md:border-t-0 md:p-6">
+            <div className="max-h-[46dvh] shrink-0 overflow-y-auto border-t border-outline-variant/15 bg-surface-container-low p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] md:max-h-none md:min-h-0 md:overflow-auto md:border-l md:border-t-0 md:p-6">
               <h4 className="text-sm font-bold uppercase text-on-surface-variant">{t("orderSummary")}</h4>
               <div className="mt-4 space-y-3">
                 {cartRows.map((row) => (
