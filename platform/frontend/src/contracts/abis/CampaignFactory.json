@@ -19,13 +19,39 @@
   },
   {
     "type": "function",
-    "name": "PROTOCOL_FEE_BPS",
+    "name": "HARVEST_PROTOCOL_FEE_BPS",
     "inputs": [],
     "outputs": [
       {
         "name": "",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "KIND_COLLATERAL_V1",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "KIND_SALE_CLASSIC_V1",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "stateMutability": "view"
@@ -131,6 +157,53 @@
   },
   {
     "type": "function",
+    "name": "approveModuleImpl",
+    "inputs": [
+      {
+        "name": "kind",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "impl",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "approved",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "approvedModuleImpls",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "buybackGrowfiTreasury",
     "inputs": [
       {
@@ -154,6 +227,40 @@
     "outputs": [
       {
         "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "campaignPaymentTokenPolicy",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "allowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "fixedPricingAllowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "oraclePricingAllowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "oracleFeed",
         "type": "address",
         "internalType": "address"
       }
@@ -224,6 +331,19 @@
   },
   {
     "type": "function",
+    "name": "campaignsLength",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "claimGrowfiTreasuryYield",
     "inputs": [
       {
@@ -268,7 +388,7 @@
     "name": "createCampaign",
     "inputs": [
       {
-        "name": "params",
+        "name": "p",
         "type": "tuple",
         "internalType": "struct GrowfiCampaignFactory.CreateCampaignParams",
         "components": [
@@ -278,49 +398,24 @@
             "internalType": "address"
           },
           {
-            "name": "tokenName",
+            "name": "campaignTokenName",
             "type": "string",
             "internalType": "string"
           },
           {
-            "name": "tokenSymbol",
+            "name": "campaignTokenSymbol",
             "type": "string",
             "internalType": "string"
           },
           {
-            "name": "yieldName",
+            "name": "yieldTokenName",
             "type": "string",
             "internalType": "string"
           },
           {
-            "name": "yieldSymbol",
+            "name": "yieldTokenSymbol",
             "type": "string",
             "internalType": "string"
-          },
-          {
-            "name": "pricePerToken",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "minCap",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "maxCap",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "fundingDeadline",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "seasonDuration",
-            "type": "uint256",
-            "internalType": "uint256"
           },
           {
             "name": "minProductClaim",
@@ -328,36 +423,144 @@
             "internalType": "uint256"
           },
           {
-            "name": "expectedAnnualHarvestUsd",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "sale",
+            "type": "tuple",
+            "internalType": "struct SaleClassicModule.InitParams",
+            "components": [
+              {
+                "name": "pricePerToken",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "minCap",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "maxCap",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "fundingDeadline",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "seasonDuration",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "fundingFeeBps",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "sequencerUptimeFeed",
+                "type": "address",
+                "internalType": "address"
+              },
+              {
+                "name": "growMinter",
+                "type": "address",
+                "internalType": "address"
+              }
+            ]
           },
           {
-            "name": "expectedAnnualHarvest",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "firstHarvestYear",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "coverageHarvests",
-            "type": "uint256",
-            "internalType": "uint256"
+            "name": "collateral",
+            "type": "tuple",
+            "internalType": "struct CollateralModule.InitParams",
+            "components": [
+              {
+                "name": "expectedAnnualHarvestUsd",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "expectedAnnualHarvest",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "firstHarvestYear",
+                "type": "uint256",
+                "internalType": "uint256"
+              },
+              {
+                "name": "coverageHarvests",
+                "type": "uint256",
+                "internalType": "uint256"
+              }
+            ]
           }
         ]
       }
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "campaignProxy",
         "type": "address",
         "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "defaultModuleAt",
+    "inputs": [
+      {
+        "name": "i",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct ModuleRegistry.DefaultModule",
+        "components": [
+          {
+            "name": "moduleType",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "kind",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "impl",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "metadataURI",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "defaultModulesLength",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -461,12 +664,12 @@
     "name": "initialize",
     "inputs": [
       {
-        "name": "owner_",
+        "name": "owner",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "protocolFeeRecipient_",
+        "name": "feeRecipient",
         "type": "address",
         "internalType": "address"
       },
@@ -476,7 +679,7 @@
         "internalType": "address"
       },
       {
-        "name": "sequencerUptimeFeed_",
+        "name": "seqFeed",
         "type": "address",
         "internalType": "address"
       },
@@ -495,6 +698,30 @@
     "inputs": [
       {
         "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isModuleImplApproved",
+    "inputs": [
+      {
+        "name": "kind",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "impl",
         "type": "address",
         "internalType": "address"
       }
@@ -536,6 +763,25 @@
   },
   {
     "type": "function",
+    "name": "moduleKindSelectors",
+    "inputs": [
+      {
+        "name": "kind",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes4[]",
+        "internalType": "bytes4[]"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "nameTaken",
     "inputs": [
       {
@@ -571,7 +817,7 @@
     "name": "pauseCampaign",
     "inputs": [
       {
-        "name": "campaignIndex",
+        "name": "idx",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -595,6 +841,19 @@
   {
     "type": "function",
     "name": "protocolFeeRecipient",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "proxyAdminOwner",
     "inputs": [],
     "outputs": [
       {
@@ -653,6 +912,39 @@
     "type": "function",
     "name": "renounceOwnership",
     "inputs": [],
+    "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "replaceCampaignModule",
+    "inputs": [
+      {
+        "name": "campaign",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "moduleType",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "kind",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "impl",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "metadataURI",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
     "outputs": [],
     "stateMutability": "nonpayable"
   },
@@ -725,12 +1017,80 @@
   },
   {
     "type": "function",
+    "name": "setCampaignPaymentTokenPolicy",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "allowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "fixedPricingAllowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "oraclePricingAllowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "oracleFeed",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "setCampaignTokenImpl",
     "inputs": [
       {
         "name": "impl",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setDefaultModules",
+    "inputs": [
+      {
+        "name": "list",
+        "type": "tuple[]",
+        "internalType": "struct ModuleRegistry.DefaultModule[]",
+        "components": [
+          {
+            "name": "moduleType",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "kind",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "impl",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "metadataURI",
+            "type": "string",
+            "internalType": "string"
+          }
+        ]
       }
     ],
     "outputs": [],
@@ -831,6 +1191,19 @@
     "inputs": [
       {
         "name": "newTreasury",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setGrowfiMinter",
+    "inputs": [
+      {
+        "name": "minter",
         "type": "address",
         "internalType": "address"
       }
@@ -978,9 +1351,27 @@
     "name": "setMinSeasonDuration",
     "inputs": [
       {
-        "name": "value",
+        "name": "seconds_",
         "type": "uint256",
         "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setModuleKindSelectors",
+    "inputs": [
+      {
+        "name": "kind",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "selectors",
+        "type": "bytes4[]",
+        "internalType": "bytes4[]"
       }
     ],
     "outputs": [],
@@ -991,7 +1382,7 @@
     "name": "setProtocolFeeRecipient",
     "inputs": [
       {
-        "name": "newRecipient",
+        "name": "recipient",
         "type": "address",
         "internalType": "address"
       }
@@ -1001,10 +1392,10 @@
   },
   {
     "type": "function",
-    "name": "setSequencerUptimeFeed",
+    "name": "setProxyAdminOwner",
     "inputs": [
       {
-        "name": "feed",
+        "name": "newAdmin",
         "type": "address",
         "internalType": "address"
       }
@@ -1093,7 +1484,7 @@
     "name": "unpauseCampaign",
     "inputs": [
       {
-        "name": "campaignIndex",
+        "name": "idx",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -1257,6 +1648,56 @@
   },
   {
     "type": "event",
+    "name": "CampaignPaymentTokenPolicySet",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "allowed",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "fixedPricingAllowed",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "oraclePricingAllowed",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "oracleFeed",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "DefaultModulesUpdated",
+    "inputs": [
+      {
+        "name": "count",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "GrowfiContractsSet",
     "inputs": [
       {
@@ -1288,22 +1729,47 @@
   },
   {
     "type": "event",
-    "name": "ImplementationUpdated",
+    "name": "GrowfiMinterSet",
     "inputs": [
       {
-        "name": "kind",
-        "type": "bytes32",
-        "indexed": true,
-        "internalType": "bytes32"
-      },
+        "name": "minter",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ImplsUpdated",
+    "inputs": [
       {
-        "name": "oldImpl",
+        "name": "campaign",
         "type": "address",
         "indexed": false,
         "internalType": "address"
       },
       {
-        "name": "newImpl",
+        "name": "campaignToken",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "stakingVault",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "yieldToken",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "harvestManager",
         "type": "address",
         "indexed": false,
         "internalType": "address"
@@ -1326,19 +1792,57 @@
   },
   {
     "type": "event",
-    "name": "MinSeasonDurationUpdated",
+    "name": "MinSeasonDurationSet",
     "inputs": [
       {
-        "name": "oldValue",
+        "name": "seconds_",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ModuleImplApproved",
+    "inputs": [
+      {
+        "name": "kind",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
       },
       {
-        "name": "newValue",
-        "type": "uint256",
+        "name": "impl",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "approved",
+        "type": "bool",
         "indexed": false,
-        "internalType": "uint256"
+        "internalType": "bool"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ModuleKindSelectorsSet",
+    "inputs": [
+      {
+        "name": "kind",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "selectors",
+        "type": "bytes4[]",
+        "indexed": false,
+        "internalType": "bytes4[]"
       }
     ],
     "anonymous": false
@@ -1383,16 +1887,23 @@
   },
   {
     "type": "event",
-    "name": "ProtocolFeeRecipientUpdated",
+    "name": "ProtocolFeeRecipientSet",
     "inputs": [
       {
-        "name": "oldRecipient",
+        "name": "recipient",
         "type": "address",
         "indexed": false,
         "internalType": "address"
-      },
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ProxyAdminOwnerSet",
+    "inputs": [
       {
-        "name": "newRecipient",
+        "name": "admin",
         "type": "address",
         "indexed": false,
         "internalType": "address"
@@ -1402,7 +1913,63 @@
   },
   {
     "type": "error",
+    "name": "DuplicateSelectorInList",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "EmptyName",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "EmptySelectorSet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ImplNotApproved",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ImplsNotSet",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "IndexOutOfBounds",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "InvalidInitialization",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidPaymentTokenPolicy",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "KindHasNoSelectors",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MinSeasonTooShort",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NameTakenError",
     "inputs": []
   },
   {
@@ -1431,5 +1998,36 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "OwnershipCannotBeRenounced",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ProducerMismatch",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "SelectorAlreadyUsedInKind",
+    "inputs": [
+      {
+        "name": "selector",
+        "type": "bytes4",
+        "internalType": "bytes4"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnknownCampaign",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
+    "inputs": []
   }
 ]

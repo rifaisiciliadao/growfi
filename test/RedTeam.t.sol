@@ -51,6 +51,8 @@ contract RedTeamTest is Test {
         wethOracle = new MockOracle(2880e8, 8);
 
         factory = Deployer.deployProtocol(protocolOwner, feeRecipient, address(usdc), address(0));
+        vm.prank(protocolOwner);
+        factory.setCampaignPaymentTokenPolicy(address(weth), true, false, true, address(wethOracle));
 
         vm.prank(producer);
         factory.createCampaign(
@@ -709,6 +711,9 @@ contract RedTeamTest is Test {
         MockOracle badOracle = new MockOracle(100e19, 19); // 19 decimals
         MockERC20 strangeToken = new MockERC20("ST", "ST", 18);
         strangeToken.mint(attacker, 10e18);
+
+        vm.prank(protocolOwner);
+        factory.setCampaignPaymentTokenPolicy(address(strangeToken), true, false, true, address(badOracle));
 
         vm.prank(producer);
         campaign.addAcceptedToken(address(strangeToken), SaleClassicModule.PricingMode.Oracle, 0, address(badOracle));

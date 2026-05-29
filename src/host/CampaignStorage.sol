@@ -47,12 +47,14 @@ library CampaignStorage {
     ///                      name, version, audit URL).
     /// @param  attachedAt   Unix timestamp of the attach tx.
     /// @param  enabled      Producer-controlled fast disable without detach.
+    /// @param  selectors    Selector snapshot registered at attach time.
     struct ModuleSlot {
         address impl;
         bytes32 kind;
         string metadataURI;
         uint64 attachedAt;
         bool enabled;
+        bytes4[] selectors;
     }
 
     /// @notice The single struct that holds all host-owned state. The

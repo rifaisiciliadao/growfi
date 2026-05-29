@@ -235,6 +235,40 @@
   },
   {
     "type": "function",
+    "name": "campaignPaymentTokenPolicy",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "allowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "fixedPricingAllowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "oraclePricingAllowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "oracleFeed",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
     "name": "campaignTokenImpl",
     "inputs": [],
     "outputs": [
@@ -879,6 +913,39 @@
     "name": "renounceOwnership",
     "inputs": [],
     "outputs": [],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "replaceCampaignModule",
+    "inputs": [
+      {
+        "name": "campaign",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "moduleType",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "kind",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "impl",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "metadataURI",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
     "stateMutability": "nonpayable"
   },
   {
@@ -941,6 +1008,39 @@
     "inputs": [
       {
         "name": "impl",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "setCampaignPaymentTokenPolicy",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "allowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "fixedPricingAllowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "oraclePricingAllowed",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "oracleFeed",
         "type": "address",
         "internalType": "address"
       }
@@ -1548,6 +1648,43 @@
   },
   {
     "type": "event",
+    "name": "CampaignPaymentTokenPolicySet",
+    "inputs": [
+      {
+        "name": "token",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "allowed",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "fixedPricingAllowed",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "oraclePricingAllowed",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "oracleFeed",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "DefaultModulesUpdated",
     "inputs": [
       {
@@ -1817,6 +1954,11 @@
   },
   {
     "type": "error",
+    "name": "InvalidPaymentTokenPolicy",
+    "inputs": []
+  },
+  {
+    "type": "error",
     "name": "KindHasNoSelectors",
     "inputs": []
   },
@@ -1856,6 +1998,11 @@
         "internalType": "address"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "OwnershipCannotBeRenounced",
+    "inputs": []
   },
   {
     "type": "error",

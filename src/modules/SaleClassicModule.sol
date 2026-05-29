@@ -8,6 +8,7 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {AggregatorV3Interface} from "../interfaces/AggregatorV3Interface.sol";
 import {IGrowfiCampaignTokenMint} from "../interfaces/IGrowfiCampaignTokenMint.sol";
 import {IGrowfiMinter} from "../interfaces/IGrowfiMinter.sol";
+import {IGrowfiCampaignFactoryV4} from "../interfaces/IGrowfiCampaignFactoryV4.sol";
 
 import {CampaignStorage} from "../host/CampaignStorage.sol";
 
@@ -79,12 +80,19 @@ contract SaleClassicModule {
         uint256 reentrancyStatus;
         // --- one-shot init guard ---
         bool initialized;
+        // --- funding escrow accounting ---
+        mapping(address => uint256) fundingEscrow;
+        // --- O(1) sell-back queue accounting ---
+        uint256 sellBackQueueTotal;
+        uint256 openSellBackOrdersTotal;
     }
 
     bytes32 internal constant STORAGE_SLOT = 0xd7250d23bb7bc8e93366cf6815d31bcb947e004baa702b9bb515d6082501a234; // keccak256("growfi.module.sale.classic.v1")
 
     uint256 internal constant MAX_ACCEPTED_TOKENS = 10;
     uint256 internal constant MAX_OPEN_SELLBACK_ORDERS_PER_USER = 50;
+    uint256 internal constant MAX_OPEN_SELLBACK_ORDERS_TOTAL = 1_000;
+    uint256 internal constant MIN_SELLBACK_AMOUNT = 1e15; // 0.001 campaign token
     uint256 internal constant SEQUENCER_GRACE_PERIOD = 1 hours;
     uint256 internal constant ORACLE_STALE_WINDOW = 1 hours;
 
@@ -123,6 +131,14 @@ contract SaleClassicModule {
     error NewMinCapBelowSupply();
     error NewMaxCapBelowCommitted();
     error TransferAmountMismatch();
+    error PaymentTokenNotAllowed();
+    error PricingModeNotAllowed();
+    error InvalidFixedRate();
+    error InvalidOracleFeed();
+    error FundingEscrowNotEmpty();
+    error SellBackAmountTooSmall();
+    error TooManyOpenSellBackOrdersTotal();
+    error ZeroTokensOut();
 
     // ------------------------------------------------------------------
     // Events
@@ -264,13 +280,10 @@ contract SaleClassicModule {
         Layout storage s = _s();
         if (s.tokenConfigs[token].active) revert AlreadyAccepted();
         if (s.acceptedTokenList.length >= MAX_ACCEPTED_TOKENS) revert TooManyAcceptedTokens();
-        if (mode == PricingMode.Fixed) {
-            require(fixedRate > 0, "Zero fixedRate");
-        } else {
-            if (oracleFeed == address(0)) revert ZeroAddress();
-        }
         uint8 dec = IERC20Metadata(token).decimals();
         if (dec > 18) revert PaymentDecimalsTooHigh();
+
+        _validateFactoryPaymentPolicy(token, mode, fixedRate, oracleFeed, dec);
 
         s.tokenConfigs[token] = TokenConfig({
             pricingMode: mode,
@@ -287,6 +300,7 @@ contract SaleClassicModule {
     function removeAcceptedToken(address token) external onlyProducer {
         Layout storage s = _s();
         if (!s.tokenConfigs[token].active) revert TokenNotAccepted();
+        if (s.fundingEscrow[token] != 0) revert FundingEscrowNotEmpty();
         s.tokenConfigs[token].active = false;
 
         uint256 len = s.acceptedTokenList.length;
@@ -329,6 +343,8 @@ contract SaleClassicModule {
             tokensOut = buyableMax;
             paymentAmount = _calculatePaymentNeeded(paymentToken, tokensOut, oraclePrice);
         }
+        if (paymentAmount == 0) revert ZeroAmount();
+        if (tokensOut == 0) revert ZeroTokensOut();
 
         uint256 balanceBefore = IERC20(paymentToken).balanceOf(address(this));
         IERC20(paymentToken).safeTransferFrom(msg.sender, address(this), paymentAmount);
@@ -348,15 +364,20 @@ contract SaleClassicModule {
         if (!isActive) {
             s.purchases[msg.sender][paymentToken] += netPayment;
             s.purchasedTokens[msg.sender][paymentToken] += tokensOut;
+            s.fundingEscrow[paymentToken] += netPayment;
         }
 
         uint256 paymentRemaining = netPayment;
         uint256 tokensToMint = tokensOut;
+        uint256 filledFromQueue;
 
         if (isActive) {
+            uint256 tokensBeforeFill = tokensToMint;
             (paymentRemaining, tokensToMint) = _fillSellBackQueue(paymentToken, paymentRemaining, tokensOut, msg.sender);
+            filledFromQueue = tokensBeforeFill - tokensToMint;
         }
 
+        uint256 mintedTokens;
         if (paymentRemaining > 0 && tokensToMint > 0) {
             if (isActive) {
                 // Net payment → producer wallet
@@ -365,9 +386,12 @@ contract SaleClassicModule {
             // In Funding state, funds stay in escrow on the Campaign address.
             IGrowfiCampaignTokenMint(cs.campaignToken).mint(msg.sender, tokensToMint);
             s.currentSupply += tokensToMint;
+            mintedTokens = tokensToMint;
         }
 
-        emit TokensPurchased(msg.sender, paymentToken, paymentAmount, tokensOut, oraclePrice, s.currentSupply);
+        emit TokensPurchased(
+            msg.sender, paymentToken, paymentAmount, filledFromQueue + mintedTokens, oraclePrice, s.currentSupply
+        );
 
         // GROW emission hook: fires AFTER the mint, BEFORE auto-activate so
         // pre-softcap buys land in escrow and the softcap hook unlocks them.
@@ -386,9 +410,13 @@ contract SaleClassicModule {
 
     function sellBack(uint256 amount) external nonReentrant inState(CampaignStorage.State.Active) {
         if (amount == 0) revert ZeroAmount();
+        if (amount < MIN_SELLBACK_AMOUNT) revert SellBackAmountTooSmall();
         Layout storage s = _s();
         if (s.openSellBackCount[msg.sender] >= MAX_OPEN_SELLBACK_ORDERS_PER_USER) {
             revert TooManyOpenSellBackOrders();
+        }
+        if (s.openSellBackOrdersTotal >= MAX_OPEN_SELLBACK_ORDERS_TOTAL) {
+            revert TooManyOpenSellBackOrdersTotal();
         }
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
 
@@ -397,8 +425,10 @@ contract SaleClassicModule {
         s.sellBackQueue.push(SellBackOrder({seller: msg.sender, amount: amount}));
         s.pendingSellBack[msg.sender] += amount;
         s.userSellBackIndices[msg.sender].push(queueIndex);
+        s.sellBackQueueTotal += amount;
         unchecked {
             s.openSellBackCount[msg.sender]++;
+            s.openSellBackOrdersTotal++;
         }
         emit SellBackRequested(msg.sender, amount, queueIndex);
     }
@@ -409,12 +439,18 @@ contract SaleClassicModule {
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
 
         uint256 returned;
+        uint256 cancelledOrders;
         uint256[] storage indices = s.userSellBackIndices[msg.sender];
         for (uint256 i; i < indices.length;) {
             uint256 idx = indices[i];
             if (idx >= s.sellBackQueueHead && s.sellBackQueue[idx].amount > 0) {
-                returned += s.sellBackQueue[idx].amount;
+                uint256 amount = s.sellBackQueue[idx].amount;
+                returned += amount;
+                s.sellBackQueueTotal -= amount;
                 s.sellBackQueue[idx].amount = 0;
+                unchecked {
+                    ++cancelledOrders;
+                }
             }
             unchecked {
                 ++i;
@@ -423,6 +459,7 @@ contract SaleClassicModule {
         delete s.userSellBackIndices[msg.sender];
         s.pendingSellBack[msg.sender] = 0;
         s.openSellBackCount[msg.sender] = 0;
+        if (cancelledOrders > 0) s.openSellBackOrdersTotal -= cancelledOrders;
         if (returned > 0) {
             IERC20(cs.campaignToken).safeTransfer(msg.sender, returned);
         }
@@ -538,7 +575,9 @@ contract SaleClassicModule {
         if (!s.tokenConfigs[paymentToken].active) revert TokenNotAccepted();
         (uint256 rawOut, uint256 rawOracle) = _calculateTokensOut(paymentToken, paymentAmount);
         oraclePrice = rawOracle;
+        bool isActive = CampaignStorage.layout().state == uint8(CampaignStorage.State.Active);
         uint256 available = s.currentSupply < s.maxCap ? s.maxCap - s.currentSupply : 0;
+        if (isActive) available += s.sellBackQueueTotal;
         if (rawOut > available) {
             tokensOut = available;
             effectivePayment = _calculatePaymentNeeded(paymentToken, tokensOut, rawOracle);
@@ -613,6 +652,10 @@ contract SaleClassicModule {
         return _s().pendingSellBack[user];
     }
 
+    function fundingEscrow(address token) external view returns (uint256) {
+        return _s().fundingEscrow[token];
+    }
+
     function growMinter() external view returns (address) {
         return _s().growMinter;
     }
@@ -627,15 +670,18 @@ contract SaleClassicModule {
         uint8 oldState = cs.state;
         cs.state = uint8(CampaignStorage.State.Active);
 
-        // Release escrowed funds (held on the Campaign address) to producer.
-        // Funding-fee was already skimmed at buy time; this is the net.
+        // Release only sale escrow to producer; collateral may share the same
+        // ERC20 balance on the Campaign address and must remain reserved.
         address[] memory list = s.acceptedTokenList;
         uint256 len = list.length;
         for (uint256 i; i < len;) {
             address token = list[i];
             if (s.tokenConfigs[token].active) {
-                uint256 bal = IERC20(token).balanceOf(address(this));
-                if (bal > 0) IERC20(token).safeTransfer(cs.producer, bal);
+                uint256 escrow = s.fundingEscrow[token];
+                if (escrow > 0) {
+                    s.fundingEscrow[token] = 0;
+                    IERC20(token).safeTransfer(cs.producer, escrow);
+                }
             }
             unchecked {
                 ++i;
@@ -652,14 +698,7 @@ contract SaleClassicModule {
     }
 
     function _queueTotalTokens() internal view returns (uint256 depth) {
-        Layout storage s = _s();
-        uint256 n = s.sellBackQueue.length;
-        for (uint256 i = s.sellBackQueueHead; i < n;) {
-            depth += s.sellBackQueue[i].amount;
-            unchecked {
-                ++i;
-            }
-        }
+        depth = _s().sellBackQueueTotal;
     }
 
     function _calculateTokensOut(address paymentToken, uint256 paymentAmount)
@@ -723,7 +762,7 @@ contract SaleClassicModule {
         remainingPayment = paymentAmount;
         remainingTokens = totalTokensForPayment;
 
-        while (remainingPayment > 0 && s.sellBackQueueHead < s.sellBackQueue.length) {
+        while (remainingPayment > 0 && remainingTokens > 0 && s.sellBackQueueHead < s.sellBackQueue.length) {
             SellBackOrder storage order = s.sellBackQueue[s.sellBackQueueHead];
             if (order.amount == 0) {
                 s.sellBackQueueHead++;
@@ -733,7 +772,9 @@ contract SaleClassicModule {
             uint256 fillAmount = order.amount;
             if (fillAmount > remainingTokens) fillAmount = remainingTokens;
 
-            uint256 paymentForFill = fillAmount * paymentAmount / totalTokensForPayment;
+            uint256 paymentForFill =
+                fillAmount == remainingTokens ? remainingPayment : fillAmount * paymentAmount / totalTokensForPayment;
+            if (paymentForFill == 0) paymentForFill = 1;
             if (paymentForFill > remainingPayment) paymentForFill = remainingPayment;
 
             IERC20(paymentToken).safeTransfer(order.seller, paymentForFill);
@@ -744,6 +785,7 @@ contract SaleClassicModule {
 
             s.pendingSellBack[order.seller] -= fillAmount;
             order.amount -= fillAmount;
+            s.sellBackQueueTotal -= fillAmount;
             remainingPayment -= paymentForFill;
             remainingTokens -= fillAmount;
 
@@ -754,7 +796,41 @@ contract SaleClassicModule {
                 if (s.openSellBackCount[order.seller] > 0) {
                     s.openSellBackCount[order.seller]--;
                 }
+                if (s.openSellBackOrdersTotal > 0) {
+                    s.openSellBackOrdersTotal--;
+                }
             }
         }
+    }
+
+    function _validateFactoryPaymentPolicy(
+        address token,
+        PricingMode mode,
+        uint256 fixedRate,
+        address oracleFeed,
+        uint8 paymentDecimals
+    ) internal view {
+        CampaignStorage.Layout storage cs = CampaignStorage.layout();
+        (bool allowed, bool fixedPricingAllowed, bool oraclePricingAllowed, address approvedOracle) =
+            IGrowfiCampaignFactoryV4(cs.factory).campaignPaymentTokenPolicy(token);
+        if (!allowed) revert PaymentTokenNotAllowed();
+
+        if (mode == PricingMode.Fixed) {
+            if (!fixedPricingAllowed) revert PricingModeNotAllowed();
+            if (oracleFeed != address(0)) revert InvalidOracleFeed();
+            uint256 expectedRate = _expectedFixedRate(paymentDecimals);
+            if (fixedRate != expectedRate) revert InvalidFixedRate();
+        } else {
+            if (!oraclePricingAllowed) revert PricingModeNotAllowed();
+            if (fixedRate != 0) revert InvalidFixedRate();
+            if (oracleFeed == address(0) || oracleFeed != approvedOracle) revert InvalidOracleFeed();
+        }
+    }
+
+    function _expectedFixedRate(uint8 paymentDecimals) internal view returns (uint256) {
+        uint256 scale = 10 ** (18 - paymentDecimals);
+        uint256 rate = (_s().pricePerToken + scale - 1) / scale;
+        if (rate == 0) revert InvalidFixedRate();
+        return rate;
     }
 }

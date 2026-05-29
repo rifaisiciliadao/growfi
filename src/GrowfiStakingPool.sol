@@ -20,7 +20,7 @@ import {IGrowfiStakingPool} from "./interfaces/IGrowfiStakingPool.sol";
  *
  * Streak rules:
  * - First stake (balance == 0): streakStart = now, multiplier = 1.0×.
- * - Adding to existing stake: streak preserved.
+ * - Adding to existing stake: streak age is blended by raw balance, so new capital starts fresh.
  * - Any withdraw (partial or full): streak RESETS, multiplier back to 1.0×.
  * - Claim: streak preserved. Multiplier may bump up if a tier crossing happened.
  *
@@ -76,6 +76,9 @@ contract GrowfiStakingPool is Initializable, ReentrancyGuard, IGrowfiStakingPool
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
 
+    /// @notice Rewards too small to stream at the current duration. Folded into the next period.
+    uint256 public undistributedRewards;
+
     error NotFactory();
     error NotTreasury();
     error ZeroAddress();
@@ -92,6 +95,7 @@ contract GrowfiStakingPool is Initializable, ReentrancyGuard, IGrowfiStakingPool
     event PendingFlushedToFirstStaker(uint256 amount);
     event MultiplierUpdated(address indexed user, uint256 previousBps, uint256 currentBps, uint256 streakStart);
     event StreakReset(address indexed user, uint256 newStreakStart);
+    event StreakBlended(address indexed user, uint256 previousStreakStart, uint256 newStreakStart, uint256 amountAdded);
 
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
@@ -208,7 +212,8 @@ contract GrowfiStakingPool is Initializable, ReentrancyGuard, IGrowfiStakingPool
         _updateAccumulator();
         _settleAndRefresh(msg.sender);
 
-        bool wasFreshUser = balanceOf[msg.sender] == 0;
+        uint256 oldBalance = balanceOf[msg.sender];
+        bool wasFreshUser = oldBalance == 0;
         bool poolWasEmpty = effectiveTotalStaked == 0;
 
         if (wasFreshUser) {
@@ -216,6 +221,8 @@ contract GrowfiStakingPool is Initializable, ReentrancyGuard, IGrowfiStakingPool
             streakStartAt[msg.sender] = block.timestamp;
             multiplierBps[msg.sender] = BPS;
             emit StreakReset(msg.sender, block.timestamp);
+        } else {
+            _blendStreakOnStake(msg.sender, oldBalance, amount);
         }
 
         balanceOf[msg.sender] += amount;
@@ -329,9 +336,39 @@ contract GrowfiStakingPool is Initializable, ReentrancyGuard, IGrowfiStakingPool
         if (block.timestamp < periodFinish) {
             leftover = (periodFinish - block.timestamp) * rewardRate;
         }
-        rewardRate = (amount + leftover) / rewardsDuration;
+        uint256 total = amount + leftover + undistributedRewards;
+        uint256 newRewardRate = total / rewardsDuration;
+        if (newRewardRate == 0) {
+            undistributedRewards = total;
+            rewardRate = 0;
+            lastUpdateTime = block.timestamp;
+            periodFinish = block.timestamp;
+            emit RewardNotified(amount, 0, periodFinish);
+            return;
+        }
+
+        rewardRate = newRewardRate;
+        undistributedRewards = total - (newRewardRate * rewardsDuration);
         lastUpdateTime = block.timestamp;
         periodFinish = block.timestamp + rewardsDuration;
         emit RewardNotified(amount, rewardRate, periodFinish);
+    }
+
+    function _blendStreakOnStake(address user, uint256 oldBalance, uint256 addedAmount) internal {
+        uint256 previousStart = streakStartAt[user];
+        uint256 elapsed = block.timestamp - previousStart;
+        uint256 newBalance = oldBalance + addedAmount;
+        uint256 blendedElapsed = (elapsed * oldBalance) / newBalance;
+        uint256 newStart = block.timestamp - blendedElapsed;
+        uint256 oldBps = multiplierBps[user];
+        uint256 newBps = _computeMultiplier(newStart);
+
+        streakStartAt[user] = newStart;
+        multiplierBps[user] = newBps;
+
+        emit StreakBlended(user, previousStart, newStart, addedAmount);
+        if (newBps != oldBps) {
+            emit MultiplierUpdated(user, oldBps, newBps, newStart);
+        }
     }
 }

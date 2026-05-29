@@ -47,8 +47,11 @@ contract GrowfiAllocationStressTest is Test {
         usdFeed = new MockOracle(int256(1e8), 8); // $1.00 8-dec
 
         factory = Deployer.deployProtocol(OWNER, OWNER, address(usdc), address(0));
-        vm.prank(OWNER);
+        vm.startPrank(OWNER);
         factory.setMinSeasonDuration(1 hours);
+        factory.setCampaignPaymentTokenPolicy(address(usdt), true, true, false, address(0));
+        factory.setCampaignPaymentTokenPolicy(address(dai), true, true, false, address(0));
+        vm.stopPrank();
 
         // GROW system
         GrowfiToken tImpl = new GrowfiToken();

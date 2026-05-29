@@ -373,6 +373,24 @@
   },
   {
     "type": "function",
+    "name": "releaseGrow",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "removeAcceptedStablecoin",
     "inputs": [
       {
@@ -715,6 +733,25 @@
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "GrowReleased",
+    "inputs": [
+      {
+        "name": "to",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
       }
     ],
     "anonymous": false
@@ -1097,6 +1134,11 @@
   {
     "type": "error",
     "name": "NotTracked",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RedeemAmountTooSmall",
     "inputs": []
   },
   {

@@ -15,6 +15,7 @@ import {GrowfiStakingVault} from "../src/GrowfiStakingVault.sol";
 import {GrowfiHarvestManager} from "../src/GrowfiHarvestManager.sol";
 
 import {MockERC20} from "./helpers/MockERC20.sol";
+import {MockOracle} from "./helpers/MockOracle.sol";
 import {Deployer} from "./helpers/Deployer.sol";
 
 contract SecurityTest is Test {
@@ -36,6 +37,7 @@ contract SecurityTest is Test {
         usdc = new MockERC20("USDC", "USDC", 6);
         weth = new MockERC20("WETH", "WETH", 18);
         factory = Deployer.deployProtocol(owner, feeRecipient, address(usdc), address(0));
+        factory.setCampaignPaymentTokenPolicy(address(weth), true, true, false, address(0));
 
         vm.prank(producer);
         factory.createCampaign(
@@ -127,7 +129,7 @@ contract SecurityTest is Test {
 
     function test_multiTokenBuyback() public {
         vm.prank(producer);
-        campaign.addAcceptedToken(address(weth), SaleClassicModule.PricingMode.Fixed, 0.001e18, address(0));
+        campaign.addAcceptedToken(address(weth), SaleClassicModule.PricingMode.Fixed, 0.144e18, address(0));
 
         vm.prank(alice);
         campaign.buy(address(usdc), 2_880_000_000);
@@ -212,13 +214,16 @@ contract SecurityTest is Test {
 
     function test_cannotAddTokenWithZeroFixedRate() public {
         vm.prank(producer);
-        vm.expectRevert("Zero fixedRate");
+        vm.expectRevert(SaleClassicModule.InvalidFixedRate.selector);
         campaign.addAcceptedToken(address(weth), SaleClassicModule.PricingMode.Fixed, 0, address(0));
     }
 
     function test_cannotAddTokenWithZeroOracleAddress() public {
+        MockOracle wethOracle = new MockOracle(2880e8, 8);
+        factory.setCampaignPaymentTokenPolicy(address(weth), true, true, true, address(wethOracle));
+
         vm.prank(producer);
-        vm.expectRevert(SaleClassicModule.ZeroAddress.selector);
+        vm.expectRevert(SaleClassicModule.InvalidOracleFeed.selector);
         campaign.addAcceptedToken(address(weth), SaleClassicModule.PricingMode.Oracle, 0, address(0));
     }
 

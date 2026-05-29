@@ -393,8 +393,10 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
         IERC20 ct = IERC20(IGrowfiCampaignView(campaign).campaignToken());
         uint256 balBefore = ct.balanceOf(address(this));
 
-        IERC20(paymentToken).forceApprove(campaign, amount);
+        IERC20 pay = IERC20(paymentToken);
+        pay.forceApprove(campaign, amount);
         IGrowfiCampaignView(campaign).buy(paymentToken, amount);
+        pay.forceApprove(campaign, 0);
 
         uint256 received = ct.balanceOf(address(this)) - balBefore;
         if (received == 0) revert AllocationFailed();
@@ -456,8 +458,10 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
             IERC20 ct = IERC20(c.campaignToken());
             uint256 balBefore = ct.balanceOf(address(this));
 
-            IERC20(paymentToken).forceApprove(camp, amount);
+            IERC20 pay = IERC20(paymentToken);
+            pay.forceApprove(camp, amount);
             try c.buy(paymentToken, amount) {
+                pay.forceApprove(camp, 0);
                 uint256 received = ct.balanceOf(address(this)) - balBefore;
                 if (received > 0) {
                     actuallyAllocated += amount;
@@ -466,7 +470,7 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
                 }
             } catch {
                 // Reset approval to 0 to avoid stale allowance after revert
-                IERC20(paymentToken).forceApprove(camp, 0);
+                pay.forceApprove(camp, 0);
                 // Continue to next campaign
             }
         }

@@ -61,6 +61,8 @@ contract E2ETest is Test {
         wethOracle = new MockOracle(WETH_USD_PRICE, 8);
 
         factory = Deployer.deployProtocol(protocolOwner, feeRecipient, address(usdc), address(0));
+        vm.prank(protocolOwner);
+        factory.setCampaignPaymentTokenPolicy(address(weth), true, false, true, address(wethOracle));
 
         vm.prank(producer);
         factory.createCampaign(

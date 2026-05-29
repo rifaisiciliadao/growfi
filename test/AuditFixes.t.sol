@@ -50,6 +50,9 @@ contract AuditFixesTest is Test {
         wbtcOracle = new MockOracle(60_000e8, 8); // $60k
 
         factory = Deployer.deployProtocol(owner, feeRecipient, address(usdc), address(0));
+        factory.setCampaignPaymentTokenPolicy(address(usdc), true, true, true, address(usdcOracle));
+        factory.setCampaignPaymentTokenPolicy(address(weth), true, false, true, address(wethOracle));
+        factory.setCampaignPaymentTokenPolicy(address(wbtc), true, false, true, address(wbtcOracle));
         vm.prank(producer);
         factory.createCampaign(
             GrowfiCampaignFactory.CreateCampaignParams({
@@ -316,17 +319,17 @@ contract AuditFixesTest is Test {
         uint256 cap = 50; // SaleClassicModule.MAX_OPEN_SELLBACK_ORDERS_PER_USER
         for (uint256 i = 0; i < cap; i++) {
             vm.prank(alice);
-            campaign.sellBack(1);
+            campaign.sellBack(1e15);
         }
         vm.prank(alice);
         vm.expectRevert(SaleClassicModule.TooManyOpenSellBackOrders.selector);
-        campaign.sellBack(1);
+        campaign.sellBack(1e15);
 
         // Cancel resets the counter.
         vm.prank(alice);
         campaign.cancelSellBack();
         vm.prank(alice);
-        campaign.sellBack(1); // must succeed now
+        campaign.sellBack(1e15); // must succeed now
     }
 
     // ===================================================================
@@ -405,26 +408,30 @@ contract AuditFixesTest is Test {
     /// @notice After removing a token, a new one can replace it even when the cap has been hit.
     function test_M01_removeAcceptedToken_freesSlot() public {
         MockOracle feed = new MockOracle(1e8, 8);
-        vm.startPrank(producer);
         // Fill to cap with 10 distinct tokens.
         for (uint256 i = 0; i < 10; i++) {
             MockERC20 t = new MockERC20("T", "T", 18);
+            factory.setCampaignPaymentTokenPolicy(address(t), true, false, true, address(feed));
+            vm.prank(producer);
             campaign.addAcceptedToken(address(t), SaleClassicModule.PricingMode.Oracle, 0, address(feed));
         }
         // 11th add must revert.
         MockERC20 over = new MockERC20("Over", "O", 18);
+        factory.setCampaignPaymentTokenPolicy(address(over), true, false, true, address(feed));
+        vm.prank(producer);
         vm.expectRevert(SaleClassicModule.TooManyAcceptedTokens.selector);
         campaign.addAcceptedToken(address(over), SaleClassicModule.PricingMode.Oracle, 0, address(feed));
 
         // Remove the first one, slot must be freed.
         address[] memory accepted = campaign.getAcceptedTokens();
+        vm.prank(producer);
         campaign.removeAcceptedToken(accepted[0]);
         assertEq(campaign.getAcceptedTokens().length, 9, "M-01: slot not freed");
 
         // New add now succeeds.
+        vm.prank(producer);
         campaign.addAcceptedToken(address(over), SaleClassicModule.PricingMode.Oracle, 0, address(feed));
         assertEq(campaign.getAcceptedTokens().length, 10);
-        vm.stopPrank();
     }
 
     /// @notice Caller must declare themselves as producer.
@@ -501,6 +508,7 @@ contract AuditFixesTest is Test {
         IGrowfiCampaignFull camp = IGrowfiCampaignFull(payable(c));
         MockERC20 token = new MockERC20("T", "T", 6);
         MockOracle feed = new MockOracle(1e8, 8);
+        f.setCampaignPaymentTokenPolicy(address(token), true, false, true, address(feed));
         vm.prank(newProducer);
         camp.addAcceptedToken(address(token), SaleClassicModule.PricingMode.Oracle, 0, address(feed));
         token.mint(alice, 10_000e6);

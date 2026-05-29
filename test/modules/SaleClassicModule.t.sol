@@ -55,6 +55,7 @@ contract SaleClassicModuleTest is Test {
         vm.startPrank(protocolOwner);
         registry.setModuleKindSelectors(SALE_KIND, SaleClassicHelper.selectors());
         registry.approveModuleImpl(SALE_KIND, address(saleImpl), true);
+        registry.setCampaignPaymentTokenPolicy(address(usdc), true, true, false, address(0));
         vm.stopPrank();
 
         // ---- predict campaign address so we can pre-deploy CT pointing to it ----

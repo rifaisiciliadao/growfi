@@ -54,6 +54,7 @@ interface IGrowfiCampaignFull {
     function purchases(address user, address token) external view returns (uint256);
     function purchasedTokens(address user, address token) external view returns (uint256);
     function pendingSellBack(address user) external view returns (uint256);
+    function fundingEscrow(address token) external view returns (uint256);
     function growMinter() external view returns (address);
     function getAcceptedTokens() external view returns (address[] memory);
     function getSellBackQueueDepth() external view returns (uint256);

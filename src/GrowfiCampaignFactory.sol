@@ -61,6 +61,13 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         uint256 createdAt;
     }
 
+    struct CampaignPaymentTokenPolicy {
+        bool allowed;
+        bool fixedPricingAllowed;
+        bool oraclePricingAllowed;
+        address oracleFeed;
+    }
+
     address public protocolFeeRecipient;
     address public usdc;
     address public sequencerUptimeFeed;
@@ -82,6 +89,7 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
     mapping(address => bool) public isCampaign;
     mapping(bytes32 => bool) public nameTaken;
     mapping(address => bool) public hiddenCampaigns;
+    mapping(address => CampaignPaymentTokenPolicy) private _campaignPaymentTokenPolicies;
 
     // ------------------------------------------------------------------
     // Events / errors
@@ -120,6 +128,9 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         address growfiFeeSplitter
     );
     event CampaignHiddenSet(address indexed campaign, bool hidden);
+    event CampaignPaymentTokenPolicySet(
+        address indexed token, bool allowed, bool fixedPricingAllowed, bool oraclePricingAllowed, address oracleFeed
+    );
 
     error ImplsNotSet();
     error NameTakenError();
@@ -127,6 +138,7 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
     error MinSeasonTooShort();
     error ProducerMismatch();
     error UnknownCampaign();
+    error InvalidPaymentTokenPolicy();
 
     // ------------------------------------------------------------------
     // Initializer
@@ -157,6 +169,13 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         harvestManagerImpl = impls[4];
         minSeasonDuration = 30 days;
         proxyAdminOwner = owner;
+
+        if (usdc_ != address(0)) {
+            _campaignPaymentTokenPolicies[usdc_] = CampaignPaymentTokenPolicy({
+                allowed: true, fixedPricingAllowed: true, oraclePricingAllowed: false, oracleFeed: address(0)
+            });
+            emit CampaignPaymentTokenPolicySet(usdc_, true, true, false, address(0));
+        }
     }
 
     // ------------------------------------------------------------------
@@ -362,6 +381,47 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         if (!isCampaign[campaign]) revert UnknownCampaign();
         hiddenCampaigns[campaign] = hidden;
         emit CampaignHiddenSet(campaign, hidden);
+    }
+
+    function replaceCampaignModule(
+        address campaign,
+        bytes32 moduleType,
+        bytes32 kind,
+        address impl,
+        string calldata metadataURI
+    ) external onlyOwner {
+        if (!isCampaign[campaign]) revert UnknownCampaign();
+        GrowfiCampaign(payable(campaign)).replaceModuleAsFactory(moduleType, kind, impl, metadataURI);
+    }
+
+    function setCampaignPaymentTokenPolicy(
+        address token,
+        bool allowed,
+        bool fixedPricingAllowed,
+        bool oraclePricingAllowed,
+        address oracleFeed
+    ) external onlyOwner {
+        if (token == address(0)) revert ZeroAddress();
+        if (allowed && !fixedPricingAllowed && !oraclePricingAllowed) revert InvalidPaymentTokenPolicy();
+        if (oraclePricingAllowed && oracleFeed == address(0)) revert ZeroAddress();
+        if (!oraclePricingAllowed && oracleFeed != address(0)) revert InvalidPaymentTokenPolicy();
+
+        _campaignPaymentTokenPolicies[token] = CampaignPaymentTokenPolicy({
+            allowed: allowed,
+            fixedPricingAllowed: fixedPricingAllowed,
+            oraclePricingAllowed: oraclePricingAllowed,
+            oracleFeed: oracleFeed
+        });
+        emit CampaignPaymentTokenPolicySet(token, allowed, fixedPricingAllowed, oraclePricingAllowed, oracleFeed);
+    }
+
+    function campaignPaymentTokenPolicy(address token)
+        external
+        view
+        returns (bool allowed, bool fixedPricingAllowed, bool oraclePricingAllowed, address oracleFeed)
+    {
+        CampaignPaymentTokenPolicy memory policy = _campaignPaymentTokenPolicies[token];
+        return (policy.allowed, policy.fixedPricingAllowed, policy.oraclePricingAllowed, policy.oracleFeed);
     }
 
     // ------------------------------------------------------------------

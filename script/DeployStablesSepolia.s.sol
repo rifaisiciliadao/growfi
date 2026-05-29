@@ -35,6 +35,8 @@ contract DeployStablesSepolia is Script {
         // Add to Treasury allowlist via factory forwarder. Scale = 10^(18-decimals).
         factory.addGrowfiTreasuryStablecoin(address(usdt), 1e12, address(usdtFeed), 24 hours, 9_500, 10_500);
         factory.addGrowfiTreasuryStablecoin(address(dai), 1, address(daiFeed), 24 hours, 9_500, 10_500);
+        factory.setCampaignPaymentTokenPolicy(address(usdt), true, true, false, address(0));
+        factory.setCampaignPaymentTokenPolicy(address(dai), true, true, false, address(0));
 
         vm.stopBroadcast();
 

@@ -33,7 +33,7 @@ contract CollateralHardeningTest is Test {
     uint256 constant MAX_CAP = 100_000e18;
     uint256 constant SEASON_DURATION = 365 days;
     uint256 constant USDC_RATE_FOT = 1e18;
-    uint256 constant USDC_RATE_RGN = 1e18;
+    uint256 constant USDC_RATE_RGN = PRICE_PER_TOKEN;
     uint256 constant COVERAGE = 3;
 
     function _bootstrap(address tokenAddr)
@@ -114,7 +114,7 @@ contract CollateralHardeningTest is Test {
         rog.mint(alice, 200_000e18);
         vm.startPrank(alice);
         rog.approve(address(campaign), type(uint256).max);
-        campaign.buy(address(rog), 60_000e18);
+        campaign.buy(address(rog), 60_000 * USDC_RATE_RGN);
         vm.stopPrank();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
 
@@ -143,7 +143,7 @@ contract CollateralHardeningTest is Test {
         rog.mint(alice, 1_000_000e18);
         vm.startPrank(alice);
         rog.approve(address(campaign), type(uint256).max);
-        campaign.buy(address(rog), 60_000e18);
+        campaign.buy(address(rog), 60_000 * USDC_RATE_RGN);
         ct.approve(address(campaign), type(uint256).max);
         vm.stopPrank();
 

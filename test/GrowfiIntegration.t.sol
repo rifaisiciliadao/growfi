@@ -66,8 +66,11 @@ contract GrowfiIntegrationTest is Test {
             address(0)
         );
         // Relax season floor so tests don't have to wait 30 days.
-        vm.prank(OWNER);
+        vm.startPrank(OWNER);
         factory.setMinSeasonDuration(1 hours);
+        factory.setCampaignPaymentTokenPolicy(address(usdt), true, true, false, address(0));
+        factory.setCampaignPaymentTokenPolicy(address(dai), true, true, false, address(0));
+        vm.stopPrank();
 
         // 2. Deploy GrowfiToken (factory_=factory).
         GrowfiToken tImpl = new GrowfiToken();

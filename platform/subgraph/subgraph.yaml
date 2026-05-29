@@ -35,6 +35,8 @@ dataSources:
           handler: handleGrowfiContractsSet
         - event: CampaignHiddenSet(indexed address,bool)
           handler: handleCampaignHiddenSet
+        - event: CampaignPaymentTokenPolicySet(indexed address,bool,bool,bool,address)
+          handler: handleCampaignPaymentTokenPolicySet
 
   - kind: ethereum/contract
     name: CampaignRegistry

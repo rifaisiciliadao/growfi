@@ -169,6 +169,18 @@ type AcceptedToken @entity(immutable: false) {
   addedAt: BigInt!
 }
 
+type CampaignPaymentTokenPolicy @entity(immutable: false) {
+  id: Bytes!                              # token address
+  token: Bytes!
+  allowed: Boolean!
+  fixedPricingAllowed: Boolean!
+  oraclePricingAllowed: Boolean!
+  oracleFeed: Bytes!
+  updatedAt: BigInt!
+  updatedAtBlock: BigInt!
+  updatedAtTx: Bytes!
+}
+
 type Purchase @entity(immutable: true) {
   id: Bytes!                              # txHash-logIndex
   campaign: Campaign!

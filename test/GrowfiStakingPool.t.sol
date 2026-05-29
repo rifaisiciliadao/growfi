@@ -80,17 +80,16 @@ contract GrowfiStakingPoolTest is Test {
         assertEq(pool.effectiveTotalStaked(), 100e18);
     }
 
-    function test_stake_addingPreservesStreak() public {
+    function test_stake_addingBlendsStreakAge() public {
         _stake(ALICE, 100e18);
-        uint256 streakStart0 = pool.streakStartAt(ALICE);
 
         skip(60 days);
-        _stake(ALICE, 50e18); // adds; streak preserved
+        _stake(ALICE, 50e18);
 
         assertEq(pool.balanceOf(ALICE), 150e18);
-        assertEq(pool.streakStartAt(ALICE), streakStart0); // unchanged
-        // After 60 days, multiplier should have refreshed to BPS + 60/365 × BPS ≈ 11643
-        uint256 expectedBps = 10_000 + (uint256(60 days) * 10_000) / 365 days;
+        uint256 expectedBlendedElapsed = (uint256(60 days) * 100e18) / 150e18;
+        assertEq(pool.streakStartAt(ALICE), block.timestamp - expectedBlendedElapsed);
+        uint256 expectedBps = 10_000 + (expectedBlendedElapsed * 10_000) / 365 days;
         assertEq(pool.multiplierBps(ALICE), expectedBps);
     }
 

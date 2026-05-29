@@ -4,13 +4,20 @@ import {
   ProtocolFeeRecipientSet as ProtocolFeeRecipientSetEvent,
   GrowfiContractsSet as GrowfiContractsSetEvent,
   CampaignHiddenSet as CampaignHiddenSetEvent,
+  CampaignPaymentTokenPolicySet as CampaignPaymentTokenPolicySetEvent,
 } from "../generated/CampaignFactory/CampaignFactory";
 import {
   Campaign as CampaignTemplate,
   StakingVault as StakingVaultTemplate,
   HarvestManager as HarvestManagerTemplate,
 } from "../generated/templates";
-import { Campaign, GlobalStats, ContractIndex, Protocol } from "../generated/schema";
+import {
+  Campaign,
+  CampaignPaymentTokenPolicy,
+  GlobalStats,
+  ContractIndex,
+  Protocol,
+} from "../generated/schema";
 
 const GLOBAL_ID = Bytes.fromUTF8("global");
 const PROTOCOL_ID = Bytes.fromUTF8("protocol");
@@ -131,4 +138,23 @@ export function handleCampaignHiddenSet(event: CampaignHiddenSetEvent): void {
   }
   campaign.hidden = event.params.hidden;
   campaign.save();
+}
+
+export function handleCampaignPaymentTokenPolicySet(
+  event: CampaignPaymentTokenPolicySetEvent,
+): void {
+  let policy = CampaignPaymentTokenPolicy.load(event.params.token);
+  if (policy == null) {
+    policy = new CampaignPaymentTokenPolicy(event.params.token);
+    policy.token = event.params.token;
+  }
+
+  policy.allowed = event.params.allowed;
+  policy.fixedPricingAllowed = event.params.fixedPricingAllowed;
+  policy.oraclePricingAllowed = event.params.oraclePricingAllowed;
+  policy.oracleFeed = event.params.oracleFeed;
+  policy.updatedAt = event.block.timestamp;
+  policy.updatedAtBlock = event.block.number;
+  policy.updatedAtTx = event.transaction.hash;
+  policy.save();
 }

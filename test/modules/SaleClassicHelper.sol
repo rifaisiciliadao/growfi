@@ -10,7 +10,7 @@ import {SaleClassicModule} from "../../src/modules/SaleClassicModule.sol";
 ///         to the host fallback which then reverts with UnknownSelector.
 library SaleClassicHelper {
     function selectors() internal pure returns (bytes4[] memory s) {
-        s = new bytes4[](28);
+        s = new bytes4[](29);
         uint256 i;
         // Init / admin
         s[i++] = SaleClassicModule.initializeSaleClassic.selector;
@@ -43,6 +43,7 @@ library SaleClassicHelper {
         s[i++] = SaleClassicModule.purchases.selector;
         s[i++] = SaleClassicModule.purchasedTokens.selector;
         s[i++] = SaleClassicModule.pendingSellBack.selector;
+        s[i++] = SaleClassicModule.fundingEscrow.selector;
         s[i++] = SaleClassicModule.growMinter.selector;
     }
 }

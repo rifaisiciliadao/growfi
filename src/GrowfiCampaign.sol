@@ -217,6 +217,7 @@ contract GrowfiCampaign is Initializable {
             bytes4 sel = selectors[i];
             if (s.selectorToType[sel] != bytes32(0)) revert SelectorAlreadyTaken(sel);
             s.selectorToType[sel] = moduleType;
+            slot.selectors.push(sel);
             emit ModuleSelectorRegistered(sel, moduleType);
             unchecked {
                 ++i;
@@ -237,13 +238,30 @@ contract GrowfiCampaign is Initializable {
     ///         router map so the same slot can be re-attached later
     ///         (possibly with a different impl).
     function detachModule(bytes32 moduleType) external onlyProducer {
+        _detachModule(moduleType);
+    }
+
+    function replaceModuleAsFactory(bytes32 moduleType, bytes32 kind, address impl, string calldata metadataURI)
+        external
+        onlyFactory
+    {
+        _detachModule(moduleType);
+        _attachModule(moduleType, kind, impl, metadataURI);
+    }
+
+    function _detachModule(bytes32 moduleType) internal {
         CampaignStorage.Layout storage s = CampaignStorage.layout();
         CampaignStorage.ModuleSlot storage slot = s.moduleSlot[moduleType];
         address previous = slot.impl;
         if (previous == address(0)) revert TypeNotAttached();
 
-        bytes4[] memory selectors = IGrowfiCampaignFactoryV4(s.factory).moduleKindSelectors(slot.kind);
-        for (uint256 i; i < selectors.length;) {
+        bytes4[] memory selectors = slot.selectors;
+        if (selectors.length == 0) {
+            selectors = IGrowfiCampaignFactoryV4(s.factory).moduleKindSelectors(slot.kind);
+        }
+
+        uint256 selectorCount = selectors.length;
+        for (uint256 i; i < selectorCount;) {
             bytes4 sel = selectors[i];
             if (s.selectorToType[sel] == moduleType) {
                 delete s.selectorToType[sel];

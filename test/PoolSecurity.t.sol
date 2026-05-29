@@ -103,11 +103,15 @@ contract PoolSecurityTest is Test {
     }
 
     function _whitelistReentrantToken(ReentrantToken tok, uint256 fixedRate) internal {
+        vm.prank(protocolOwner);
+        factory.setCampaignPaymentTokenPolicy(address(tok), true, true, false, address(0));
         vm.prank(producer);
         campaign.addAcceptedToken(address(tok), SaleClassicModule.PricingMode.Fixed, fixedRate, address(0));
     }
 
     function _whitelistFotToken(FeeOnTransferToken tok, uint256 fixedRate) internal {
+        vm.prank(protocolOwner);
+        factory.setCampaignPaymentTokenPolicy(address(tok), true, true, false, address(0));
         vm.prank(producer);
         campaign.addAcceptedToken(address(tok), SaleClassicModule.PricingMode.Fixed, fixedRate, address(0));
     }
@@ -125,7 +129,7 @@ contract PoolSecurityTest is Test {
 
     function test_reentrancy_buy_blocksSelfReentry() public {
         ReentrantToken rog = new ReentrantToken("Rogue", "ROG", 18);
-        _whitelistReentrantToken(rog, 1e18);
+        _whitelistReentrantToken(rog, PRICE_PER_TOKEN);
         rog.mint(attacker, 1000e18);
         vm.prank(attacker);
         rog.approve(address(campaign), type(uint256).max);
@@ -140,7 +144,7 @@ contract PoolSecurityTest is Test {
 
     function test_reentrancy_buyback_blocksSelfReentry() public {
         ReentrantToken rog = new ReentrantToken("Rogue", "ROG", 18);
-        _whitelistReentrantToken(rog, 1e18);
+        _whitelistReentrantToken(rog, PRICE_PER_TOKEN);
         rog.mint(attacker, 1000e18);
         vm.prank(attacker);
         rog.approve(address(campaign), type(uint256).max);
@@ -167,7 +171,7 @@ contract PoolSecurityTest is Test {
         campaign.sellBack(1000e18);
 
         ReentrantToken rog = new ReentrantToken("Rogue", "ROG", 18);
-        _whitelistReentrantToken(rog, 1e18);
+        _whitelistReentrantToken(rog, PRICE_PER_TOKEN);
         rog.mint(attacker, 1000e18);
         vm.prank(attacker);
         rog.approve(address(campaign), type(uint256).max);
@@ -235,6 +239,9 @@ contract PoolSecurityTest is Test {
         GrowfiStakingVault vault = GrowfiStakingVault(sv2);
         GrowfiHarvestManager hm = GrowfiHarvestManager(hm2);
 
+        vm.prank(protocolOwner);
+        rogueFactory.setCampaignPaymentTokenPolicy(address(rog), true, true, false, address(0));
+
         vm.prank(producer);
         rc.addAcceptedToken(address(rog), SaleClassicModule.PricingMode.Fixed, USDC_FIXED_RATE, address(0));
 
@@ -293,7 +300,7 @@ contract PoolSecurityTest is Test {
         campaign.sellBack(500e18);
 
         ReentrantToken rog = new ReentrantToken("Rogue", "ROG", 18);
-        _whitelistReentrantToken(rog, 1e18);
+        _whitelistReentrantToken(rog, PRICE_PER_TOKEN);
         rog.mint(attacker, 1000e18);
         vm.prank(attacker);
         rog.approve(address(campaign), type(uint256).max);
@@ -310,7 +317,7 @@ contract PoolSecurityTest is Test {
         _activateViaAlice();
 
         ReentrantToken rog = new ReentrantToken("Rogue", "ROG", 18);
-        _whitelistReentrantToken(rog, 1e18);
+        _whitelistReentrantToken(rog, PRICE_PER_TOKEN);
         rog.mint(attacker, 1000e18);
         vm.prank(attacker);
         rog.approve(address(campaign), type(uint256).max);
@@ -333,7 +340,7 @@ contract PoolSecurityTest is Test {
         campaign.startSeason();
 
         ReentrantToken rog = new ReentrantToken("Rogue", "ROG", 18);
-        _whitelistReentrantToken(rog, 1e18);
+        _whitelistReentrantToken(rog, PRICE_PER_TOKEN);
         rog.mint(attacker, 100e18);
         vm.prank(attacker);
         rog.approve(address(campaign), type(uint256).max);
@@ -349,7 +356,7 @@ contract PoolSecurityTest is Test {
         assertEq(stakingVault.getPositions(attacker).length, 0);
         assertEq(stakingVault.getPositions(address(rog)).length, 0);
 
-        assertEq(campaignToken.balanceOf(attacker), 10e18);
+        assertEq(campaignToken.balanceOf(attacker), 10e18 * 1e18 / PRICE_PER_TOKEN);
         assertEq(stakingVault.totalStaked(), 0);
     }
 
@@ -359,7 +366,7 @@ contract PoolSecurityTest is Test {
 
     function test_feeOnTransfer_buy_revertsBeforeAccountingDrift() public {
         FeeOnTransferToken fot = new FeeOnTransferToken("Fee Token", "FEE", 18, 100);
-        _whitelistFotToken(fot, 1e18);
+        _whitelistFotToken(fot, PRICE_PER_TOKEN);
         fot.mint(alice, 1000e18);
         vm.prank(alice);
         fot.approve(address(campaign), type(uint256).max);
@@ -374,7 +381,7 @@ contract PoolSecurityTest is Test {
 
     function test_feeOnTransfer_cannotActivateOnDeclaredAmount() public {
         FeeOnTransferToken fot = new FeeOnTransferToken("Fee Token", "FEE", 18, 100);
-        _whitelistFotToken(fot, 1e18);
+        _whitelistFotToken(fot, PRICE_PER_TOKEN);
         fot.mint(alice, 100_000e18);
         vm.prank(alice);
         fot.approve(address(campaign), type(uint256).max);

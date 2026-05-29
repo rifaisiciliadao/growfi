@@ -14,4 +14,11 @@ interface IGrowfiCampaignFactoryV4 {
     ///         `kind` claims. The host registers these in its
     ///         `selectorToType` map at attach time.
     function moduleKindSelectors(bytes32 kind) external view returns (bytes4[] memory);
+
+    /// @notice Factory-owned policy for payment tokens that campaigns may
+    ///         accept in the sale module.
+    function campaignPaymentTokenPolicy(address token)
+        external
+        view
+        returns (bool allowed, bool fixedPricingAllowed, bool oraclePricingAllowed, address oracleFeed);
 }

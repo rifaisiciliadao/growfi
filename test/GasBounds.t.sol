@@ -25,6 +25,8 @@ contract GasBoundsTest is Test {
     address protocolOwner = makeAddr("protocolOwner");
     address feeRecipient = makeAddr("feeRecipient");
     address producer = makeAddr("producer");
+    uint256 constant PRICE_PER_TOKEN = 0.144e18;
+    uint256 constant USDC_FIXED_RATE = 144_000;
 
     function setUp() public {
         usdc = new MockERC20("USDC", "USDC", 6);
@@ -39,7 +41,7 @@ contract GasBoundsTest is Test {
                 yieldTokenSymbol: "oY",
                 minProductClaim: 5e18,
                 sale: SaleClassicModule.InitParams({
-                    pricePerToken: 0.144e18,
+                    pricePerToken: PRICE_PER_TOKEN,
                     minCap: 10_000e18,
                     maxCap: 100_000e18,
                     fundingDeadline: block.timestamp + 90 days,
@@ -60,45 +62,52 @@ contract GasBoundsTest is Test {
         campaign = IGrowfiCampaignFull(payable(c));
     }
 
+    function _allowFixed(address token) internal {
+        vm.prank(protocolOwner);
+        factory.setCampaignPaymentTokenPolicy(token, true, true, false, address(0));
+    }
+
     /// @dev The producer can add up to MAX_ACCEPTED_TOKENS (10) payment tokens.
     function test_addUpToCap() public {
-        vm.startPrank(producer);
         for (uint256 i = 0; i < MAX_ACCEPTED_TOKENS; i++) {
             MockERC20 t = new MockERC20("T", "T", 18);
-            campaign.addAcceptedToken(address(t), SaleClassicModule.PricingMode.Fixed, 1e18, address(0));
+            _allowFixed(address(t));
+            vm.prank(producer);
+            campaign.addAcceptedToken(address(t), SaleClassicModule.PricingMode.Fixed, PRICE_PER_TOKEN, address(0));
         }
-        vm.stopPrank();
         assertEq(campaign.getAcceptedTokens().length, MAX_ACCEPTED_TOKENS);
     }
 
     /// @dev Adding an 11th token must revert with TooManyAcceptedTokens.
     function test_cannotExceedCap() public {
-        vm.startPrank(producer);
         for (uint256 i = 0; i < MAX_ACCEPTED_TOKENS; i++) {
             MockERC20 t = new MockERC20("T", "T", 18);
-            campaign.addAcceptedToken(address(t), SaleClassicModule.PricingMode.Fixed, 1e18, address(0));
+            _allowFixed(address(t));
+            vm.prank(producer);
+            campaign.addAcceptedToken(address(t), SaleClassicModule.PricingMode.Fixed, PRICE_PER_TOKEN, address(0));
         }
         MockERC20 extra = new MockERC20("X", "X", 18);
+        vm.prank(producer);
         vm.expectRevert(SaleClassicModule.TooManyAcceptedTokens.selector);
-        campaign.addAcceptedToken(address(extra), SaleClassicModule.PricingMode.Fixed, 1e18, address(0));
-        vm.stopPrank();
+        campaign.addAcceptedToken(address(extra), SaleClassicModule.PricingMode.Fixed, PRICE_PER_TOKEN, address(0));
     }
 
     /// @dev Activation with MAX_ACCEPTED_TOKENS entries must still fit in a sane gas budget.
     function test_activationGasBoundedAtMaxTokens() public {
         // Register the campaign's own USDC as token 1
-        vm.startPrank(producer);
-        campaign.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 144_000, address(0));
+        vm.prank(producer);
+        campaign.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, USDC_FIXED_RATE, address(0));
         // Fill remaining slots with inert fixed-rate tokens (no balance → no transfer)
         for (uint256 i = 1; i < MAX_ACCEPTED_TOKENS; i++) {
             MockERC20 t = new MockERC20("T", "T", 18);
-            campaign.addAcceptedToken(address(t), SaleClassicModule.PricingMode.Fixed, 1e18, address(0));
+            _allowFixed(address(t));
+            vm.prank(producer);
+            campaign.addAcceptedToken(address(t), SaleClassicModule.PricingMode.Fixed, PRICE_PER_TOKEN, address(0));
         }
-        vm.stopPrank();
 
         // Alice buys enough USDC to trigger auto-activation
         address alice = makeAddr("alice");
-        uint256 payment = 10_000 * 144_000;
+        uint256 payment = 10_000 * USDC_FIXED_RATE;
         usdc.mint(alice, payment);
         vm.startPrank(alice);
         usdc.approve(address(campaign), type(uint256).max);
