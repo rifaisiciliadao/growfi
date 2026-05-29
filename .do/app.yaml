@@ -103,8 +103,8 @@ services:
       #   ADMIN_API_KEY                (SECRET, RUN_TIME)  — shared with the local admin dashboard
       #   RESEND_API_KEY               (SECRET, RUN_TIME)
       #   NOTIFICATIONS_UNSUB_SECRET   (SECRET, RUN_TIME)  — HMAC key for digest unsubscribe links; rotate to invalidate all live links
-      #   BASE_SEPOLIA_RPC             (optional override for the snapshot multicall)
-      #   SUBGRAPH_URL                 (optional; defaults to growfi/prod in code)
+      #   SEPOLIA_RPC_URL              (optional override for the snapshot multicall)
+      #   SUBGRAPH_URL                 (optional; defaults to ugraph latest in code)
       #   NOTIFIER_DISABLED            (optional; set to "1" to stop the digest worker without a redeploy)
 
   # -----------------------------------------------------------------------
@@ -129,22 +129,49 @@ services:
       failure_threshold: 3
     envs:
       - key: NEXT_PUBLIC_CHAIN_ID
-        value: "84532"
+        value: "11155111"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_FACTORY_ADDRESS
-        value: "0xD5C6705c291743BBd9b30B08680360f96801579D"
+        value: "0xa4DEd8Ab35e89bCAF1f7DFeb7aB2c1ED533b3f05"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_USDC_ADDRESS
-        value: "0x4E53CF93D2927D225668EE570Dc3fA8b55917130"
+        value: "0x32C344Dc9713d904442d0E5B0d2b7994E52B0d4E"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_USDT_ADDRESS
+        value: "0x7c47aa550061117f8440128c6b829da5bf88de06"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_DAI_ADDRESS
+        value: "0x3540ea8a6fa084a31321e790b89a6fbe677ae00e"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_REGISTRY_ADDRESS
-        value: "0xbe1ce60CE358a70603a494dcb271A505D3C1f988"
+        value: "0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS
-        value: "0x9b41c56Cddb0d9DC6c97d8d4c5246e6d4caC329e"
+        value: "0x8DDc90F40Bf8847672EA5B256d93607F42Fd540E"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_REPAYMENT_IMPL
+        value: "0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_ECOMMERCE_IMPL
+        value: "0x4921f38F3D0de21057Ef202629D501E8b99d8616"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_GROW_TOKEN
+        value: "0x9bB4f9C41ed922282C181f2f3e01d8384c960b44"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_GROW_TREASURY
+        value: "0xB71D13F80ceAed17A179B4e0D9eb1e8410DeaDDd"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_GROW_MINTER
+        value: "0xD99c1985B257a4A55bA8D0836Fab536389cdd24C"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_GROW_FEE_SPLITTER
+        value: "0xF1a8527E00916588f4Bb137cE450E8459b6BD436"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_GROW_STAKING_POOL
+        value: "0xD1D8491370A8CF597bEcFc49D3253BfFAF34CDc8"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_SUBGRAPH_URL
-        value: https://api.goldsky.com/api/public/project_cmo1ydnmbj6tv01uwahhbeenr/subgraphs/growfi/prod/gn
+        value: https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
         scope: BUILD_TIME
       # Same-origin — the /api prefix is routed to the backend service.
       - key: NEXT_PUBLIC_BACKEND_URL

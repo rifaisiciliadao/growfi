@@ -1032,7 +1032,7 @@ function LifecycleSection({
 
   // Live on-chain read of the current season struct: the subgraph lags by a
   // few seconds after endSeason, so relying on `seasons[...]` from props would
-  // keep the "End Season" button visible until Goldsky indexes the event.
+  // keep the "End Season" button visible until the subgraph indexes the event.
   // The contract read is instant; we refetch it after every lifecycle tx.
   //
   // Season struct layout (StakingVault.sol):

@@ -16,7 +16,7 @@ shape but with separate secrets and a custom domain.
 - **Auto-deploy on `main`** pushes (configured in `.do/app.yaml`).
 
 Outside the scope of this deploy (run elsewhere):
-- Subgraph — lives on Goldsky (`growfi/prod` tag), see `CONTRACTS.md`.
+- Subgraph — served through `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`, see `CONTRACTS.md`.
 - Contracts — see `CONTRACTS.md` (current v4 deploy is on Ethereum Sepolia; legacy v3.3 still live on Base Sepolia).
 - Media bucket — `growfi-media` on DO Spaces, created out-of-band.
 
@@ -130,7 +130,7 @@ Then push to `main` — App Platform rebuilds with the new ARG.
 
 - 2 × `basic-xxs` instances = ~\$10/month
 - DO Spaces: \$5/month (250 GB bucket)
-- Goldsky subgraph: free tier
+- ugraph subgraph gateway: no DigitalOcean line item
 - Total: **~\$15/month** for the test environment
 
 ## Troubleshooting
@@ -164,4 +164,4 @@ form. Run `cast to-check-sum-address 0x...` locally and update both
 
 - `CONTRACTS.md` — chain addresses, subgraph endpoint.
 - `AGENTS.md` → Platform section — architecture overview.
-- `platform/subgraph/DEPLOY.md` — Goldsky subgraph redeploy flow.
+- `platform/subgraph/DEPLOY.md` — subgraph build and live endpoint notes.

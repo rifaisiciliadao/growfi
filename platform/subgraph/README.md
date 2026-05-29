@@ -1,59 +1,65 @@
 # GrowFi Subgraph
 
-Indicizza il protocollo GrowFi su **Arbitrum Sepolia** (testnet). Hosted su **Goldsky**, team **turinglabs**.
+Indexes the GrowFi protocol on Ethereum Sepolia.
 
-## Architettura
+Canonical live endpoint:
 
-Il subgraph parte da `CampaignFactory` e spawna dinamicamente template per ogni campagna deployata:
-
-```
-CampaignFactory (data source statica)
-  └─ CampaignCreated event
-     ├─ Campaign template       → listens on dynamic Campaign contract
-     ├─ StakingVault template   → listens on dynamic StakingVault
-     └─ HarvestManager template → listens on dynamic HarvestManager
+```text
+https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
 ```
 
-Un `ContractIndex` risolve `vault address → Campaign` e `harvestManager address → Campaign` in O(1) senza contract call costose.
+Direct legacy endpoints are no longer live and must not be used in app
+configuration.
+
+## Architecture
+
+The subgraph starts from `CampaignFactory` and spawns dynamic templates for each
+deployed campaign:
+
+```text
+CampaignFactory static data source
+  -> CampaignCreated event
+     -> Campaign template
+     -> StakingVault template
+     -> HarvestManager template
+```
+
+`ContractIndex` resolves `vault address -> Campaign` and
+`harvestManager address -> Campaign` without expensive contract calls.
 
 ## Entities
 
-- **Campaign** — stato campagna aggregato (supply, state, yield rate, totalStaked)
-- **AcceptedToken** — token pagamento configurati sulla campagna
-- **Purchase** — ogni acquisto di $CAMPAIGN token
-- **SellBackOrder** — code di sell-back
-- **Position** — posizioni staking individuali
-- **Season** — stagioni + dati harvest report
-- **Claim** — riscatti (prodotto o USDC) per stagione/user
-- **YieldRateSnapshot** — serie storica del yield rate
-- **User** — aggregati per indirizzo utente
-- **GlobalStats** — aggregati di protocollo
-- **ContractIndex** — lookup inverso vault/harvest → campaign
+- `Campaign` — aggregate campaign state.
+- `AcceptedToken` — payment tokens configured per campaign.
+- `Purchase` — campaign token purchases.
+- `SellBackOrder` — sell-back queue rows.
+- `Position` — individual staking positions.
+- `Season` — season and harvest-report data.
+- `Claim` — product or USDC redemptions by season/user.
+- `YieldRateSnapshot` — yield-rate history.
+- `User` — per-address aggregates.
+- `GlobalStats` — protocol-wide aggregates.
+- `ContractIndex` — reverse lookup for vault/harvest manager ownership.
+- `Module`, `RepaymentPool`, `Repayment`, `EcommerceStore`, `EcommerceSku`,
+  `EcommerceOrder` — v4 module surfaces.
 
-## Script
+## Scripts
 
 | Command | Description |
 |---------|-------------|
-| `npm run codegen` | Generate types from ABI files + schema |
+| `npm run codegen` | Generate types from ABI files and schema |
 | `npm run build` | Compile AssemblyScript handlers to WASM |
-| `npm run prepare` | codegen + build |
-| `npm run goldsky:login` | Login CLI Goldsky |
-| `npm run deploy:goldsky` | Deploy `growfi/<version>` |
-| `npm run deploy:goldsky:prod` | Deploy + tag as `prod`; do not use unless explicitly requested |
-| `npm run deploy:goldsky:promote` | Tag the current version as `prod`; do not use unless explicitly requested |
-| `npm run goldsky:logs` | Live log indexer |
-| `npm run goldsky:list` | List team subgraphs |
+| `npm run prepare` | Run codegen and build |
 
-## Deploy
+Legacy provider CLI scripts were removed from `package.json` to avoid accidentally
+deploying to a removed endpoint.
 
-Vedi [DEPLOY.md](./DEPLOY.md) per le istruzioni passo-passo.
+## Build
 
-**TL;DR:**
 ```bash
-# 1. Aggiorna subgraph.yaml con factory address + startBlock
-# 2. Login
-npm run goldsky:login
-# 3. Build + deploy
+npm install
 npm run prepare
-npm run deploy:goldsky:prod
 ```
+
+See [DEPLOY.md](./DEPLOY.md) for live endpoint verification and indexer update
+notes.
