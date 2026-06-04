@@ -148,6 +148,8 @@ Test counts at the v4 launch: **712 tests across local + fork = all green**. Sig
 - `test/modules/RepaymentKnownVulns.t.sol` (14) — SWC walkthrough (SWC-112, 126, 128, 133, slot collision, direct impl call)
 - `test/host/HostRedTeam.t.sol` (14) — selector collision across attach/detach cycles, impl revocation, bootstrap one-shot
 
+Latest go-live gate run (2026-06-04): `FOUNDRY_PROFILE=ci forge test` completed with **738 passed, 0 failed, 9 skipped** after a slow via-IR compile. Fork tests skipped gracefully because no fork RPC was provided.
+
 ## Conventions
 
 - Tests use `Deployer.deployProtocol(owner, feeRecipient, usdc, seqFeed)` in `setUp()` instead of `new CampaignFactory(...)`. This returns an already-initialized factory proxy.
@@ -168,6 +170,15 @@ The factory is the only upgradeable piece (per-campaign proxies are producer-adm
 Example reference: `script/UpgradeFactoryV2.s.sol` (adds `minSeasonDuration`, reads `ProxyAdmin` from the ERC-1967 admin slot, upgrades in one tx).
 
 ## Scripts reference
+
+### Release gate
+
+- `GO_LIVE_CHECKLIST.md` — release checklist for contracts, GROW, deployment, backend, frontend, UGraph, go/no-go, and rollback.
+- `scripts/go-live-check.sh` — local release gate. It checks git cleanliness, tracked secret files, `.env.example` coverage, Foundry tests, platform package lint/typecheck/test/build scripts, optional backend HTTP smoke, and optional UGraph GraphQL smoke. It prepends `$HOME/.foundry/bin` to `PATH` when present.
+- Default release-candidate command: `sh scripts/go-live-check.sh`. This runs the full Foundry suite and can take a long time because the project uses `via_ir = true`.
+- Local dry-run command: `ALLOW_DIRTY=1 FOUNDRY_TEST_CMD='FOUNDRY_PROFILE=ci forge test --match-path test/AuditMitigations.t.sol' sh scripts/go-live-check.sh`.
+- Strict live smoke command: set `REQUIRE_LIVE_SMOKE=1` plus `RPC_URL`, `GROW_TOKEN_ADDRESS`, `GROWFI_FACTORY_ADDRESS`, `GROWFI_BACKEND_URL`, `GROWFI_FRONTEND_URL`, and `UGRAPH_GRAPHQL_URL`.
+- `.env.example` files are tracked for `platform/backend`, `platform/frontend`, `platform/admin`, and `platform/subgraph`. `platform/frontend/.env.example` is intentionally force-added because its local `.gitignore` ignores `.env*`.
 
 ### v4 Sepolia ETH (current)
 
