@@ -10,7 +10,6 @@ import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
 
-const growTokenAbi = abis.GrowToken as never;
 const stakingPoolAbi = abis.GrowStakingPool as never;
 
 type Tab = "stake" | "withdraw";
@@ -130,6 +129,10 @@ export function GrowStakingPanel() {
   const rewardRate = (reads?.[7]?.result as bigint | undefined) ?? 0n;
   const periodFinish = (reads?.[8]?.result as bigint | undefined) ?? 0n;
   const totalStaked = (reads?.[9]?.result as bigint | undefined) ?? 0n;
+  const earnedUsdc = Number(formatUnits(earned, 6)).toFixed(4);
+  const totalStakedGrow = Number(formatUnits(totalStaked, 18)).toFixed(2);
+  const walletGrow = Number(formatUnits(growBalance, 18)).toFixed(4);
+  const stakedGrow = Number(formatUnits(staked, 18)).toFixed(4);
 
   const amount = useMemo(() => {
     if (!amountInput) return 0n;
@@ -255,13 +258,29 @@ export function GrowStakingPanel() {
         </div>
         <span className="max-w-[132px] rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-right text-[11px] font-medium leading-4 text-zinc-500 sm:max-w-[150px]">
           {t("totalStaked", {
-            amount: Number(formatUnits(totalStaked, 18)).toFixed(2),
+            amount: totalStakedGrow,
           })}
         </span>
       </div>
       <p className="mb-5 text-sm leading-6 text-zinc-600">{t("blurb")}</p>
 
       <div className="-mx-5 mb-5 border-y border-zinc-200 bg-[#f6f8f4] px-5 py-4 md:-mx-6 md:px-6">
+        <div className="mb-4 border-b border-emerald-900/10 pb-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                {t("rewardBalance")}
+              </div>
+              <div className="mt-1 flex items-baseline gap-2 font-mono text-4xl leading-none text-zinc-950">
+                {earnedUsdc}
+                <span className="text-sm font-semibold text-zinc-500">USDC</span>
+              </div>
+            </div>
+            <p className="max-w-[260px] text-xs leading-5 text-zinc-500">
+              {t("rewardBalanceHint")}
+            </p>
+          </div>
+        </div>
         <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
@@ -292,10 +311,12 @@ export function GrowStakingPanel() {
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
-              {t("pendingUsdc")}
+              {t("distribution")}
             </div>
             <div className="mt-1 font-mono text-2xl text-zinc-950">
-              {Number(formatUnits(earned, 6)).toFixed(4)}
+              {rewardRate > 0n && periodSecondsLeft > 0
+                ? `${Math.ceil(periodSecondsLeft / 86400)}d`
+                : "—"}
             </div>
             {rewardRate > 0n && periodSecondsLeft > 0 && (
               <div className="mt-1 text-[10px] leading-4 text-zinc-500">
@@ -380,16 +401,12 @@ export function GrowStakingPanel() {
       <div className="mb-4 grid grid-cols-2 gap-2 text-xs text-zinc-500">
         <span className="text-right">
           {t("wallet")}:{" "}
-          <span className="font-mono">
-            {Number(formatUnits(growBalance, 18)).toFixed(4)}
-          </span>{" "}
+          <span className="font-mono">{walletGrow}</span>{" "}
           $GROW
         </span>
         <span>
           {t("stakedLabel")}:{" "}
-          <span className="font-mono">
-            {Number(formatUnits(staked, 18)).toFixed(4)}
-          </span>{" "}
+          <span className="font-mono">{stakedGrow}</span>{" "}
           $GROW
         </span>
       </div>
@@ -438,11 +455,11 @@ export function GrowStakingPanel() {
           ? t("claimSig")
           : tx.kind === "claiming-chain"
             ? t("claimingChain")
-            : earned === 0n
-              ? t("nothingToClaim")
-              : t("claim", {
-                  amount: Number(formatUnits(earned, 6)).toFixed(4),
-                })}
+              : earned === 0n
+                ? t("nothingToClaim")
+                : t("claim", {
+                    amount: earnedUsdc,
+                  })}
       </button>
 
       {tx.kind === "error" && (
