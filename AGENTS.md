@@ -248,7 +248,7 @@ growOut(buy) computed over (cumBefore → cumAfter) with each tier's rate.
 **Frontend `/grow` page** (full i18n EN/IT/ES/FR via `next-intl`, namespace `grow.*`):
 - `DirectBuyGrowPanel` — multi-stable selector + faucet button (chainId 31337/84532/11155111 — both `MockUSDC` and `MockStablecoin` expose public `mint` on test deployments), salePrice quote, depeg banner when Treasury.getStablecoinPriceUsd18 reverts, slippage cap +5%, two-step approve+buy.
 - `EscrowClaimPanel` — iterates subgraph campaigns, reads `Minter.getEscrow + campaignStates` per campaign, shows `Pending` / `ready to claim` / `voided` per row. Until subgraph indexes a `UserEscrow` entity, the iteration is client-side multicall (acceptable for ≤100 campaigns).
-- `GrowStakingPanel` — stake/withdraw tabs, multiplier live vs stored, countdown to 2.0× cap, pending USDC, dedicated claim button, withdraw-resets-streak warning.
+- `GrowStakingPanel` — stake/withdraw tabs, prominent accrued USDC reward balance from `GrowfiStakingPool.earned(account)`, multiplier live vs stored, countdown to 2.0× cap, reward-window status, dedicated claim button, withdraw-resets-streak warning.
 - `Flywheel` — 4-step 2×2 cyclic diagram explaining the flywheel (Buy → Treasury auto-allocates → Harvest yield flows back → Stakers earn / floor pumps → loop). Mounted below the 3 panels on `/grow`.
 - Stats strip on `/grow`: Floor + Circulating always; Treasury holds **only when > 0** (zero is noise).
 - `FundingProgressCard` on `/campaign/[address]` renders **two-segment funding bar** (direct backers + Treasury auto-alloc), sourcing the split from subgraph `treasuryRaised` / `treasuryTokensOut` with on-chain `CT.balanceOf(treasury)` fallback.
