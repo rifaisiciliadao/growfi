@@ -107,6 +107,7 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
 
     /// @notice USDC actually transferred to the holder — fired by `claimUSDC`.
     event USDCRedeemed(address indexed user, uint256 indexed seasonId, uint256 amount);
+    event USDCShortfallRestructured(address indexed user, uint256 indexed seasonId, uint256 shortfallAmount);
 
     /// @notice Theoretical protocol fee, snapshotted at report time (18-dec USD).
     event ProtocolFeeTargeted(uint256 indexed seasonId, uint256 amountUSD18, address recipient);
@@ -132,6 +133,8 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
     error DepositExceedsOwed();
     error AlreadySet();
     error NotUsdcRedemption();
+    error ClaimUSDCFirst();
+    error NoShortfall();
     error SeasonNotEnded();
     error TransferAmountMismatch();
     error TotalYieldSupplyMismatch(uint256 expected, uint256 actual);
@@ -323,11 +326,14 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
 
     /// @notice Claim deposited USDC after producer has deposited. Can be called multiple times as producer deposits more.
     function claimUSDC(uint256 seasonId) external nonReentrant {
+        SeasonHarvest storage harvest = seasonHarvests[seasonId];
+        if (!harvest.reported) revert NotReported();
+        if (block.timestamp <= harvest.claimEnd) revert ClaimWindowNotOpen();
+
         Claim storage claim = claims[seasonId][msg.sender];
         if (claim.redemptionType != RedemptionType.USDC) revert NotUsdcRedemption();
         if (claim.usdcAmount == 0) revert ZeroAmount();
 
-        SeasonHarvest storage harvest = seasonHarvests[seasonId];
         if (harvest.usdcDeposited == 0) revert USDCNotDeposited();
 
         // Calculate pro-rata entitlement based on current deposits
@@ -349,6 +355,33 @@ contract GrowfiHarvestManager is Initializable, ReentrancyGuard, PausableUpgrade
         usdc.safeTransfer(msg.sender, usdcToTransfer);
 
         emit USDCRedeemed(msg.sender, seasonId, usdcToTransfer);
+    }
+
+    function restructureUSDCShortfall(uint256 seasonId, address holder)
+        external
+        onlyCampaign
+        nonReentrant
+        returns (uint256 shortfall)
+    {
+        SeasonHarvest storage harvest = seasonHarvests[seasonId];
+        if (!harvest.reported) revert NotReported();
+        if (block.timestamp <= harvest.usdcDeadline) revert ClaimWindowNotOpen();
+
+        Claim storage claim = claims[seasonId][holder];
+        if (claim.redemptionType != RedemptionType.USDC) revert NotUsdcRedemption();
+        if (claim.usdcAmount <= claim.usdcClaimed) revert NoShortfall();
+
+        uint256 entitlement = claim.usdcAmount;
+        if (harvest.usdcDeposited < harvest.usdcOwed) {
+            entitlement = claim.usdcAmount * harvest.usdcDeposited / harvest.usdcOwed;
+        }
+        uint256 claimable = entitlement - claim.usdcClaimed;
+        if (claimable >= 1e12) revert ClaimUSDCFirst();
+
+        shortfall = claim.usdcAmount - claim.usdcClaimed;
+        claim.usdcClaimed = claim.usdcAmount;
+
+        emit USDCShortfallRestructured(holder, seasonId, shortfall);
     }
 
     // --- USDC Deposit ---

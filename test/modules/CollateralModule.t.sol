@@ -264,6 +264,62 @@ contract CollateralModuleTest is Test {
         CollateralModule(payable(address(campaign))).settleSeasonShortfall(1);
     }
 
+    function test_settleSeasonShortfall_revertsWithoutBurningFlagWhenNoCollateralAvailable() public {
+        uint256 deadline = block.timestamp + 1 days;
+        harvestManager.reportSeason(1, 1_000e18, deadline);
+        vm.warp(deadline + 1);
+
+        vm.prank(randomCaller);
+        vm.expectRevert(CollateralModule.ZeroAmount.selector);
+        CollateralModule(payable(address(campaign))).settleSeasonShortfall(1);
+
+        assertFalse(CollateralModule(payable(address(campaign))).seasonShortfallSettled(1));
+
+        uint256 expectedGross = harvestManager.remainingDepositGross(1);
+        vm.startPrank(producer);
+        usdc.approve(address(campaign), expectedGross);
+        CollateralModule(payable(address(campaign))).lockCollateral(expectedGross);
+        vm.stopPrank();
+
+        vm.prank(randomCaller);
+        CollateralModule(payable(address(campaign))).settleSeasonShortfall(1);
+
+        assertEq(CollateralModule(payable(address(campaign))).collateralDrawn(), expectedGross);
+        assertTrue(CollateralModule(payable(address(campaign))).seasonShortfallSettled(1));
+    }
+
+    function test_settleSeasonShortfall_allowsRetryAfterPartialCollateralDraw() public {
+        uint256 deadline = block.timestamp + 1 days;
+        harvestManager.reportSeason(1, 2_000e18, deadline);
+        vm.warp(deadline + 1);
+
+        uint256 expectedGross = harvestManager.remainingDepositGross(1);
+        uint256 firstDraw = expectedGross / 2;
+
+        vm.startPrank(producer);
+        usdc.approve(address(campaign), expectedGross);
+        CollateralModule(payable(address(campaign))).lockCollateral(firstDraw);
+        vm.stopPrank();
+
+        vm.prank(randomCaller);
+        CollateralModule(payable(address(campaign))).settleSeasonShortfall(1);
+
+        assertEq(CollateralModule(payable(address(campaign))).collateralDrawn(), firstDraw);
+        assertFalse(CollateralModule(payable(address(campaign))).seasonShortfallSettled(1));
+
+        uint256 secondDraw = harvestManager.remainingDepositGross(1);
+        vm.startPrank(producer);
+        usdc.approve(address(campaign), secondDraw);
+        CollateralModule(payable(address(campaign))).lockCollateral(secondDraw);
+        vm.stopPrank();
+
+        vm.prank(randomCaller);
+        CollateralModule(payable(address(campaign))).settleSeasonShortfall(1);
+
+        assertTrue(CollateralModule(payable(address(campaign))).seasonShortfallSettled(1));
+        assertEq(harvestManager.remainingDepositGross(1), 0);
+    }
+
     function test_settleSeasonShortfall_revertsIfOutOfCoverage() public {
         uint256 deadline = block.timestamp + 1 days;
         harvestManager.reportSeason(COVERAGE + 1, 100e18, deadline);

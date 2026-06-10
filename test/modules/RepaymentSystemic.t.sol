@@ -215,6 +215,9 @@ contract RepaymentSystemicTest is Test {
         IGrowfiCampaignFull(payable(campaignAddr)).depositUSDC(sid, type(uint256).max);
         vm.stopPrank();
 
+        (,,,,, uint256 claimEnd,,,,,,) = harvestManager.seasonHarvests(sid);
+        vm.warp(claimEnd + 1);
+
         // Both claim USDC
         uint256 aliceUsdcBefore = usdc.balanceOf(alice);
         uint256 bobUsdcBefore = usdc.balanceOf(bob);
@@ -516,6 +519,9 @@ contract RepaymentSystemicTest is Test {
         usdc.approve(campaignAddr, type(uint256).max);
         IGrowfiCampaignFull(payable(campaignAddr)).depositUSDC(sid, type(uint256).max);
         vm.stopPrank();
+
+        (,,,,, uint256 claimEnd,,,,,,) = harvestManager.seasonHarvests(sid);
+        vm.warp(claimEnd + 1);
 
         // All three claim
         vm.prank(alice);

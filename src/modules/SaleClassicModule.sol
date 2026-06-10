@@ -396,7 +396,7 @@ contract SaleClassicModule {
         // GROW emission hook: fires AFTER the mint, BEFORE auto-activate so
         // pre-softcap buys land in escrow and the softcap hook unlocks them.
         if (s.growMinter != address(0)) {
-            IGrowfiMinter(s.growMinter).recordBuy(msg.sender, supplyBefore, s.currentSupply);
+            try IGrowfiMinter(s.growMinter).recordBuy(msg.sender, supplyBefore, s.currentSupply) {} catch {}
         }
 
         if (cs.state == uint8(CampaignStorage.State.Funding) && s.currentSupply >= s.minCap) {
@@ -482,7 +482,7 @@ contract SaleClassicModule {
 
         // GROW hook: campaign failed → void all per-user escrow.
         if (s.growMinter != address(0)) {
-            IGrowfiMinter(s.growMinter).onBuyback();
+            try IGrowfiMinter(s.growMinter).onBuyback() {} catch {}
         }
 
         emit CampaignStateChanged(oldState, cs.state);
@@ -690,7 +690,7 @@ contract SaleClassicModule {
 
         // GROW hook: campaign reached softcap → unlock per-user escrow for claim.
         if (s.growMinter != address(0)) {
-            IGrowfiMinter(s.growMinter).onSoftCapReached();
+            try IGrowfiMinter(s.growMinter).onSoftCapReached() {} catch {}
         }
 
         emit CampaignStateChanged(oldState, cs.state);

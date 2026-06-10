@@ -534,6 +534,9 @@ contract RedTeamTest is Test {
         vm.prank(alice);
         harvestManager.redeemUSDC(1, aliceYield);
 
+        (,,,,, uint256 claimEnd,,,,,,) = harvestManager.seasonHarvests(1);
+        vm.warp(claimEnd + 1);
+
         // Producer hasn't deposited yet
         vm.prank(alice);
         vm.expectRevert(GrowfiHarvestManager.USDCNotDeposited.selector);

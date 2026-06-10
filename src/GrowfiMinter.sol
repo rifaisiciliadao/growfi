@@ -56,6 +56,9 @@ contract GrowfiMinter is Initializable, IGrowfiMinter, ReentrancyGuard {
         uint256 cumBuyVolumeUsd; // monotonic, USD-18-dec
         uint256 totalEscrowed; // sum of all GROW promised pre-softcap
         uint256 totalMinted; // sum of all GROW minted to wallets (claim + post-softcap mints)
+        uint256 tier1ThresholdUsd; // snapshotted at first counted buy
+        uint256 tier2ThresholdUsd; // snapshotted at first counted buy
+        bool curveSnapshotSet;
     }
 
     struct BondingCurveParams {
@@ -171,7 +174,10 @@ contract GrowfiMinter is Initializable, IGrowfiMinter, ReentrancyGuard {
         uint256 usdValue = (amountBought * pricePerToken) / 1e18;
         if (usdValue == 0) return;
 
-        uint256 growAmount = _computeGrowForBuy(cs.cumBuyVolumeUsd, usdValue, c.minCap(), c.maxCap(), pricePerToken);
+        _snapshotCurveIfNeeded(cs, c.minCap(), c.maxCap(), pricePerToken);
+
+        uint256 growAmount =
+            _computeGrowForBuy(cs.cumBuyVolumeUsd, usdValue, cs.tier1ThresholdUsd, cs.tier2ThresholdUsd);
         cs.cumBuyVolumeUsd += usdValue;
 
         if (growAmount == 0) return;
@@ -225,16 +231,11 @@ contract GrowfiMinter is Initializable, IGrowfiMinter, ReentrancyGuard {
 
     // ---------- bonding curve math ----------
 
-    function _computeGrowForBuy(
-        uint256 vBefore,
-        uint256 usdValue,
-        uint256 minCap_,
-        uint256 maxCap_,
-        uint256 pricePerToken_
-    ) internal view returns (uint256 totalGrow) {
-        uint256 vAfter = vBefore + usdValue;
+    function _snapshotCurveIfNeeded(CampaignState storage cs, uint256 minCap_, uint256 maxCap_, uint256 pricePerToken_)
+        internal
+    {
+        if (cs.curveSnapshotSet) return;
 
-        // USD-18-dec thresholds. T1 = softcap value. T2 = T1 + thresholdFraction × (maxcap - softcap) × price.
         uint256 t1 = (minCap_ * pricePerToken_) / 1e18;
         uint256 t2 = t1;
         if (maxCap_ > minCap_) {
@@ -242,6 +243,18 @@ contract GrowfiMinter is Initializable, IGrowfiMinter, ReentrancyGuard {
             uint256 tierDelta = (deltaCap * params.tier2to3ThresholdBps) / BPS;
             t2 += (tierDelta * pricePerToken_) / 1e18;
         }
+
+        cs.tier1ThresholdUsd = t1;
+        cs.tier2ThresholdUsd = t2;
+        cs.curveSnapshotSet = true;
+    }
+
+    function _computeGrowForBuy(uint256 vBefore, uint256 usdValue, uint256 t1, uint256 t2)
+        internal
+        view
+        returns (uint256 totalGrow)
+    {
+        uint256 vAfter = vBefore + usdValue;
 
         BondingCurveParams memory p = params;
 
@@ -297,6 +310,25 @@ contract GrowfiMinter is Initializable, IGrowfiMinter, ReentrancyGuard {
         uint256 pricePerToken = c.pricePerToken();
         uint256 amountBought = supplyAfter - supplyBefore;
         uint256 usdValue = (amountBought * pricePerToken) / 1e18;
-        return _computeGrowForBuy(cs.cumBuyVolumeUsd, usdValue, c.minCap(), c.maxCap(), pricePerToken);
+        uint256 t1 = cs.tier1ThresholdUsd;
+        uint256 t2 = cs.tier2ThresholdUsd;
+        if (!cs.curveSnapshotSet) {
+            (t1, t2) = _curveThresholds(c.minCap(), c.maxCap(), pricePerToken);
+        }
+        return _computeGrowForBuy(cs.cumBuyVolumeUsd, usdValue, t1, t2);
+    }
+
+    function _curveThresholds(uint256 minCap_, uint256 maxCap_, uint256 pricePerToken_)
+        internal
+        view
+        returns (uint256 t1, uint256 t2)
+    {
+        t1 = (minCap_ * pricePerToken_) / 1e18;
+        t2 = t1;
+        if (maxCap_ > minCap_) {
+            uint256 deltaCap = maxCap_ - minCap_;
+            uint256 tierDelta = (deltaCap * params.tier2to3ThresholdBps) / BPS;
+            t2 += (tierDelta * pricePerToken_) / 1e18;
+        }
     }
 }

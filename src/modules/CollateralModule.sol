@@ -42,6 +42,8 @@ contract CollateralModule {
     }
 
     bytes32 internal constant STORAGE_SLOT = 0x1d5c7025e27f7f3a598a1ed3ef2f3b18a3b6b8f8025c5754e51904d497088646; // keccak256("growfi.module.collateral.v1")
+    bytes32 internal constant DEBT_RESTRUCTURING_SLOT =
+        0xc7ea81bd06fad1a7d624a5ec9ac64ff9dbbcd9447d0f815af5a88c8080289e12; // keccak256("growfi.module.debt.restructuring.v1")
 
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;
@@ -64,6 +66,7 @@ contract CollateralModule {
     error AlreadySettled();
     error NotInCoverage();
     error TransferAmountMismatch();
+    error DebtRestructuringStarted();
 
     // ------------------------------------------------------------------
     // Events
@@ -210,22 +213,27 @@ contract CollateralModule {
             IHarvestManagerCollateral(cs.harvestManager).seasonHarvests(seasonId);
         if (!reported) revert SeasonNotReported();
         if (block.timestamp <= deadline) revert DepositWindowOpen();
+        if (_debtRestructuringStarted(seasonId)) revert DebtRestructuringStarted();
 
         uint256 obligation = IHarvestManagerCollateral(cs.harvestManager).remainingDepositGross(seasonId);
+        if (obligation == 0) {
+            s.seasonShortfallSettled[seasonId] = true;
+            return;
+        }
+
         uint256 available = s.collateralLocked - s.collateralDrawn;
         uint256 draw = obligation < available ? obligation : available;
-
-        // Always flip the flag so the call cannot be re-attempted forever.
-        // No-op paths: either nothing owed (fully funded), or nothing to
-        // draw (empty reserve while still owed). Both transition cleanly.
-        s.seasonShortfallSettled[seasonId] = true;
-        if (draw == 0) return;
+        if (draw == 0) revert ZeroAmount();
 
         s.collateralDrawn += draw;
         emit CollateralShortfallSettled(seasonId, draw, s.collateralDrawn);
 
         IERC20(cs.usdc).safeIncreaseAllowance(cs.harvestManager, draw);
         IHarvestManagerCollateral(cs.harvestManager).depositFromCollateral(seasonId, draw);
+
+        if (draw == obligation) {
+            s.seasonShortfallSettled[seasonId] = true;
+        }
     }
 
     // ------------------------------------------------------------------
@@ -269,5 +277,14 @@ contract CollateralModule {
 
     function seasonShortfallSettled(uint256 seasonId) external view returns (bool) {
         return _s().seasonShortfallSettled[seasonId];
+    }
+
+    function _debtRestructuringStarted(uint256 seasonId) internal view returns (bool started) {
+        bytes32 slot = DEBT_RESTRUCTURING_SLOT;
+        assembly {
+            mstore(0x00, seasonId)
+            mstore(0x20, slot)
+            started := sload(keccak256(0x00, 0x40))
+        }
     }
 }

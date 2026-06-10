@@ -14,6 +14,20 @@ import {MockUSDC} from "../../src/mocks/MockUSDC.sol";
 import {TestModuleRegistry} from "../host/TestModuleRegistry.sol";
 import {SaleClassicHelper} from "./SaleClassicHelper.sol";
 
+contract RevertingGrowMinter {
+    function recordBuy(address, uint256, uint256) external pure {
+        revert("recordBuy blocked");
+    }
+
+    function onSoftCapReached() external pure {
+        revert("softcap blocked");
+    }
+
+    function onBuyback() external pure {
+        revert("buyback blocked");
+    }
+}
+
 contract SaleClassicModuleTest is Test {
     bytes32 internal constant SALE_KIND = keccak256("growfi.sale.classic.v1");
     bytes32 internal constant SALE_TYPE = keccak256("growfi.type.sale");
@@ -28,6 +42,7 @@ contract SaleClassicModuleTest is Test {
     GrowfiCampaign internal campaign;
     GrowfiCampaignToken internal campaignToken;
     SaleClassicModule internal saleImpl;
+    RevertingGrowMinter internal revertingGrowMinter;
     MockUSDC internal usdc;
 
     // Sale params
@@ -52,6 +67,7 @@ contract SaleClassicModuleTest is Test {
 
         // ---- sale module impl + whitelist ----
         saleImpl = new SaleClassicModule();
+        revertingGrowMinter = new RevertingGrowMinter();
         vm.startPrank(protocolOwner);
         registry.setModuleKindSelectors(SALE_KIND, SaleClassicHelper.selectors());
         registry.approveModuleImpl(SALE_KIND, address(saleImpl), true);
@@ -137,7 +153,7 @@ contract SaleClassicModuleTest is Test {
             seasonDuration: SEASON_DURATION,
             fundingFeeBps: FUNDING_FEE_BPS,
             sequencerUptimeFeed: address(0),
-            growMinter: address(0)
+            growMinter: address(revertingGrowMinter)
         });
         vm.prank(address(registry));
         SaleClassicModule(payable(address(campaign))).initializeSaleClassic(sp);
@@ -167,6 +183,7 @@ contract SaleClassicModuleTest is Test {
         assertEq(SaleClassicModule(payable(address(campaign))).maxCap(), MAX_CAP);
         assertEq(SaleClassicModule(payable(address(campaign))).fundingFeeBps(), FUNDING_FEE_BPS);
         assertEq(SaleClassicModule(payable(address(campaign))).currentSupply(), 0);
+        assertEq(SaleClassicModule(payable(address(campaign))).growMinter(), address(revertingGrowMinter));
     }
 
     function test_acceptedTokens_listsUsdc() public view {

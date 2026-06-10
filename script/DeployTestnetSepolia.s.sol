@@ -19,18 +19,21 @@ import {SaleClassicModule} from "../src/modules/SaleClassicModule.sol";
 import {CollateralModule} from "../src/modules/CollateralModule.sol";
 import {RepaymentModule} from "../src/modules/RepaymentModule.sol";
 import {EcommerceModule} from "../src/modules/EcommerceModule.sol";
+import {DebtRestructuringModule} from "../src/modules/DebtRestructuringModule.sol";
 
 import {SaleClassicHelper} from "../test/modules/SaleClassicHelper.sol";
 import {CollateralHelper} from "../test/modules/CollateralHelper.sol";
 import {RepaymentHelper} from "../test/modules/RepaymentHelper.sol";
 import {EcommerceHelper} from "../test/modules/EcommerceHelper.sol";
+import {DebtRestructuringHelper} from "../test/modules/DebtRestructuringHelper.sol";
 
 /// @title DeployTestnetSepolia
 /// @notice Fresh v4 deploy targeted at Ethereum Sepolia (chain id 11155111).
-///         Deploys MockUSDC + the factory + 5 satellite impls + 4 module
-///         impls (Sale, Collateral, Repayment, Ecommerce) + 2 registries.
-///         Repayment and Ecommerce are whitelisted but NOT added to defaults
-///         — producers attach them post-create.
+///         Deploys MockUSDC + the factory + 5 satellite impls + 5 module
+///         impls (Sale, Collateral, Repayment, Ecommerce, DebtRestructuring)
+///         + 2 registries. Repayment, Ecommerce, and DebtRestructuring are
+///         whitelisted but NOT added to defaults — producers attach them
+///         post-create.
 ///
 ///         Run:
 ///           PRIVATE_KEY=0x...
@@ -43,6 +46,7 @@ contract DeployTestnetSepolia is Script {
     bytes32 internal constant TYPE_COLLATERAL = keccak256("growfi.type.collateral");
     bytes32 internal constant KIND_REPAYMENT = keccak256("growfi.repayment.v1");
     bytes32 internal constant KIND_ECOMMERCE = keccak256("growfi.ecommerce.v1");
+    bytes32 internal constant KIND_DEBT_RESTRUCTURING = keccak256("growfi.debt.restructuring.v1");
 
     function run() public {
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
@@ -81,6 +85,7 @@ contract DeployTestnetSepolia is Script {
         address collateralImpl = address(new CollateralModule());
         address repaymentImpl = address(new RepaymentModule());
         address ecommerceImpl = address(new EcommerceModule());
+        address debtRestructuringImpl = address(new DebtRestructuringModule());
 
         // 5. Register module kinds + approve impls + set defaults
         bytes32 saleKind = factory.KIND_SALE_CLASSIC_V1();
@@ -97,6 +102,9 @@ contract DeployTestnetSepolia is Script {
 
         factory.setModuleKindSelectors(KIND_ECOMMERCE, EcommerceHelper.selectors());
         factory.approveModuleImpl(KIND_ECOMMERCE, ecommerceImpl, true);
+
+        factory.setModuleKindSelectors(KIND_DEBT_RESTRUCTURING, DebtRestructuringHelper.selectors());
+        factory.approveModuleImpl(KIND_DEBT_RESTRUCTURING, debtRestructuringImpl, true);
 
         ModuleRegistry.DefaultModule[] memory defaults = new ModuleRegistry.DefaultModule[](2);
         defaults[0] =
@@ -134,6 +142,7 @@ contract DeployTestnetSepolia is Script {
         console.log("Collateral module impl:    ", collateralImpl);
         console.log("Repayment module impl:     ", repaymentImpl);
         console.log("Ecommerce module impl:     ", ecommerceImpl);
+        console.log("Debt restructuring impl:   ", debtRestructuringImpl);
         console.log("CampaignRegistry:          ", address(campaignRegistry));
         console.log("ProducerRegistry:          ", address(producerRegistry));
         console.log("");

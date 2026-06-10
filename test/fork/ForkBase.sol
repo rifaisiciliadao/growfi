@@ -164,6 +164,9 @@ abstract contract ForkBase is Test {
         campaign.depositUSDC(1, owed6);
         vm.stopPrank();
 
+        (,,,,, uint256 claimEnd,,,,,,) = harvestManager.seasonHarvests(1);
+        vm.warp(claimEnd + 1);
+
         uint256 aliceUsdcBefore = IERC20(_usdc()).balanceOf(alice);
         vm.prank(alice);
         harvestManager.claimUSDC(1);

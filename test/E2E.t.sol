@@ -354,6 +354,9 @@ contract E2ETest is Test {
         campaign.depositUSDC(1, firstDeposit);
         vm.stopPrank();
 
+        (,,,,, uint256 claimEnd,,,,,,) = harvestManager.seasonHarvests(1);
+        vm.warp(claimEnd + 1);
+
         // Charlie claims → gets ~50% of entitlement
         uint256 charlieUsdcBefore = usdc.balanceOf(charlie);
         vm.prank(charlie);

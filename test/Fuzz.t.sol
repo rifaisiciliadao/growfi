@@ -290,6 +290,9 @@ contract FuzzTest is Test {
         campaign.depositUSDC(1, deposit);
         vm.stopPrank();
 
+        (,,,,, uint256 claimEnd,,,,,,) = harvestManager.seasonHarvests(1);
+        vm.warp(claimEnd + 1);
+
         uint256 aliceBefore = usdc.balanceOf(alice);
         vm.prank(alice);
         harvestManager.claimUSDC(1);

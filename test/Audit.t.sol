@@ -213,6 +213,13 @@ contract AuditTest is Test {
         vm.prank(producer);
         campaign.depositUSDC(1, halfDeposit);
 
+        vm.prank(alice);
+        vm.expectRevert(GrowfiHarvestManager.ClaimWindowNotOpen.selector);
+        harvestManager.claimUSDC(1);
+
+        (,,,,, uint256 claimEnd,,,,,,) = harvestManager.seasonHarvests(1);
+        vm.warp(claimEnd + 1);
+
         uint256 aliceBefore = usdc.balanceOf(alice);
         vm.prank(alice);
         harvestManager.claimUSDC(1);

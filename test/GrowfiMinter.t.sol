@@ -25,6 +25,11 @@ contract MintingHarness {
         minter = minter_;
     }
 
+    function setCaps(uint256 min_, uint256 max_) external {
+        minCap = min_;
+        maxCap = max_;
+    }
+
     function callRecordBuy(address buyer, uint256 supplyBefore, uint256 supplyAfter) external {
         IGrowfiMinter(minter).recordBuy(buyer, supplyBefore, supplyAfter);
     }
@@ -372,6 +377,17 @@ contract GrowfiMinterTest is Test {
         assertEq(minter.getEscrow(address(campaign), ALICE), 50e18);
         assertEq(minter.getEscrow(address(campaign), BOB), 57e18);
         assertEq(minter.getEscrow(address(campaign), CAROL), 32e18);
+    }
+
+    function test_curve_snapshotsTierBoundariesOnFirstBuy() public {
+        campaign.callRecordBuy(ALICE, 0, 50e18);
+
+        campaign.setCaps(200e18, 200e18);
+        campaign.callRecordBuy(BOB, 50e18, 150e18);
+
+        assertEq(minter.getEscrow(address(campaign), ALICE), 50e18);
+        assertEq(minter.getEscrow(address(campaign), BOB), 85e18);
+        assertEq(minter.previewGrowForBuy(address(campaign), 150e18, 200e18), 20e18);
     }
 
     // ---------- previewGrowForBuy ----------
