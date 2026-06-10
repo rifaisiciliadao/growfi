@@ -25,6 +25,8 @@ Five modules live today:
 
 Frontend ecommerce checkout supports a multi-SKU cart. The contract still settles one SKU per `buySku` transaction, so the frontend does one USDC approval for the aggregate gross total when needed, then submits one order draft + one `buySku` transaction per cart line. The final purchase receipt is sent once, with aggregate totals and optional `lineItems: Array<{ productName: string; quantity: string }>` on `/api/ecommerce/purchase-receipt`; email rendering falls back to the legacy single `productName`/`quantity` shape when `lineItems` is absent.
 
+Frontend debt restructuring support lives in `platform/frontend/src/contracts/debtRestructuring.ts` plus `HarvestPanel` and `ProducerManagePanel`. The holder harvest UI reads `moduleSlot(keccak256("growfi.type.debt.restructuring"))`, keeps `claimUSDC` disabled until after `claimEnd`, and shows Campaign Token conversion only after `usdcDeadline` when `quoteRestructuredCampaignTokens(seasonId, holder)` returns a non-zero CT amount. The producer manage UI can attach + initialize and toggle the module when `NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL` is configured; without that env var it still reports already-attached module status but cannot initiate attachment.
+
 Lifecycle:
 - Factory bootstraps the campaign + auto-attaches `defaultModules[]` (sale + collateral). Window closes via `Campaign.closeBootstrap()` (one-shot, factory-only).
 - Producer can `attachModule(type, kind, impl, metadataURI)`, `detachModule(type)`, `setModuleEnabled(type, bool)` post-bootstrap. Impl must be whitelisted on the factory by the owner (`approveModuleImpl`); selectors registered per-kind by the owner (`setModuleKindSelectors`).
