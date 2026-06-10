@@ -8,9 +8,14 @@ import {
   useReadContracts,
   useWriteContract,
 } from "wagmi";
-import { formatUnits, parseUnits, type Address } from "viem";
+import { formatUnits, parseUnits, zeroAddress, type Address } from "viem";
 import { abis } from "@/contracts";
+import {
+  DEBT_RESTRUCTURING_MODULE_TYPE,
+  debtRestructuringModuleAbi,
+} from "@/contracts/debtRestructuring";
 import { erc20Abi } from "@/contracts/erc20";
+import { campaignModuleHostAbi } from "@/contracts/repayment";
 import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
 import { fetchMerkleProof } from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
@@ -24,6 +29,7 @@ interface Props {
 }
 
 const harvestAbi = abis.HarvestManager as never;
+const DUST_18 = 10n ** 12n;
 
 export function HarvestPanel({
   campaignAddress,
@@ -36,7 +42,7 @@ export function HarvestPanel({
   const { address: user, isConnected } = useAccount();
 
   const [pending, setPending] = useState<{
-    kind: "approve" | "redeem" | "claim";
+    kind: "approve" | "redeem" | "claim" | "restructure";
     phase: "sig" | "chain";
   } | null>(null);
   const [txError, setTxError] = useState<string | null>(null);
@@ -66,7 +72,7 @@ export function HarvestPanel({
   const yieldSymbol = (yieldSymbolRaw as string | undefined) ?? "YIELD";
 
   const runTx = async (
-    kind: "approve" | "redeem" | "claim",
+    kind: "approve" | "redeem" | "claim" | "restructure",
     args: Parameters<typeof writeContractAsync>[0],
   ) => {
     setTxError(null);
@@ -94,6 +100,7 @@ export function HarvestPanel({
     if (fn === "redeemUSDC") return "commit" as const;
     if (fn === "redeemProduct") return "redeemProduct" as const;
     if (fn === "claimUSDC") return "claimUsdc" as const;
+    if (fn === "claimRestructuredCampaignTokens") return "debtRestructure" as const;
     return "approval" as const;
   }
 
@@ -169,6 +176,14 @@ export function HarvestPanel({
                   args: [BigInt(season.seasonId)],
                 })
               }
+              onClaimRestructuredCampaignTokens={() =>
+                runTx("restructure", {
+                  address: campaignAddress,
+                  abi: debtRestructuringModuleAbi,
+                  functionName: "claimRestructuredCampaignTokens",
+                  args: [BigInt(season.seasonId)],
+                })
+              }
               onRedeemProduct={(yieldAmount, proof) =>
                 runTx("redeem", {
                   address: harvestManager,
@@ -228,6 +243,7 @@ function SeasonCard({
   pendingKind,
   onRedeemUSDC,
   onClaimUSDC,
+  onClaimRestructuredCampaignTokens,
   onRedeemProduct,
 }: {
   season: SubgraphSeason;
@@ -239,6 +255,7 @@ function SeasonCard({
   pendingKind: string | null;
   onRedeemUSDC: (yieldAmount: bigint) => void;
   onClaimUSDC: () => void;
+  onClaimRestructuredCampaignTokens: () => void;
   onRedeemProduct: (yieldAmount: bigint, proof: `0x${string}`[]) => void;
 }) {
   const t = useTranslations("detail.harvest");
@@ -267,12 +284,30 @@ function SeasonCard({
   const usdcOwed = claim?.[3] ?? 0n;
   const usdcAlreadyClaimed = claim?.[4] ?? 0n;
 
+  const { data: debtModuleSlotRaw } = useReadContract({
+    address: campaignAddress,
+    abi: campaignModuleHostAbi,
+    functionName: "moduleSlot",
+    args: [DEBT_RESTRUCTURING_MODULE_TYPE],
+    query: { refetchInterval: 30_000 },
+  });
+  const debtModuleSlot = debtModuleSlotRaw as
+    | readonly [Address, `0x${string}`, string, bigint, boolean]
+    | undefined;
+  const debtRestructuringEnabled =
+    (debtModuleSlot?.[0] ?? zeroAddress) !== zeroAddress &&
+    Boolean(debtModuleSlot?.[4]);
+
   const now = Math.floor(Date.now() / 1000);
   const claimOpen =
     season.claimStart &&
     season.claimEnd &&
     now >= Number(season.claimStart) &&
     now <= Number(season.claimEnd);
+  const claimPayoutOpen = season.claimEnd ? now > Number(season.claimEnd) : false;
+  const debtRestructuringOpen = season.usdcDeadline
+    ? now > Number(season.usdcDeadline)
+    : false;
 
   const depositOpen =
     season.usdcDeadline && now <= Number(season.usdcDeadline);
@@ -286,6 +321,24 @@ function SeasonCard({
       ? (usdcOwed * usdcDeposited) / usdcOwedTotal
       : 0n;
   const claimable = entitled > usdcAlreadyClaimed ? entitled - usdcAlreadyClaimed : 0n;
+
+  const { data: restructureQuoteRaw } = useReadContract({
+    address: campaignAddress,
+    abi: debtRestructuringModuleAbi,
+    functionName: "quoteRestructuredCampaignTokens",
+    args: user ? [BigInt(season.seasonId), user] : undefined,
+    query: {
+      enabled:
+        !!user &&
+        debtRestructuringEnabled &&
+        debtRestructuringOpen &&
+        hasClaimed &&
+        claim?.[1] === 2,
+      refetchInterval: 15_000,
+    },
+  }) as { data: readonly [bigint, bigint] | undefined };
+  const restructureShortfall = restructureQuoteRaw?.[0] ?? 0n;
+  const restructureCampaignTokensOut = restructureQuoteRaw?.[1] ?? 0n;
 
   const redeemAmountWei = useMemo(() => {
     if (!redeemAmount || Number(redeemAmount) <= 0) return 0n;
@@ -410,9 +463,14 @@ function SeasonCard({
           seasonUsdcOwed={usdcOwedTotal}
           entitled={entitled}
           claimable={claimable}
+          claimPayoutOpen={Boolean(claimPayoutOpen)}
           usdcDeadline={season.usdcDeadline}
+          debtRestructuringEnabled={debtRestructuringEnabled}
+          restructureShortfall={restructureShortfall}
+          restructureCampaignTokensOut={restructureCampaignTokensOut}
           pendingKind={pendingKind}
           onClaim={onClaimUSDC}
+          onClaimRestructuredCampaignTokens={onClaimRestructuredCampaignTokens}
         />
       )}
       {hasClaimed && claim?.[1] === 1 /* RedemptionType.Product */ && (
@@ -456,9 +514,14 @@ function UsdcClaimTimeline({
   seasonUsdcOwed,
   entitled,
   claimable,
+  claimPayoutOpen,
   usdcDeadline,
+  debtRestructuringEnabled,
+  restructureShortfall,
+  restructureCampaignTokensOut,
   pendingKind,
   onClaim,
+  onClaimRestructuredCampaignTokens,
 }: {
   usdcCommitted: bigint;
   usdcAlreadyClaimed: bigint;
@@ -466,9 +529,14 @@ function UsdcClaimTimeline({
   seasonUsdcOwed: bigint;
   entitled: bigint;
   claimable: bigint;
+  claimPayoutOpen: boolean;
   usdcDeadline: string | null;
+  debtRestructuringEnabled: boolean;
+  restructureShortfall: bigint;
+  restructureCampaignTokensOut: bigint;
   pendingKind: string | null;
   onClaim: () => void;
+  onClaimRestructuredCampaignTokens: () => void;
 }) {
   const t = useTranslations("detail.harvest");
 
@@ -476,20 +544,17 @@ function UsdcClaimTimeline({
     seasonUsdcOwed > 0n
       ? Number((seasonUsdcDeposited * 100n) / seasonUsdcOwed)
       : 0;
-  // Dust tolerance: claimUSDC transfers whole 6-dec USDC-wei, so the 18-dec
-  // usdcClaimed can lag usdcAmount by up to (1 USDC-wei × 1e12) per claim.
-  // Treat anything within 1e12 (= 1 USDC-wei in 18-dec) as fully paid.
-  const DUST_18 = 10n ** 12n;
   const fulfilled =
     usdcCommitted > 0n && usdcAlreadyClaimed + DUST_18 >= usdcCommitted;
   const fullyDeposited = seasonUsdcOwed > 0n && seasonUsdcDeposited >= seasonUsdcOwed;
+  const transferableClaimable = claimPayoutOpen && claimable >= DUST_18 ? claimable : 0n;
 
   // Phase indicator — which dot is currently "active"
   const phase: 1 | 2 | 3 | 4 = fulfilled
     ? 4
-    : claimable > 0n
+    : transferableClaimable > 0n
       ? 3
-      : fullyDeposited
+      : claimPayoutOpen && fullyDeposited
         ? 3
         : 2;
 
@@ -503,6 +568,8 @@ function UsdcClaimTimeline({
   const pastDeadline =
     usdcDeadline !== null && now > Number(usdcDeadline);
   const depositShortfall = !fullyDeposited && pastDeadline;
+  const canRestructure =
+    debtRestructuringEnabled && restructureCampaignTokensOut > 0n;
 
   return (
     <div className="pt-4 border-t border-outline-variant/15 space-y-4">
@@ -565,6 +632,59 @@ function UsdcClaimTimeline({
         </div>
       )}
 
+      {debtRestructuringEnabled && depositShortfall && !fulfilled && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-950">
+          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="text-sm font-bold text-amber-950">
+                {t("timeline.restructureTitle")}
+              </div>
+              <p className="mt-1 text-amber-900">
+                {canRestructure
+                  ? t("timeline.restructureBody")
+                  : transferableClaimable > 0n
+                    ? t("timeline.claimAvailableFirst")
+                    : t("timeline.restructureWaiting")}
+              </p>
+              {canRestructure && (
+                <div className="mt-3 grid grid-cols-2 gap-2">
+                  <div className="rounded-lg bg-white/70 p-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                      {t("timeline.restructureShortfall")}
+                    </div>
+                    <div className="mt-0.5 font-bold text-amber-950">
+                      ${Number(formatUnits(restructureShortfall, 18)).toFixed(2)}
+                    </div>
+                  </div>
+                  <div className="rounded-lg bg-white/70 p-2">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                      {t("timeline.restructureTokens")}
+                    </div>
+                    <div className="mt-0.5 font-bold text-amber-950">
+                      {Number(
+                        formatUnits(restructureCampaignTokensOut, 18),
+                      ).toLocaleString(undefined, {
+                        maximumFractionDigits: 4,
+                      })}{" "}
+                      CT
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={onClaimRestructuredCampaignTokens}
+              disabled={!canRestructure || pendingKind !== null}
+              className="h-10 shrink-0 rounded-full bg-amber-950 px-5 text-sm font-semibold text-white transition hover:bg-amber-900 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {pendingKind === "restructure"
+                ? t("timeline.restructuring")
+                : t("timeline.restructureCta")}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Producer deposit progress — only meaningful in phase 2 */}
       {!fulfilled && (
         <div className="bg-surface-container-low rounded-xl p-3 border border-outline-variant/15">
@@ -606,8 +726,13 @@ function UsdcClaimTimeline({
               {t("timeline.claimableNow")}
             </div>
             <div className="text-lg font-bold text-primary">
-              ${Number(formatUnits(claimable, 18)).toFixed(2)}
+              ${Number(formatUnits(transferableClaimable, 18)).toFixed(2)}
             </div>
+            {!claimPayoutOpen && (
+              <div className="text-[11px] text-on-surface-variant">
+                {t("timeline.claimAfterWindow")}
+              </div>
+            )}
             {entitled > claimable + usdcAlreadyClaimed + 1n && (
               <div className="text-[11px] text-on-surface-variant">
                 {t("timeline.entitledTotal", {
@@ -618,7 +743,7 @@ function UsdcClaimTimeline({
           </div>
           <button
             onClick={onClaim}
-            disabled={claimable === 0n || pendingKind !== null}
+            disabled={transferableClaimable === 0n || pendingKind !== null}
             className="regen-gradient text-white rounded-full px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {pendingKind === "claim" ? t("claiming") : t("claimUSDC")}

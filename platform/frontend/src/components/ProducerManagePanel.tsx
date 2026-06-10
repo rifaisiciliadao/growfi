@@ -22,6 +22,11 @@ import {
   REPAYMENT_MODULE_KIND,
   REPAYMENT_MODULE_TYPE,
 } from "@/contracts/repayment";
+import {
+  DEBT_RESTRUCTURING_MODULE_KIND,
+  DEBT_RESTRUCTURING_MODULE_TYPE,
+  debtRestructuringModuleAbi,
+} from "@/contracts/debtRestructuring";
 import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
 import { fetchSnapshot, generateMerkleTree } from "@/lib/api";
 import { EcommerceModuleManager } from "./EcommerceShopPanel";
@@ -143,6 +148,13 @@ export function ProducerManagePanel({
           {t("repaymentTitle")}
         </h3>
         <RepaymentModuleManager campaignAddress={campaignAddress} />
+      </section>
+
+      <section className="mt-8">
+        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
+          {t("debtRestructuringTitle")}
+        </h3>
+        <DebtRestructuringModuleManager campaignAddress={campaignAddress} />
       </section>
 
       <section className="mt-8">
@@ -709,6 +721,224 @@ function RepaymentMetric({ label, value }: { label: string; value: string }) {
         {label}
       </div>
       <div className="mt-1 text-sm font-bold text-on-surface">{value}</div>
+    </div>
+  );
+}
+
+function DebtRestructuringModuleManager({
+  campaignAddress,
+}: {
+  campaignAddress: Address;
+}) {
+  const t = useTranslations("detail.manage.debtRestructuring");
+  const notify = useTxNotify();
+  const { debtRestructuringImpl } = getAddresses();
+  const { writeContractAsync } = useWriteContract();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<
+    | null
+    | {
+        kind: "enable" | "initialize" | "toggle";
+        phase: "sig" | "chain";
+      }
+  >(null);
+
+  const {
+    data: slotData,
+    refetch: refetchSlot,
+  } = useReadContract({
+    address: campaignAddress,
+    abi: campaignModuleHostAbi,
+    functionName: "moduleSlot",
+    args: [DEBT_RESTRUCTURING_MODULE_TYPE],
+    query: { refetchInterval: 20_000 },
+  });
+
+  const slot = slotData as
+    | readonly [Address, `0x${string}`, string, bigint, boolean]
+    | undefined;
+  const attachedImpl = slot?.[0] ?? zeroAddress;
+  const isAttached = attachedImpl !== zeroAddress;
+  const moduleEnabled = Boolean(slot?.[4]);
+  const hasImpl = Boolean(
+    debtRestructuringImpl && debtRestructuringImpl !== zeroAddress,
+  );
+  const busy = pending !== null;
+
+  const refresh = async () => {
+    await refetchSlot();
+  };
+
+  const fail = (err: unknown, title: string) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/user (rejected|denied)/i.test(msg)) setError(msg);
+    notify.error(title, err);
+  };
+
+  const handleEnable = async () => {
+    setError(null);
+    try {
+      if (!debtRestructuringImpl || debtRestructuringImpl === zeroAddress) {
+        throw new Error(t("implMissing"));
+      }
+
+      setPending({ kind: "enable", phase: "sig" });
+      const attachHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "attachModule",
+        args: [
+          DEBT_RESTRUCTURING_MODULE_TYPE,
+          DEBT_RESTRUCTURING_MODULE_KIND,
+          debtRestructuringImpl,
+          "growfi://debt-restructuring/v1",
+        ],
+      });
+      setPending({ kind: "enable", phase: "chain" });
+      const attachReceipt = await waitForTx(attachHash);
+      if (attachReceipt.status !== "success") {
+        throw new Error("attachModule reverted");
+      }
+
+      setPending({ kind: "initialize", phase: "sig" });
+      const initHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: debtRestructuringModuleAbi,
+        functionName: "initializeDebtRestructuringByProducer",
+      });
+      setPending({ kind: "initialize", phase: "chain" });
+      const initReceipt = await waitForTx(initHash);
+      if (initReceipt.status !== "success") {
+        throw new Error("initializeDebtRestructuringByProducer reverted");
+      }
+      await refresh();
+      notify.success(t("enableConfirmed"), initHash);
+    } catch (err) {
+      fail(err, t("enableFailed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const handleToggle = async () => {
+    setError(null);
+    try {
+      setPending({ kind: "toggle", phase: "sig" });
+      const hash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "setModuleEnabled",
+        args: [DEBT_RESTRUCTURING_MODULE_TYPE, !moduleEnabled],
+      });
+      setPending({ kind: "toggle", phase: "chain" });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") {
+        throw new Error("setModuleEnabled reverted");
+      }
+      await refresh();
+      notify.success(
+        moduleEnabled ? t("disabledConfirmed") : t("enabledConfirmed"),
+        hash,
+      );
+    } catch (err) {
+      fail(err, t("toggleFailed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const enableLabel =
+    pending?.kind === "enable" && pending.phase === "sig"
+      ? t("enableSig")
+      : pending?.kind === "enable" && pending.phase === "chain"
+        ? t("enableChain")
+        : pending?.kind === "initialize"
+          ? pending.phase === "sig"
+            ? t("initializeSig")
+            : t("initializeChain")
+          : t("enableCta");
+
+  return (
+    <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isAttached
+                  ? moduleEnabled
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                  : "bg-outline"
+              }`}
+            />
+            <div className="text-sm font-bold text-on-surface">
+              {isAttached
+                ? moduleEnabled
+                  ? t("statusEnabled")
+                  : t("statusDisabled")
+                : t("statusMissing")}
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-on-surface-variant">
+            {isAttached ? t("attachedHint") : t("missingHint")}
+          </p>
+        </div>
+
+        {isAttached ? (
+          <button
+            onClick={handleToggle}
+            disabled={busy}
+            className="h-9 rounded-full border border-outline-variant/20 bg-surface-container-lowest px-4 text-xs font-semibold text-on-surface hover:bg-surface-container transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+          >
+            {pending?.kind === "toggle" && <Spinner size={12} />}
+            {pending?.kind === "toggle"
+              ? pending.phase === "sig"
+                ? t("toggleSig")
+                : t("toggleChain")
+              : moduleEnabled
+                ? t("disableCta")
+                : t("enableToggleCta")}
+          </button>
+        ) : (
+          <button
+            onClick={handleEnable}
+            disabled={busy || !hasImpl}
+            className="regen-gradient h-10 rounded-full px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+          >
+            {busy && <Spinner size={14} />}
+            {enableLabel}
+          </button>
+        )}
+      </div>
+
+      <div className="rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-3 text-xs text-on-surface-variant">
+        {t("operationalHint")}
+      </div>
+
+      {!isAttached && !hasImpl && (
+        <p className="text-xs text-error">{t("implMissing")}</p>
+      )}
+
+      {attachedImpl !== zeroAddress && (
+        <div className="text-[11px] text-on-surface-variant">
+          {t("implementation")}{" "}
+          <a
+            href={addressUrl(attachedImpl)}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono underline decoration-dotted underline-offset-2"
+          >
+            {attachedImpl.slice(0, 6)}…{attachedImpl.slice(-4)}
+          </a>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-error">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
