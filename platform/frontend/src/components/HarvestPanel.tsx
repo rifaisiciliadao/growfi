@@ -464,6 +464,7 @@ function SeasonCard({
           entitled={entitled}
           claimable={claimable}
           claimPayoutOpen={Boolean(claimPayoutOpen)}
+          claimEnd={season.claimEnd}
           usdcDeadline={season.usdcDeadline}
           debtRestructuringEnabled={debtRestructuringEnabled}
           restructureShortfall={restructureShortfall}
@@ -515,6 +516,7 @@ function UsdcClaimTimeline({
   entitled,
   claimable,
   claimPayoutOpen,
+  claimEnd,
   usdcDeadline,
   debtRestructuringEnabled,
   restructureShortfall,
@@ -530,6 +532,7 @@ function UsdcClaimTimeline({
   entitled: bigint;
   claimable: bigint;
   claimPayoutOpen: boolean;
+  claimEnd: string | null;
   usdcDeadline: string | null;
   debtRestructuringEnabled: boolean;
   restructureShortfall: bigint;
@@ -564,6 +567,12 @@ function UsdcClaimTimeline({
   const now = Math.floor(Date.now() / 1000);
   const daysToDeadline = usdcDeadline
     ? Math.max(0, Math.ceil((Number(usdcDeadline) - now) / 86400))
+    : null;
+  // USDC payout opens only after `claimEnd` (report + 30d). Surface the
+  // unlock date + a day countdown to the holder while it is still gated.
+  const claimEndDate = claimEnd ? new Date(Number(claimEnd) * 1000) : null;
+  const daysToClaimEnd = claimEnd
+    ? Math.max(0, Math.ceil((Number(claimEnd) - now) / 86400))
     : null;
   const pastDeadline =
     usdcDeadline !== null && now > Number(usdcDeadline);
@@ -730,7 +739,16 @@ function UsdcClaimTimeline({
             </div>
             {!claimPayoutOpen && (
               <div className="text-[11px] text-on-surface-variant">
-                {t("timeline.claimAfterWindow")}
+                {claimEndDate && daysToClaimEnd !== null
+                  ? daysToClaimEnd > 0
+                    ? t("timeline.claimableAfter", {
+                        date: claimEndDate.toLocaleDateString(),
+                        days: daysToClaimEnd,
+                      })
+                    : t("timeline.claimableSoon", {
+                        date: claimEndDate.toLocaleDateString(),
+                      })
+                  : t("timeline.claimAfterWindow")}
               </div>
             )}
             {entitled > claimable + usdcAlreadyClaimed + 1n && (
@@ -743,7 +761,7 @@ function UsdcClaimTimeline({
           </div>
           <button
             onClick={onClaim}
-            disabled={transferableClaimable === 0n || pendingKind !== null}
+            disabled={!claimPayoutOpen || transferableClaimable === 0n || pendingKind !== null}
             className="regen-gradient text-white rounded-full px-6 py-2.5 text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {pendingKind === "claim" ? t("claiming") : t("claimUSDC")}

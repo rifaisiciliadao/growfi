@@ -229,13 +229,14 @@ contract SaleClassicModuleTest is Test {
         uint256 expectedFee = payment * FUNDING_FEE_BPS / 10_000;
         uint256 expectedNet = payment - expectedFee;
 
-        // Auto-activate fired during buy()
+        // Reaching minCap no longer auto-activates — campaign stays Funding
+        // with the net payment escrowed until the producer activates.
+        assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Funding));
+        vm.prank(producer);
+        SaleClassicModule(payable(address(campaign))).activateCampaign();
+
+        // Activation drains the sale escrow to the producer.
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
-        // The buy hit minCap exactly — the net payment is split: the
-        // queue fill loop is empty (no queue yet), so the full net goes
-        // to the producer via the direct mint path during the SAME buy
-        // that triggered activation (producer receives the live payment;
-        // the `_activate` escrow-drain loop sees zero balance).
         assertEq(usdc.balanceOf(producer), expectedNet, "producer didn't receive net payment");
         assertEq(usdc.balanceOf(address(campaign)), 0, "no escrow expected post-activate");
         assertEq(usdc.balanceOf(feeRecipient), expectedFee);
@@ -273,6 +274,8 @@ contract SaleClassicModuleTest is Test {
         usdc.approve(address(campaign), alicePayment);
         SaleClassicModule(payable(address(campaign))).buy(address(usdc), alicePayment);
         vm.stopPrank();
+        vm.prank(producer);
+        SaleClassicModule(payable(address(campaign))).activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
 
         // 2. Alice requests sellback of 50 CT
@@ -310,6 +313,10 @@ contract SaleClassicModuleTest is Test {
         vm.startPrank(alice);
         usdc.approve(address(campaign), 14.4e6);
         SaleClassicModule(payable(address(campaign))).buy(address(usdc), 14.4e6);
+        vm.stopPrank();
+        vm.prank(producer);
+        SaleClassicModule(payable(address(campaign))).activateCampaign();
+        vm.startPrank(alice);
         campaignToken.approve(address(campaign), 50e18);
         SaleClassicModule(payable(address(campaign))).sellBack(50e18);
         SaleClassicModule(payable(address(campaign))).cancelSellBack();

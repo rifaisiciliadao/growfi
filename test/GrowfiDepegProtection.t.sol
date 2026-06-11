@@ -12,6 +12,23 @@ import {MockOracle} from "./helpers/MockOracle.sol";
 /// @dev Mock campaign with a settable state slot, mirroring the real Campaign's
 ///      `0=Funding 1=Active 2=Buyback 3=Ended` enum. Used to exercise the state-aware
 ///      floor calc.
+/// @dev Minimal factory stub: the Treasury now validates tracked campaigns
+///      via `factory.isCampaign()`, so the placeholder FACTORY address must
+///      carry code that answers it.
+contract FactoryStub {
+    function isCampaign(address) external pure returns (bool) {
+        return true;
+    }
+
+    function usdc() external pure returns (address) {
+        return address(0);
+    }
+
+    function growfiMinter() external pure returns (address) {
+        return address(0);
+    }
+}
+
 contract MockCampaign {
     address public campaignToken;
     uint256 public pricePerToken;
@@ -21,6 +38,11 @@ contract MockCampaign {
         campaignToken = campaignToken_;
         pricePerToken = pricePerToken_;
         state = state_;
+    }
+
+    /// @dev Treasury tracking requires a non-zero soft cap.
+    function minCap() external pure returns (uint256) {
+        return 1e18;
     }
 
     function setState(uint8 s) external {
@@ -62,6 +84,10 @@ contract GrowfiDepegProtectionTest is Test {
     uint16 constant MAX_BPS = 10_500; // $1.05
 
     function setUp() public {
+        // Give the placeholder FACTORY address real code so the Treasury's
+        // `factory.isCampaign()` validation resolves.
+        vm.etch(FACTORY, address(new FactoryStub()).code);
+
         usdc = new MockERC20("USD Coin", "USDC", 6);
         usdt = new MockERC20("Tether USD", "USDT", 6);
         dai = new MockERC20("Dai", "DAI", 18);

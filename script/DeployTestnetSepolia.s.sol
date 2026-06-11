@@ -55,7 +55,7 @@ contract DeployTestnetSepolia is Script {
         // Sepolia ETH = L1, no sequencer-uptime feed
         address sequencerFeed = address(0);
 
-        require(block.chainid == 11_155_111, "Wrong chain - Sepolia only");
+        require((block.chainid == 11_155_111 || block.chainid == 84_532), "Wrong chain - Sepolia only");
 
         vm.startBroadcast(deployerPk);
 

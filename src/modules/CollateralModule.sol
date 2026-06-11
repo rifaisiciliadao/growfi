@@ -146,7 +146,7 @@ contract CollateralModule {
         if (amount == 0) revert ZeroAmount();
         Layout storage s = _s();
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
-        if (cs.paused) revert InvalidState();
+        if (cs.paused || cs.factoryPaused) revert InvalidState();
         if (cs.state != uint8(CampaignStorage.State.Funding) && cs.state != uint8(CampaignStorage.State.Active)) {
             revert InvalidState();
         }
@@ -163,7 +163,7 @@ contract CollateralModule {
     function depositUSDC(uint256 seasonId, uint256 walletCap) external onlyProducer nonReentrant {
         Layout storage s = _s();
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
-        if (cs.paused) revert InvalidState();
+        if (cs.paused || cs.factoryPaused) revert InvalidState();
         if (cs.harvestManager == address(0)) revert InvalidState();
 
         (,,,,,, uint256 deadline,,,,, bool reported) =

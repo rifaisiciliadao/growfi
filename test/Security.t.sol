@@ -90,6 +90,9 @@ contract SecurityTest is Test {
         campaign.buy(address(usdc), 8_640_000_000);
 
         vm.prank(producer);
+        campaign.activateCampaign();
+
+        vm.prank(producer);
         campaign.startSeason();
 
         (,,,,, bool active,) = stakingVault.seasons(1);
@@ -99,6 +102,9 @@ contract SecurityTest is Test {
     function test_producerCanEndSeason() public {
         vm.prank(alice);
         campaign.buy(address(usdc), 8_640_000_000);
+
+        vm.prank(producer);
+        campaign.activateCampaign();
 
         vm.prank(producer);
         campaign.startSeason();
@@ -232,6 +238,8 @@ contract SecurityTest is Test {
     function test_noPurchaseTrackingInActiveState() public {
         vm.prank(alice);
         campaign.buy(address(usdc), 8_640_000_000);
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
 
         vm.prank(bob);

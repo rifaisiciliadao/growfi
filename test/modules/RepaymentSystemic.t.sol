@@ -119,6 +119,9 @@ contract RepaymentSystemicTest is Test {
         campaignToken.approve(address(stakingVault), type(uint256).max);
         campaign.buy(address(usdc), 720e6); // 5_000 CT
         vm.stopPrank();
+        // minCap reached (10_000 CT >= 1_000 minCap) — producer activates explicitly
+        vm.prank(producer);
+        campaign.activateCampaign();
     }
 
     function _attachAndFundRepayment(uint256 poolSize, uint256 initialBonus) internal {

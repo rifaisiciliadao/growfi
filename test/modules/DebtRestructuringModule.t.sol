@@ -110,6 +110,10 @@ contract DebtRestructuringModuleTest is Test {
         campaign.buy(address(usdc), 1_440e6);
         vm.stopPrank();
 
+        // minCap reached (10_000 CT >= 1_000 minCap) — producer activates explicitly
+        vm.prank(producer);
+        campaign.activateCampaign();
+
         vm.prank(producer);
         campaign.startSeason();
 

@@ -627,6 +627,8 @@
         "depositDeadlinePassed": "Fecha límite de depósito pasada: {date}",
         "claimableNow": "Reclamable ahora",
         "claimAfterWindow": "Los reclamos USDC abren después de cerrar la ventana de elección.",
+        "claimableAfter": "Reclamable a partir del {date} (faltan {days} días)",
+        "claimableSoon": "Reclamable a partir del {date}",
         "entitledTotal": "Total con depósito completo: ${amount}",
         "fullyPaid": "Recibidos ${amount} — liquidado",
         "shortfall": "Ventana de depósito cerrada con el pool infra-financiado. Puedes reclamar tu pro-rata de lo depositado.",

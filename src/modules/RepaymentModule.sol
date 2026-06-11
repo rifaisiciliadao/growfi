@@ -69,6 +69,7 @@ contract RepaymentModule {
     error OnlyCampaignSelf();
     error NotInitialized();
     error InsufficientCampaignBalance();
+    error SupplyUnderflow();
 
     // ------------------------------------------------------------------
     // Events
@@ -107,6 +108,26 @@ contract RepaymentModule {
         bytes32 slot = SALE_CLASSIC_SLOT;
         assembly {
             price := sload(slot)
+        }
+    }
+
+    /// @dev Decrease SaleClassicModule.currentSupply (slot offset +6) by `amount`
+    ///      to mirror the CampaignToken burn done in `redeem`. Keeps the sale
+    ///      module's supply counter coherent with real circulating supply so
+    ///      the minCap activation gate cannot be gamed by self-buy + redeem.
+    ///      Reverts on underflow.
+    function _decreaseSaleCurrentSupply(uint256 amount) internal {
+        bytes32 slot = SALE_CLASSIC_SLOT;
+        uint256 current;
+        assembly {
+            current := sload(add(slot, 6))
+        }
+        if (current < amount) revert SupplyUnderflow();
+        unchecked {
+            current -= amount;
+        }
+        assembly {
+            sstore(add(slot, 6), current)
         }
     }
 
@@ -223,7 +244,7 @@ contract RepaymentModule {
         if (amount == 0) revert ZeroAmount();
         Layout storage s = _s();
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
-        if (cs.paused) revert InvalidState();
+        if (cs.paused || cs.factoryPaused) revert InvalidState();
         if (cs.state == uint8(CampaignStorage.State.Ended)) revert InvalidState();
 
         uint256 pricePerToken = _readPricePerToken();
@@ -263,6 +284,7 @@ contract RepaymentModule {
         // delegatecall context is the Campaign address, which satisfies
         // `onlyCampaignOrVault`.
         IGrowfiCampaignTokenMint(cs.campaignToken).burn(msg.sender, amount);
+        _decreaseSaleCurrentSupply(amount);
 
         s.poolBalance -= grossPayout;
         s.claimedByUser[msg.sender] += netPayout;

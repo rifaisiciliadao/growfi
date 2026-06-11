@@ -16,6 +16,8 @@ contract MockGrowfiCampaign {
     /// @dev 0 = Funding, 1 = Active, 2 = Buyback, 3 = Ended. Defaults to Active so the
     ///      floor calc counts Treasury holdings of this campaign's token by default.
     uint8 public state = 1;
+    /// @dev Non-zero soft cap so Treasury.addTrackedCampaign accepts it (MinCapZero guard).
+    uint256 public minCap = 1e18;
 
     constructor(address campaignToken_, uint256 pricePerToken_) {
         campaignToken = campaignToken_;
@@ -36,6 +38,20 @@ contract MockGrowfiCampaign {
     }
 }
 
+/// @dev Mock factory implementing the view surface Treasury queries: `isCampaign` (used by
+///      addTrackedCampaign to reject non-factory campaigns) and `usdc` (read in initialize).
+contract MockGrowfiFactory {
+    mapping(address => bool) public isCampaign;
+
+    function registerCampaign(address campaign) external {
+        isCampaign[campaign] = true;
+    }
+
+    function usdc() external pure returns (address) {
+        return address(0);
+    }
+}
+
 contract GrowfiTreasuryTest is Test {
     GrowfiToken token;
     GrowfiTreasury treasury;
@@ -47,8 +63,9 @@ contract GrowfiTreasuryTest is Test {
     MockGrowfiCampaign campaignA;
     MockGrowfiCampaign campaignB;
     MockOracle usdFeed; // single $1 feed shared across mock stablecoins
+    MockGrowfiFactory mockFactory;
 
-    address constant FACTORY = address(0xF000);
+    address FACTORY; // set in setUp() to the deployed mock factory (implements isCampaign/usdc)
     address constant DEPLOYER = address(0xD000);
     address constant ALICE = address(0xA1);
     address constant BOB = address(0xB0B);
@@ -64,6 +81,9 @@ contract GrowfiTreasuryTest is Test {
     uint256 constant SCALE_18DEC = 1; // 18-dec native
 
     function setUp() public {
+        mockFactory = new MockGrowfiFactory();
+        FACTORY = address(mockFactory);
+
         usdc = new MockERC20("USD Coin", "USDC", 6);
         usdt = new MockERC20("Tether USD", "USDT", 6);
         dai = new MockERC20("Dai", "DAI", 18);
@@ -96,6 +116,11 @@ contract GrowfiTreasuryTest is Test {
 
         campaignA = new MockGrowfiCampaign(address(campaignTokenA), PRICE_A);
         campaignB = new MockGrowfiCampaign(address(campaignTokenB), PRICE_B);
+
+        // Register both mock campaigns so Treasury.addTrackedCampaign accepts them
+        // (the new factory.isCampaign guard).
+        mockFactory.registerCampaign(address(campaignA));
+        mockFactory.registerCampaign(address(campaignB));
     }
 
     // ---------- initialize ----------

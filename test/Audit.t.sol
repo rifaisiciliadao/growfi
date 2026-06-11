@@ -85,7 +85,9 @@ contract AuditTest is Test {
 
     function _activateAndStartSeason() internal {
         vm.prank(alice);
-        campaign.buy(address(usdc), 8_640_000_000); // 60k tokens → auto-activates
+        campaign.buy(address(usdc), 8_640_000_000); // 60k tokens → reaches minCap
+        vm.prank(producer);
+        campaign.activateCampaign();
         vm.prank(alice);
         campaignToken.approve(address(stakingVault), type(uint256).max);
         vm.prank(producer);

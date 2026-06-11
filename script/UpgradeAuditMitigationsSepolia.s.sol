@@ -45,7 +45,7 @@ contract UpgradeAuditMitigationsSepolia is Script {
     bytes32 internal constant ERC1967_ADMIN_SLOT = 0xb53127684a568b3173ae13b9f8a6016e243e63b6e8ee1178d6a717850b5d6103;
 
     function run() public {
-        require(block.chainid == 11_155_111, "Sepolia only");
+        require((block.chainid == 11_155_111 || block.chainid == 84_532), "Sepolia only");
 
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
         address factoryProxy = vm.envAddress("FACTORY_ADDRESS");

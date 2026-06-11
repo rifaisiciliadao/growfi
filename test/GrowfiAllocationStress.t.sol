@@ -141,6 +141,9 @@ contract GrowfiAllocationStressTest is Test {
             usdc.approve(camp, selfFund);
             vm.prank(PRODUCER);
             IGrowfiCampaignFull(payable(camp)).buy(address(usdc), selfFund);
+            // buy() no longer auto-activates on reaching softcap; producer activates explicitly.
+            vm.prank(PRODUCER);
+            IGrowfiCampaignFull(payable(camp)).activateCampaign();
         }
     }
 

@@ -88,6 +88,15 @@ library CampaignStorage {
         mapping(bytes4 => bytes32) selectorToType;
         mapping(bytes32 => ModuleSlot) moduleSlot;
         bytes32[] moduleTypeList;
+        // -------------------------------------------------------------
+        // Pause flags (appended — keep at the very end for upgrade safety)
+        // -------------------------------------------------------------
+        // `paused` (above) is the PRODUCER-controlled pause. `factoryPaused`
+        // is the factory/owner emergency pause. They are independent: a
+        // campaign is paused if EITHER flag is set, and the producer cannot
+        // clear the factory's emergency pause. Modules must gate on
+        // `paused || factoryPaused`.
+        bool factoryPaused;
     }
 
     /// @notice Accessor used by both the host and every module to read

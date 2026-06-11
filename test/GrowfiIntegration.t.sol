@@ -229,6 +229,10 @@ contract GrowfiIntegrationTest is Test {
         vm.prank(BOB);
         IGrowfiCampaignFull(payable(campaign)).buy(address(usdc), 50 * ONE_USDC);
 
+        // Producer explicitly activates now that softcap is reached.
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campaign)).activateCampaign();
+
         // Status is now Active.
         (status,,,) = growMinter.getCampaignState(campaign);
         assertEq(uint256(status), uint256(GrowfiMinter.CampaignStatus.Active), "minter status: Active");
@@ -249,10 +253,13 @@ contract GrowfiIntegrationTest is Test {
     function test_lifecycle_postSoftcapDirectMint() public {
         address campaign = _createCampaign(50e18, 200e18, 1e18);
 
-        // Alice buys $50 → reaches softcap → activates. Tier 1 only.
+        // Alice buys $50 → reaches softcap; producer activates. Tier 1 only.
         _approveAndFundUsdc(ALICE, 50 * ONE_USDC, campaign);
         vm.prank(ALICE);
         IGrowfiCampaignFull(payable(campaign)).buy(address(usdc), 50 * ONE_USDC);
+
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campaign)).activateCampaign();
 
         // Status should be Active now.
         (GrowfiMinter.CampaignStatus status,,,) = growMinter.getCampaignState(campaign);
@@ -372,6 +379,8 @@ contract GrowfiIntegrationTest is Test {
         _approveAndFundUsdc(ALICE, 200 * ONE_USDC, campA);
         vm.prank(ALICE);
         IGrowfiCampaignFull(payable(campA)).buy(address(usdc), 200 * ONE_USDC);
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campA)).activateCampaign();
 
         // Alice claims her escrow on A (but only $50 was tier-1 pre-softcap; the rest was post-softcap direct mint)
         // Actually: the buy crossed softcap so $50 went to escrow at tier1, and $150 went direct to wallet
@@ -387,6 +396,8 @@ contract GrowfiIntegrationTest is Test {
         _approveAndFundUsdc(ALICE, 50 * ONE_USDC, campB);
         vm.prank(ALICE);
         IGrowfiCampaignFull(payable(campB)).buy(address(usdc), 50 * ONE_USDC);
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campB)).activateCampaign();
 
         // B reached softcap → claim
         vm.prank(ALICE);
@@ -409,10 +420,13 @@ contract GrowfiIntegrationTest is Test {
     function test_sellbackQueue_doesNotEmitGrowOnFill() public {
         address campaign = _createCampaign(50e18, 200e18, 1e18);
 
-        // Alice reaches softcap → activate.
+        // Alice reaches softcap → producer activates.
         _approveAndFundUsdc(ALICE, 50 * ONE_USDC, campaign);
         vm.prank(ALICE);
         IGrowfiCampaignFull(payable(campaign)).buy(address(usdc), 50 * ONE_USDC);
+
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campaign)).activateCampaign();
 
         // Alice claims her escrow.
         vm.prank(ALICE);
@@ -471,6 +485,8 @@ contract GrowfiIntegrationTest is Test {
             _approveAndFundUsdc(PRODUCER, 50 * ONE_USDC, c);
             vm.prank(PRODUCER);
             IGrowfiCampaignFull(payable(c)).buy(address(usdc), 50 * ONE_USDC);
+            vm.prank(PRODUCER);
+            IGrowfiCampaignFull(payable(c)).activateCampaign();
         }
 
         _enableAutomationAndTrack(campA);
@@ -525,6 +541,8 @@ contract GrowfiIntegrationTest is Test {
         _approveAndFundUsdc(PRODUCER, 50 * ONE_USDC, campActive);
         vm.prank(PRODUCER);
         IGrowfiCampaignFull(payable(campActive)).buy(address(usdc), 50 * ONE_USDC);
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campActive)).activateCampaign();
 
         _enableAutomationAndTrack(campActive);
         _enableAutomationAndTrack(campFunding);
@@ -547,6 +565,8 @@ contract GrowfiIntegrationTest is Test {
         _approveAndFundUsdc(PRODUCER, 80 * ONE_USDC, camp);
         vm.prank(PRODUCER);
         IGrowfiCampaignFull(payable(camp)).buy(address(usdc), 80 * ONE_USDC); // 20 tokens room left
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(camp)).activateCampaign();
 
         _enableAutomationAndTrack(camp);
 
@@ -617,6 +637,8 @@ contract GrowfiIntegrationTest is Test {
         _approveAndFundUsdc(PRODUCER, 50 * ONE_USDC, campaign);
         vm.prank(PRODUCER);
         IGrowfiCampaignFull(payable(campaign)).buy(address(usdc), 50 * ONE_USDC);
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campaign)).activateCampaign();
 
         // ============================================================
         // Phase 3: Multisig adds the campaign to Treasury's tracked list, then allocates
@@ -695,6 +717,10 @@ contract GrowfiIntegrationTest is Test {
         // ============================================================
         // Phase 10: Anyone (BOB, permissionless) calls claimUsdcAndDistribute
         // ============================================================
+        // claimUSDC is gated behind `claimEnd` (report + 30d) so usdcOwed is
+        // final before any transfer. Warp past it before pulling USDC.
+        skip(31 days);
+
         uint256 poolBefore = usdc.balanceOf(address(stakingPool));
         uint256 treasuryBefore = usdc.balanceOf(address(growTreasury));
 
@@ -774,12 +800,14 @@ contract GrowfiIntegrationTest is Test {
         vm.stopPrank();
 
         // ===== Phase 3: Multi-actor multi-token buys =====
-        // Eve buys $50 USDC on A (reaches softcap → Active)
+        // Eve buys $50 USDC on A (reaches softcap); producer activates → Active.
         usdc.mint(EVE, 50 * ONE_USDC);
         vm.prank(EVE);
         usdc.approve(campA, 50 * ONE_USDC);
         vm.prank(EVE);
         IGrowfiCampaignFull(payable(campA)).buy(address(usdc), 50 * ONE_USDC);
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campA)).activateCampaign();
 
         // Frank buys $50 USDT on A (post-softcap, direct GROW mint at tier 2)
         usdt.mint(FRANK, 50 * ONE_USDC);
@@ -795,12 +823,14 @@ contract GrowfiIntegrationTest is Test {
         vm.prank(EVE);
         IGrowfiCampaignFull(payable(campB)).buy(address(dai), 30 * ONE_DAI);
 
-        // Frank buys $80 USDC on campC (= 40 tokens at $2/each, > 30 softcap → Active)
+        // Frank buys $80 USDC on campC (= 40 tokens at $2/each, > 30 softcap); producer activates → Active.
         usdc.mint(FRANK, 80 * ONE_USDC);
         vm.prank(FRANK);
         usdc.approve(campC, 80 * ONE_USDC);
         vm.prank(FRANK);
         IGrowfiCampaignFull(payable(campC)).buy(address(usdc), 80 * ONE_USDC);
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campC)).activateCampaign();
 
         // ===== Phase 4: Eve claims her escrow on campA (Active) and campB stays escrowed =====
         vm.prank(EVE);
@@ -917,10 +947,14 @@ contract GrowfiIntegrationTest is Test {
     function test_treasury_allocateAndRedeem() public {
         address campaign = _createCampaign(50e18, 200e18, 1e18);
 
-        // Trigger softcap via Alice (so the campaign is Active and accepts payment to producer).
+        // Trigger softcap via Alice, then producer activates (so the campaign is
+        // Active and accepts payment to producer).
         _approveAndFundUsdc(ALICE, 50 * ONE_USDC, campaign);
         vm.prank(ALICE);
         IGrowfiCampaignFull(payable(campaign)).buy(address(usdc), 50 * ONE_USDC);
+
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campaign)).activateCampaign();
 
         // Multisig tracks the campaign, then allocates manually.
         vm.prank(address(factory));

@@ -118,6 +118,10 @@ contract RepaymentRedTeamTest is Test {
         campaign.buy(address(usdc), 720e6); // 5_000 CT
         vm.stopPrank();
 
+        // Activation is explicit now (buy no longer auto-activates).
+        vm.prank(producer);
+        campaign.activateCampaign();
+
         // Attach Repayment, init, fund.
         vm.prank(producer);
         GrowfiCampaign(payable(campaignAddr)).attachModule(REPAY_TYPE, REPAY_KIND, address(repayImpl), "");

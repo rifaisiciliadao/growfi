@@ -7,11 +7,11 @@ schema:
 dataSources:
   - kind: ethereum/contract
     name: CampaignFactory
-    network: sepolia
+    network: base-sepolia
     source:
-      address: "0xa4DEd8Ab35e89bCAF1f7DFeb7aB2c1ED533b3f05"
+      address: "0xAf81c05747EDA1e1715fF23626ab83c3351dCfF6"
       abi: CampaignFactory
-      startBlock: 10838711
+      startBlock: 42697602
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -40,11 +40,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: CampaignRegistry
-    network: sepolia
+    network: base-sepolia
     source:
-      address: "0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE"
+      address: "0xf15E94B1db45eF645Ca611D62ECC6b10F5461515"
       abi: CampaignRegistry
-      startBlock: 10838711
+      startBlock: 42697602
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -61,11 +61,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: ProducerRegistry
-    network: sepolia
+    network: base-sepolia
     source:
-      address: "0x8DDc90F40Bf8847672EA5B256d93607F42Fd540E"
+      address: "0x0ad6Af458718963aeE1C7C4e142427E9c2c381a7"
       abi: ProducerRegistry
-      startBlock: 10838711
+      startBlock: 42697602
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -86,11 +86,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: GrowfiToken
-    network: sepolia
+    network: base-sepolia
     source:
-      address: "0x9bB4f9C41ed922282C181f2f3e01d8384c960b44"
+      address: "0x88E1Fd001D09bE235BbEbeEd19e33E7abCF5385E"
       abi: GrowfiToken
-      startBlock: 10838846
+      startBlock: 42697602
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -123,11 +123,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: GrowfiTreasury
-    network: sepolia
+    network: base-sepolia
     source:
-      address: "0xB71D13F80ceAed17A179B4e0D9eb1e8410DeaDDd"
+      address: "0x66B3b38FCe61b0E5C96e9a1F0279321b14aC54D0"
       abi: GrowfiTreasury
-      startBlock: 10838846
+      startBlock: 42697602
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -160,11 +160,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: GrowfiMinter
-    network: sepolia
+    network: base-sepolia
     source:
-      address: "0xD99c1985B257a4A55bA8D0836Fab536389cdd24C"
+      address: "0xa9D37cEF4756349ad2BE0023643122Af16868B57"
       abi: GrowfiMinter
-      startBlock: 10838846
+      startBlock: 42697602
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -198,11 +198,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: GrowfiFeeSplitter
-    network: sepolia
+    network: base-sepolia
     source:
-      address: "0xF1a8527E00916588f4Bb137cE450E8459b6BD436"
+      address: "0xF0Ad36ef051742b4397048Aa4d5D7AB08F88FEf7"
       abi: GrowfiFeeSplitter
-      startBlock: 10838846
+      startBlock: 42697602
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -220,7 +220,7 @@ dataSources:
 templates:
   - kind: ethereum/contract
     name: Campaign
-    network: sepolia
+    network: base-sepolia
     source:
       abi: Campaign
     mapping:
@@ -314,7 +314,7 @@ templates:
 
   - kind: ethereum/contract
     name: StakingVault
-    network: sepolia
+    network: base-sepolia
     source:
       abi: StakingVault
     mapping:
@@ -348,7 +348,7 @@ templates:
 
   - kind: ethereum/contract
     name: HarvestManager
-    network: sepolia
+    network: base-sepolia
     source:
       abi: HarvestManager
     mapping:

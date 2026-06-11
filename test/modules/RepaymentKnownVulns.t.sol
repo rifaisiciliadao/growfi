@@ -104,8 +104,11 @@ contract RepaymentKnownVulnsTest is Test {
         usdc.mint(alice, 720e6);
         vm.startPrank(alice);
         usdc.approve(campaignAddr, type(uint256).max);
-        campaign.buy(address(usdc), 720e6); // 5_000 CT, activates
+        campaign.buy(address(usdc), 720e6); // 5_000 CT (>= 1_000 minCap)
         vm.stopPrank();
+        // Reaching minCap no longer auto-activates — producer activates explicitly
+        vm.prank(producer);
+        campaign.activateCampaign();
 
         vm.prank(producer);
         GrowfiCampaign(payable(campaignAddr)).attachModule(REPAY_TYPE, REPAY_KIND, address(repayImpl), "");
@@ -160,9 +163,11 @@ contract RepaymentKnownVulnsTest is Test {
 
         assertEq(campaign.producer(), hostProducer, "host.producer untouched");
         assertEq(campaign.pricePerToken(), salePrice, "sale price untouched");
-        // currentSupply intentionally NOT decremented by Repayment burn — see test below
+        // currentSupply is decremented by the Repayment burn (keeps the sale
+        // module's supply counter coherent) — but ONLY currentSupply, no other
+        // namespace field leaks. The redeem above burned 50 CT.
         assertEq(
-            campaign.currentSupply(), saleCurrentSupply, "sale.currentSupply unchanged by Repayment burn (by design)"
+            campaign.currentSupply(), saleCurrentSupply - 50e18, "sale.currentSupply decremented by Repayment burn"
         );
     }
 
@@ -402,12 +407,12 @@ contract RepaymentKnownVulnsTest is Test {
     // currentSupply semantic — Repayment burn does NOT decrement
     // ------------------------------------------------------------------
 
-    /// @dev Document that Repayment burns reduce campaignToken.totalSupply
-    ///      but do NOT decrement SaleClassic.currentSupply. This is
-    ///      intentional: currentSupply tracks "cumulative ever-sold via
-    ///      SaleClassic", not actual outstanding tokens. maxCap enforces
-    ///      cumulative-ever-sold, not concurrent-outstanding.
-    function test_vuln_currentSupplySemantic_repaymentBurnDoesNotDecrement() public {
+    /// @dev Repayment burns reduce campaignToken.totalSupply AND now also
+    ///      decrement SaleClassic.currentSupply by the burned amount. This
+    ///      keeps the sale module's supply counter coherent with real
+    ///      circulating supply so the minCap activation gate cannot be gamed
+    ///      by self-buy + redeem.
+    function test_vuln_currentSupplySemantic_repaymentBurnDecrements() public {
         uint256 supplyBefore = campaign.currentSupply();
         uint256 totalSupplyBefore = campaignToken.totalSupply();
 
@@ -417,14 +422,17 @@ contract RepaymentKnownVulnsTest is Test {
         // ERC20 totalSupply DOES decrement
         assertEq(campaignToken.totalSupply(), totalSupplyBefore - 200e18, "ERC20 totalSupply shrank");
 
-        // SaleClassic.currentSupply does NOT decrement
-        assertEq(campaign.currentSupply(), supplyBefore, "SaleClassic.currentSupply NOT decremented by Repayment");
+        // SaleClassic.currentSupply now ALSO decrements by the burned amount
+        assertEq(
+            campaign.currentSupply(), supplyBefore - 200e18, "SaleClassic.currentSupply decremented by Repayment burn"
+        );
 
-        // Producer cannot setMaxCap below currentSupply even though actual outstanding < currentSupply.
-        // This shows currentSupply is the binding constraint for future buys/cap changes.
+        // Producer cannot setMaxCap below the (now reduced) currentSupply —
+        // currentSupply remains the binding constraint for cap changes.
+        uint256 supplyAfter = campaign.currentSupply();
         vm.prank(producer);
         vm.expectRevert(SaleClassicModule.NewMaxCapBelowCommitted.selector);
-        campaign.setMaxCap(supplyBefore - 1);
+        campaign.setMaxCap(supplyAfter - 1);
     }
 
     // ------------------------------------------------------------------

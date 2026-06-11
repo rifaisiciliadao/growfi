@@ -311,6 +311,8 @@ contract AuditFixesTest is Test {
         vm.prank(alice);
         campaign.buy(address(usdc), 7_200e6);
 
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
 
         vm.prank(alice);
@@ -345,6 +347,8 @@ contract AuditFixesTest is Test {
         vm.prank(alice);
         campaign.buy(address(usdc), 7_200e6);
         vm.prank(producer);
+        campaign.activateCampaign();
+        vm.prank(producer);
         campaign.startSeason();
         vm.warp(block.timestamp + 365 days);
         vm.prank(producer);
@@ -378,6 +382,8 @@ contract AuditFixesTest is Test {
         usdc.approve(address(campaign), type(uint256).max);
         vm.prank(alice);
         campaign.buy(address(usdc), 7_200e6);
+        vm.prank(producer);
+        campaign.activateCampaign();
         vm.prank(producer);
         campaign.startSeason();
 
@@ -584,13 +590,15 @@ contract AuditFixesTest is Test {
         vm.prank(producer);
         campaign.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 144_000, address(0));
 
-        // Fund past minCap → auto-activate. 50_000 $CAMPAIGN @ 0.144 USDC = 7200 USDC.
+        // Fund past minCap, then producer activates. 50_000 $CAMPAIGN @ 0.144 USDC = 7200 USDC.
         usdc.mint(alice, 7200e6);
         vm.prank(alice);
         usdc.approve(address(campaign), type(uint256).max);
         vm.prank(alice);
         campaign.buy(address(usdc), 7200e6);
 
+        vm.prank(producer);
+        campaign.activateCampaign();
         vm.prank(producer);
         campaign.startSeason();
 
@@ -680,6 +688,8 @@ contract AuditFixesTest is Test {
         campaign.buy(address(usdc), 3_600e6);
 
         vm.prank(producer);
+        campaign.activateCampaign();
+        vm.prank(producer);
         campaign.startSeason();
 
         (,,, address sv, address hmAddr,,) = factory.campaigns(0);
@@ -747,6 +757,8 @@ contract AuditFixesTest is Test {
         campaign.buy(address(usdc), 7200e6);
 
         vm.prank(producer);
+        campaign.activateCampaign();
+        vm.prank(producer);
         campaign.startSeason();
 
         (,,,, address hmAddr,,) = factory.campaigns(0);
@@ -766,6 +778,8 @@ contract AuditFixesTest is Test {
         vm.prank(alice);
         campaign.buy(address(usdc), 7200e6);
 
+        vm.prank(producer);
+        campaign.activateCampaign();
         vm.prank(producer);
         campaign.startSeason();
         vm.warp(block.timestamp + 365 days);
@@ -791,6 +805,8 @@ contract AuditFixesTest is Test {
         vm.prank(alice);
         campaign.buy(address(usdc), 7200e6);
 
+        vm.prank(producer);
+        campaign.activateCampaign();
         vm.prank(producer);
         campaign.startSeason();
         vm.prank(alice);
@@ -826,6 +842,8 @@ contract AuditFixesTest is Test {
         vm.prank(alice);
         campaign.buy(address(usdc), 7200e6);
 
+        vm.prank(producer);
+        campaign.activateCampaign();
         vm.prank(producer);
         campaign.startSeason();
         vm.warp(block.timestamp + 365 days);
@@ -866,6 +884,9 @@ contract AuditFixesTest is Test {
         campaign.buy(address(usdc), 3_600e6);
         vm.prank(bob);
         campaign.buy(address(usdc), 3_600e6);
+
+        vm.prank(producer);
+        campaign.activateCampaign();
 
         (,,, address sv, address hmAddr,,) = factory.campaigns(0);
         GrowfiStakingVault vault = GrowfiStakingVault(sv);
@@ -939,6 +960,9 @@ contract AuditFixesTest is Test {
         campaign.buy(address(usdc), 3_600e6);
         vm.prank(bob);
         campaign.buy(address(usdc), 3_600e6);
+
+        vm.prank(producer);
+        campaign.activateCampaign();
 
         (,,, address sv, address hmAddr,,) = factory.campaigns(0);
         GrowfiStakingVault vault = GrowfiStakingVault(sv);

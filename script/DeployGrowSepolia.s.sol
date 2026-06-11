@@ -45,7 +45,7 @@ contract DeployGrowSepolia is Script {
     // Default in contract is 80% to stakers — keep it.
 
     function run() public {
-        require(block.chainid == 11_155_111, "Sepolia only");
+        require((block.chainid == 11_155_111 || block.chainid == 84_532), "Sepolia only");
 
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPk);

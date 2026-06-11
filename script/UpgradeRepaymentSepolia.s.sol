@@ -13,7 +13,7 @@ contract UpgradeRepaymentSepolia is Script {
     bytes32 internal constant REPAY_TYPE = keccak256("growfi.type.repayment");
 
     function run() public {
-        require(block.chainid == 11_155_111, "Sepolia only");
+        require((block.chainid == 11_155_111 || block.chainid == 84_532), "Sepolia only");
 
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
         GrowfiCampaignFactory factory = GrowfiCampaignFactory(vm.envAddress("FACTORY_ADDRESS"));

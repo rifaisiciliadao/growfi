@@ -129,6 +129,7 @@ contract SaleClassicModule {
     error DeadlineNotExtended();
     error DeadlineInPast();
     error NewMinCapBelowSupply();
+    error MinCapNotIncreased();
     error NewMaxCapBelowCommitted();
     error TransferAmountMismatch();
     error PaymentTokenNotAllowed();
@@ -326,7 +327,7 @@ contract SaleClassicModule {
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
         if (paymentAmount == 0) revert ZeroAmount();
         if (!s.tokenConfigs[paymentToken].active) revert TokenNotAccepted();
-        if (cs.paused) revert InvalidState();
+        if (cs.paused || cs.factoryPaused) revert InvalidState();
 
         // Capture supplyBefore so the GROW bonding-curve hook can compute the
         // exact delta after the mint. Queue fills are supply-neutral, so the
@@ -393,14 +394,12 @@ contract SaleClassicModule {
             msg.sender, paymentToken, paymentAmount, filledFromQueue + mintedTokens, oraclePrice, s.currentSupply
         );
 
-        // GROW emission hook: fires AFTER the mint, BEFORE auto-activate so
-        // pre-softcap buys land in escrow and the softcap hook unlocks them.
+        // GROW emission hook: fires AFTER the mint. Activation is NOT automatic
+        // anymore — the producer must explicitly call `activateCampaign()` once
+        // minCap is reached. This closes the self-dealing farm where a trivial
+        // buy could silently flip a campaign to Active and release escrow.
         if (s.growMinter != address(0)) {
             try IGrowfiMinter(s.growMinter).recordBuy(msg.sender, supplyBefore, s.currentSupply) {} catch {}
-        }
-
-        if (cs.state == uint8(CampaignStorage.State.Funding) && s.currentSupply >= s.minCap) {
-            _activate();
         }
     }
 
@@ -531,13 +530,16 @@ contract SaleClassicModule {
         emit FundingDeadlineUpdated(old, newDeadline);
     }
 
-    /// @notice Producer adjusts the min cap. Must stay above currentSupply
-    ///         and at/below maxCap. Funding-only — once Active the soft
-    ///         cap has already triggered.
+    /// @notice Producer adjusts the min cap. Can only be RAISED, must stay
+    ///         above currentSupply and at/below maxCap. Funding-only. Lowering
+    ///         is forbidden so the producer cannot shrink the buyer-facing soft
+    ///         cap below what was advertised and capture escrow early.
     function setMinCap(uint256 newMinCap) external onlyProducer inState(CampaignStorage.State.Funding) {
         Layout storage s = _s();
         // Must stay above currently committed supply AND at or below maxCap.
         if (newMinCap <= s.currentSupply || newMinCap > s.maxCap) revert NewMinCapBelowSupply();
+        // Cannot lower the advertised soft cap.
+        if (newMinCap < s.minCap) revert MinCapNotIncreased();
         uint256 old = s.minCap;
         s.minCap = newMinCap;
         emit MinCapUpdated(old, newMinCap);

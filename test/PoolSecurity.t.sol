@@ -120,6 +120,8 @@ contract PoolSecurityTest is Test {
         uint256 pay = 60_000 * USDC_FIXED_RATE;
         vm.prank(alice);
         campaign.buy(address(usdc), pay);
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active), "setup: not active");
     }
 
@@ -252,6 +254,9 @@ contract PoolSecurityTest is Test {
         rc.buy(address(rog), activationPayment);
         ct.approve(address(vault), type(uint256).max);
         vm.stopPrank();
+
+        vm.prank(producer);
+        rc.activateCampaign();
 
         vm.prank(producer);
         rc.startSeason();

@@ -105,6 +105,9 @@ contract IntegrationTest is Test {
         vm.prank(alice);
         campaign.buy(address(usdc), alicePayment);
 
+        vm.prank(producer);
+        campaign.activateCampaign();
+
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
         assertEq(campaignToken.balanceOf(alice), 60_000e18);
 
@@ -176,6 +179,9 @@ contract IntegrationTest is Test {
         campaign.buy(address(usdc), alicePayment);
 
         vm.prank(producer);
+        campaign.activateCampaign();
+
+        vm.prank(producer);
         campaign.startSeason();
 
         vm.prank(alice);
@@ -215,6 +221,9 @@ contract IntegrationTest is Test {
         campaign.buy(address(usdc), payment);
 
         vm.prank(producer);
+        campaign.activateCampaign();
+
+        vm.prank(producer);
         campaign.startSeason();
 
         vm.prank(alice);
@@ -231,6 +240,9 @@ contract IntegrationTest is Test {
         uint256 payment = 8_640_000_000;
         vm.prank(alice);
         campaign.buy(address(usdc), payment);
+
+        vm.prank(producer);
+        campaign.activateCampaign();
 
         vm.prank(producer);
         campaign.startSeason();

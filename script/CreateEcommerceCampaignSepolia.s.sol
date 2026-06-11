@@ -37,7 +37,7 @@ contract CreateEcommerceCampaignSepolia is Script {
     uint16 internal constant ECOMMERCE_REPAYMENT_BPS = 1_000;
 
     function run() public {
-        require(block.chainid == 11_155_111, "Sepolia only");
+        require((block.chainid == 11_155_111 || block.chainid == 84_532), "Sepolia only");
 
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPk);
@@ -94,6 +94,7 @@ contract CreateEcommerceCampaignSepolia is Script {
 
         usdc.approve(campaign, type(uint256).max);
         c.buy(address(usdc), SELF_BUY_USDC6);
+        c.activateCampaign(); // explicit activation (buy no longer auto-activates)
         c.startSeason();
 
         GrowfiCampaign(payable(campaign)).attachModule(REPAY_TYPE, REPAY_KIND, repaymentImpl, "growfi://repayment/v1");

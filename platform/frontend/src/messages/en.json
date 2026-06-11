@@ -627,6 +627,8 @@
         "depositDeadlinePassed": "Deposit deadline passed: {date}",
         "claimableNow": "Claimable now",
         "claimAfterWindow": "USDC claims open after the redemption choice window closes.",
+        "claimableAfter": "Claimable after {date} ({days} days left)",
+        "claimableSoon": "Claimable from {date}",
         "entitledTotal": "Total entitled once fully deposited: ${amount}",
         "fullyPaid": "Received ${amount} — fully settled",
         "shortfall": "Deposit window closed with the pool under-funded. You can still claim your pro-rata of what was deposited.",

@@ -29,6 +29,7 @@ contract PartialSpendCampaign {
     uint8 public state = 1;
     uint256 public currentSupply;
     uint256 public maxCap = 1_000_000e18;
+    uint256 public minCap = 1e18;
     uint256 public spendAmount;
 
     constructor(address campaignToken_, uint256 pricePerToken_, uint256 spendAmount_) {
@@ -149,6 +150,9 @@ contract AuditMitigationsTest is Test {
         vm.prank(alice);
         campaign.buy(address(usdc), 100e6);
 
+        vm.prank(producer);
+        campaign.activateCampaign();
+
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
         assertEq(usdc.balanceOf(address(campaign)), 1_000e6, "collateral swept during activation");
         assertEq(campaign.availableCollateral(), 1_000e6, "collateral accounting changed");
@@ -169,6 +173,9 @@ contract AuditMitigationsTest is Test {
         vm.prank(alice);
         campaign.buy(address(usdc), 100e6);
 
+        vm.prank(producer);
+        campaign.activateCampaign();
+
         vm.prank(alice);
         campaignToken.approve(address(campaign), type(uint256).max);
         vm.prank(alice);
@@ -182,6 +189,15 @@ contract AuditMitigationsTest is Test {
         vm.prank(alice);
         campaign.cancelSellBack();
         assertEq(campaign.getSellBackQueueDepth(), 0);
+    }
+}
+
+/// @dev Minimal factory stub whose `isCampaign` always returns true, etched at
+///      the FACTORY address so Treasury.addTrackedCampaign's factory-campaign
+///      guard passes for the PartialSpendCampaign mock.
+contract MockFactoryIsCampaign {
+    function isCampaign(address) external pure returns (bool) {
+        return true;
     }
 }
 
@@ -213,6 +229,10 @@ contract TreasuryAllowanceMitigationTest is Test {
             GrowfiTreasury(address(new TransparentUpgradeableProxy(address(treasuryImpl), FACTORY, treasuryInit)));
 
         campaign = new PartialSpendCampaign(address(campaignToken), 1e18, 1 * ONE_USDC);
+
+        // Treasury now validates the campaign against the factory's isCampaign
+        // registry; etch a stub factory at FACTORY so the guard passes.
+        vm.etch(FACTORY, address(new MockFactoryIsCampaign()).code);
 
         vm.startPrank(FACTORY);
         token.setTreasury(address(treasury));

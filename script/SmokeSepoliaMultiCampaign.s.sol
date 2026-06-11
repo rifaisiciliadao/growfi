@@ -24,7 +24,7 @@ import {MockUSDC} from "../src/mocks/MockUSDC.sol";
 ///         allocateAcrossTracked hook, spreading the funds.
 contract SmokeSepoliaMultiCampaign is Script {
     function run() public {
-        require(block.chainid == 11_155_111, "Sepolia only");
+        require((block.chainid == 11_155_111 || block.chainid == 84_532), "Sepolia only");
 
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPk);
@@ -70,9 +70,11 @@ contract SmokeSepoliaMultiCampaign is Script {
         IGrowfiCampaignFull oliveC = IGrowfiCampaignFull(payable(olive));
         oliveC.addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, 144_000, address(0));
 
-        // Self-buy $60: 60/0.144 = 416.66 CT → above 100 minCap → auto-activate
+        // Self-buy $60: 60/0.144 = 416.66 CT → above 100 minCap. Activation is
+        // explicit (no auto-activate inside buy).
         usdc.approve(olive, type(uint256).max);
         oliveC.buy(address(usdc), 60e6);
+        oliveC.activateCampaign();
         oliveC.startSeason();
 
         // ------------------------------------------------------------------
@@ -109,6 +111,7 @@ contract SmokeSepoliaMultiCampaign is Script {
 
         usdc.approve(etna, type(uint256).max);
         etnaC.buy(address(usdc), 60e6); // 60/0.10 = 600 CT > 100 minCap
+        etnaC.activateCampaign();
         etnaC.startSeason();
 
         // ------------------------------------------------------------------
