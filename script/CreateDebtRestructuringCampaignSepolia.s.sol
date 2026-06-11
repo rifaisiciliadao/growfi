@@ -74,8 +74,7 @@ contract CreateDebtRestructuringCampaignSepolia is Script {
         c.startSeason();
 
         // Attach + initialize the debt-restructuring module (producer path).
-        GrowfiCampaign(payable(campaign))
-            .attachModule(DEBT_TYPE, DEBT_KIND, debtImpl, "growfi://debt-restructuring/v1");
+        GrowfiCampaign(payable(campaign)).attachModule(DEBT_TYPE, DEBT_KIND, debtImpl, "growfi://debt-restructuring/v1");
         DebtRestructuringModule(payable(campaign)).initializeDebtRestructuringByProducer();
 
         try factory.addGrowfiTreasuryTrackedCampaign(campaign) {} catch {}
