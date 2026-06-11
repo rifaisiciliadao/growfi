@@ -6,9 +6,32 @@ Permissionless RegenFi protocol: farmers/cooperatives tokenise a future harvest 
 
 Every frontend-visible string must be localized in all supported locales: English, Italian, Spanish, and French (`platform/frontend/src/messages/{en,it,es,fr}.json`). Do not add hardcoded UI copy in React components, hooks, toasts, banners, tabs, forms, or seeded demo catalog text without adding/using matching i18n keys for every locale. Off-chain user-authored content can remain as authored, but protocol/demo defaults and static catalog seeds must either carry localized fields or be mapped to localized UI fallbacks.
 
-## Current target chain — Ethereum Sepolia (chain 11155111), pre-L1 mainnet
+## Current target chain — Base Sepolia (chain 84532), audit-hardened build
 
-The active testnet is **Ethereum Sepolia**, not Base Sepolia. The Base Sepolia v3.3 deploy is kept as archived legacy in `CONTRACTS.md` for reference but the production trajectory is L1: mainnet target is `chain 1` (Ethereum). Sequencer-uptime feed = `address(0)` on L1.
+**As of 2026-06-11 the live demo runs on Base Sepolia** (chain 84532): a fresh
+full v4 deploy from the 2026-06 audit-hardened build, with `growfi.dev`, the
+frontend env, and the ugraph indexer all pointed at it. Full address set in
+`CONTRACTS.md` (Base Sepolia section, factory `0xAf81c05747EDA1e1715fF23626ab83c3351dCfF6`,
+deploy block `42697602`). Sequencer-uptime feed = `address(0)` (testnet, no guard).
+
+The earlier **Ethereum Sepolia** v4 deploy (chain 11155111) and the legacy Base
+Sepolia v3.3 deploy are kept in `CONTRACTS.md` for reference. The long-term
+mainnet target remains Ethereum `chain 1`.
+
+### 2026-06 audit hardening (live in the Base Sepolia build)
+- `SaleClassicModule.buy` **no longer auto-activates** — reaching minCap leaves
+  the campaign in `Funding`; the producer must call `activateCampaign()`
+  explicitly. Closes a self-dealing / silent escrow-release vector.
+- `GrowfiTreasury.addTrackedCampaign` requires `factory.isCampaign` + `minCap > 0`.
+- `endCampaign` can no longer strand buyer escrow (rejected from `Buyback`, and
+  from `Funding` while `currentSupply > 0`).
+- `RepaymentModule.redeem` decrements `SaleClassic.currentSupply`.
+- `setMinCap` is monotonic (raise-only, error `MinCapNotIncreased`).
+- Producer vs factory pause are **separate flags** (`paused` / `factoryPaused`);
+  the producer cannot clear the factory emergency pause. `Campaign.paused()`
+  returns the OR; granular views `producerPaused()` / `factoryPaused()`.
+- `GrowfiToken.buy` reverts on zero-GROW dust.
+- Regression suite: `test/SecurityFixes.t.sol`.
 
 Live v4 deploy refresh (2026-05-29): factory `0xa4DEd8Ab35e89bCAF1f7DFeb7aB2c1ED533b3f05`, GROW Token `0x9bB4f9C41ed922282C181f2f3e01d8384c960b44`, subgraph served through the ugraph gateway at `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`. Direct legacy endpoints and the stale `prod` tag were removed; use only ugraph URLs for app config. Full address set in `CONTRACTS.md`.
 
@@ -17,7 +40,7 @@ Live v4 deploy refresh (2026-05-29): factory `0xa4DEd8Ab35e89bCAF1f7DFeb7aB2c1ED
 The pre-v4 monolithic `Campaign` is gone. The host `GrowfiCampaign` is now a minimal contract that owns the namespaced storage (`CampaignStorage` library, slot `keccak256("growfi.campaign.core.v1")`) and routes calls via a `fallback` that delegate-calls into per-type module impls.
 
 Five modules live today:
-- **`SaleClassicModule`** (default, auto-attached on `createCampaign`): buy/sellback/buyback/funding-fee/setMaxCap/setMinCap/setFundingDeadline/activate. Slot: `keccak256("growfi.module.sale.classic.v1")`. Storage `pricePerToken` is offset 0 — read by other modules via assembly.
+- **`SaleClassicModule`** (default, auto-attached on `createCampaign`): buy/sellback/buyback/funding-fee/setMaxCap/setMinCap/setFundingDeadline/activate. Slot: `keccak256("growfi.module.sale.classic.v1")`. Storage `pricePerToken` is offset 0, `currentSupply` is offset 6 — read by other modules via assembly. **`buy` does NOT auto-activate** (2026-06 hardening): the producer activates explicitly via `activateCampaign()` once `currentSupply >= minCap`.
 - **`CollateralModule`** (default, auto-attached): `lockCollateral`, `depositUSDC` (v3.4 pay-from-collateral-first), `settleSeasonShortfall`. Slot: `keccak256("growfi.module.collateral.v1")`.
 - **`RepaymentModule`** (whitelisted, producer-attaches post-create): producer-funded early-exit pool. Gross payout per CT = on-chain `pricePerToken` (immutable principal floor) + producer-set `bonusPerCt` (additive markup). Redemptions take a fixed 2% protocol fee on the gross payout (`PROTOCOL_FEE_BPS = 200`), transfer that fee to `protocolFeeRecipient`, and pay the net amount to the holder. `redeem(amount, unstakeFirst[])` force-unstakes the caller's own positions (owner-checked — would be a griefing vector otherwise), mints accrued YIELD to owner (no forfeit, no penalty), burns the redeemed CT, and drains the producer-funded pool by the gross amount. `claimedByUser` tracks net holder payouts. The view selector is named `repaymentProtocolFeeBps()` to avoid selector collision with Ecommerce's `protocolFeeBps()`. Slot: `keccak256("growfi.module.repayment.v1")`.
 - **`EcommerceModule`** (whitelisted, producer-attaches post-create): on-chain SKU sales for physical products. The module stores SKU price/inventory/active flags and order records on-chain, while rich catalog/order metadata lives as static JSON in DO Spaces. `buySku(bytes32 skuId, uint256 quantity, bytes32 orderHash)` pulls USDC, records the order, sends protocol fee + producer net, and can automatically credit a configured percentage of the sale into an active Repayment pool via `creditPoolFromCampaign`. `protocolFeeBps` is configurable up to the module cap, `repaymentAllocationBps` is capped together with protocol fee by `MAX_TOTAL_SPLIT_BPS`. Slot: `keccak256("growfi.module.ecommerce.v1")`.
