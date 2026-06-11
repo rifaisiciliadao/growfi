@@ -11,14 +11,12 @@ import { waitForTx } from "@/lib/waitForTx";
 
 /**
  * Urgent CTA for the producer once their campaign has crossed minCap but
- * is still in Funding state. Normally `Campaign.buy()` auto-activates when
- * a purchase pushes currentSupply >= minCap, but:
- *   - the producer may want to activate early (before the deadline, when
- *     they've hit minCap but want to stop the Funding phase immediately)
- *   - the auto-activate only fires inside a buy; if minCap was reached
- *     exactly on the last buy the state is already Active. If a prior buy
- *     left supply just below minCap and a later buy tops it up, auto-flip
- *     should also happen. This banner is for the rare manual case.
+ * is still in Funding state. Activation is ALWAYS an explicit producer
+ * action: `Campaign.buy()` does NOT auto-activate (the auto-activate was
+ * removed as part of the 2026-06 audit hardening to close a producer
+ * self-dealing / silent escrow-release vector). So whenever a campaign
+ * reaches its soft cap it stays in Funding until the producer calls
+ * `activateCampaign()` — this banner is the primary way they do it.
  *
  * Rendered only when all three conditions line up:
  *   - state === Funding (0)

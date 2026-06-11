@@ -236,6 +236,9 @@ contract GrowfiToken is Initializable, ERC20Upgradeable, ERC20BurnableUpgradeabl
         // growOut (18-dec) = paymentUsd18 × 1e18 / effectivePrice
         //                 = paymentAmount × scale × priceUsd18 / effectivePrice
         growOut = (paymentAmount * scale * priceUsd18) / effectivePrice;
+        // Reject dust buys that would floor to zero GROW: the buyer must not
+        // pay the Treasury and receive nothing.
+        if (growOut == 0) revert ZeroAmount();
 
         uint256 treasuryBalanceBefore = IERC20(paymentToken).balanceOf(treasury);
         IERC20(paymentToken).safeTransferFrom(msg.sender, treasury, paymentAmount);

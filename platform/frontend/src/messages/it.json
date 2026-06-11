@@ -627,6 +627,8 @@
         "depositDeadlinePassed": "Scadenza deposito passata: {date}",
         "claimableNow": "Riscattabile ora",
         "claimAfterWindow": "Il prelievo USDC apre dopo la chiusura della finestra di scelta.",
+        "claimableAfter": "Riscattabile dal {date} (mancano {days} giorni)",
+        "claimableSoon": "Riscattabile dal {date}",
         "entitledTotal": "Totale spettante a deposito completato: ${amount}",
         "fullyPaid": "Ricevuti ${amount} — pagamento completato",
         "shortfall": "Finestra di deposito chiusa con il pool sotto-finanziato. Puoi comunque riscattare la tua quota pro-rata di quanto depositato.",

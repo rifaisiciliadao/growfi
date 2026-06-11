@@ -218,7 +218,7 @@ contract EcommerceModule {
         if (orderHash == bytes32(0)) revert OrderHashRequired();
 
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
-        if (cs.paused || cs.state != uint8(CampaignStorage.State.Active)) revert InvalidState();
+        if (cs.paused || cs.factoryPaused || cs.state != uint8(CampaignStorage.State.Active)) revert InvalidState();
 
         Layout storage s = _s();
         if (!s.initialized) revert NotInitialized();

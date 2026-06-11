@@ -118,6 +118,8 @@ contract RedTeamTest is Test {
         uint256 pay = 60_000 * USDC_FIXED_RATE;
         vm.prank(alice);
         campaign.buy(address(usdc), pay);
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
     }
 

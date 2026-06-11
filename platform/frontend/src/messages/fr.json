@@ -627,6 +627,8 @@
         "depositDeadlinePassed": "Date limite de dépôt dépassée : {date}",
         "claimableNow": "Réclamable maintenant",
         "claimAfterWindow": "Les réclamations USDC ouvrent après la fermeture de la fenêtre de choix.",
+        "claimableAfter": "Réclamable à partir du {date} ({days} jours restants)",
+        "claimableSoon": "Réclamable à partir du {date}",
         "entitledTotal": "Total avec dépôt complet : ${amount}",
         "fullyPaid": "Reçu ${amount} — réglé",
         "shortfall": "Fenêtre de dépôt fermée, pool sous-financé. Tu peux réclamer ta part pro-rata de ce qui a été déposé.",

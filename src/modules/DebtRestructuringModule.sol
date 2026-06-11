@@ -101,6 +101,9 @@ contract DebtRestructuringModule {
 
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
         if (cs.campaignToken == address(0) || cs.harvestManager == address(0)) revert InvalidState();
+        // Emergency pause (producer or factory) freezes this mint path too —
+        // it is the one user-facing entrypoint that mints CampaignToken.
+        if (cs.paused || cs.factoryPaused) revert InvalidState();
 
         IHarvestManagerDebtRestructuring hm = IHarvestManagerDebtRestructuring(cs.harvestManager);
         (,,,,,, uint256 usdcDeadline, uint256 usdcDeposited, uint256 usdcOwed,,, bool reported) =

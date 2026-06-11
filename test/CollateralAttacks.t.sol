@@ -105,6 +105,8 @@ contract CollateralAttacksTest is Test {
         campaign.buy(address(usdc), alicePay);
         vm.prank(bob);
         campaign.buy(address(usdc), 5_000 * USDC_FIXED_RATE);
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
     }
 

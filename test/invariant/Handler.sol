@@ -254,7 +254,10 @@ contract Handler is Test {
 
         vm.prank(actor);
         try RepaymentModule(payable(address(campaign))).redeem(amount, unstakeFirst) {
-            ghost_totalBurned += supplyBefore - campaignToken.totalSupply();
+            // redeem now decrements SaleClassic.currentSupply alongside the CT
+            // burn, so it does NOT widen the currentSupply/totalSupply gap —
+            // hence it must NOT add to ghost_totalBurned (which tracks burns
+            // that leave currentSupply untouched, e.g. early-unstake penalties).
             ghost_totalRedeemed += supplyBefore - campaignToken.totalSupply();
         } catch {}
     }

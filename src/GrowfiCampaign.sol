@@ -48,6 +48,11 @@ interface IHarvestManagerClaimWindow {
 contract GrowfiCampaign is Initializable {
     using CampaignStorage for CampaignStorage.Layout;
 
+    /// @dev `keccak256("growfi.module.sale.classic.v1")` — SaleClassicModule's
+    ///      storage namespace. The host reads `currentSupply` (offset +6)
+    ///      from it in `endCampaign` to avoid stranding buyer escrow.
+    bytes32 internal constant SALE_CLASSIC_SLOT = 0xd7250d23bb7bc8e93366cf6815d31bcb947e004baa702b9bb515d6082501a234;
+
     // ------------------------------------------------------------------
     // Errors
     // ------------------------------------------------------------------
@@ -77,6 +82,7 @@ contract GrowfiCampaign is Initializable {
     event ModuleSelectorCleared(bytes4 indexed selector, bytes32 indexed moduleType);
     event BootstrapClosedEvent();
     event PausedSet(bool paused);
+    event FactoryPausedSet(bool paused);
     event CampaignEnded(uint256 timestamp);
 
     // ------------------------------------------------------------------
@@ -326,21 +332,48 @@ contract GrowfiCampaign is Initializable {
         emit PausedSet(paused_);
     }
 
-    /// @notice Factory-level emergency pause. Mirrors the v3 path where
-    ///         the factory owner could force-pause a misbehaving Campaign
-    ///         without involving the producer.
+    /// @notice Factory-level emergency pause. Writes a SEPARATE flag from the
+    ///         producer's `setPaused`, so the producer cannot clear the
+    ///         factory's emergency pause by calling `setPaused(false)`. The
+    ///         campaign is considered paused if either flag is set.
     function factorySetPaused(bool paused_) external onlyFactory {
-        CampaignStorage.layout().paused = paused_;
-        emit PausedSet(paused_);
+        CampaignStorage.layout().factoryPaused = paused_;
+        emit FactoryPausedSet(paused_);
     }
 
     /// @notice Producer terminates the Campaign permanently. Once in
     ///         `Ended`, modules SHOULD refuse new write operations.
+    /// @dev    Guarded so it can NEVER strand buyer escrow:
+    ///         - From `Funding`: only allowed when no buyer supply is
+    ///           outstanding (`currentSupply == 0`). Otherwise the producer
+    ///           would freeze escrowed payments (the only refund path,
+    ///           `buyback`, requires the `Buyback` state, which `Ended` can
+    ///           never reach). A stuck Funding campaign must instead go
+    ///           through `triggerBuyback` so buyers can reclaim funds.
+    ///         - From `Buyback`: forbidden — refunds are still open and
+    ///           ending would strand unclaimed buyback refunds.
+    ///         - From `Active`: allowed (escrow was already released to the
+    ///           producer on activation).
     function endCampaign() external onlyProducer {
         CampaignStorage.Layout storage s = CampaignStorage.layout();
-        if (s.state == uint8(CampaignStorage.State.Ended)) revert InvalidState();
+        uint8 st = s.state;
+        if (st == uint8(CampaignStorage.State.Ended)) revert InvalidState();
+        if (st == uint8(CampaignStorage.State.Buyback)) revert InvalidState();
+        if (st == uint8(CampaignStorage.State.Funding) && _saleCurrentSupply() != 0) {
+            revert InvalidState();
+        }
         s.state = uint8(CampaignStorage.State.Ended);
         emit CampaignEnded(block.timestamp);
+    }
+
+    /// @dev Reads `SaleClassicModule.currentSupply` (namespaced slot offset
+    ///      +6) directly. Robust regardless of the sale module's attach
+    ///      state since the keccak-namespaced storage survives detach.
+    function _saleCurrentSupply() internal view returns (uint256 supply) {
+        bytes32 slot = SALE_CLASSIC_SLOT;
+        assembly {
+            supply := sload(add(slot, 6))
+        }
     }
 
     /// @notice Start a new staking season. Forwards to the StakingVault;
@@ -382,8 +415,21 @@ contract GrowfiCampaign is Initializable {
         return CampaignStorage.State(CampaignStorage.layout().state);
     }
 
+    /// @notice True if the campaign is paused by EITHER the producer or the
+    ///         factory emergency pause.
     function paused() external view returns (bool) {
+        CampaignStorage.Layout storage s = CampaignStorage.layout();
+        return s.paused || s.factoryPaused;
+    }
+
+    /// @notice The producer-controlled pause flag in isolation.
+    function producerPaused() external view returns (bool) {
         return CampaignStorage.layout().paused;
+    }
+
+    /// @notice The factory/owner emergency pause flag in isolation.
+    function factoryPaused() external view returns (bool) {
+        return CampaignStorage.layout().factoryPaused;
     }
 
     function factoryBootstrap() external view returns (bool) {

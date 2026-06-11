@@ -115,6 +115,10 @@ contract RepaymentIntegrationTest is Test {
         vm.stopPrank();
         assertEq(campaignToken.balanceOf(alice), 10_000e18, "alice gets 10k CT");
 
+        // Activation is explicit now (buy no longer auto-activates).
+        vm.prank(producer);
+        campaign.activateCampaign();
+
         // Producer attaches the Repayment module post-activation.
         vm.prank(producer);
         GrowfiCampaign(payable(campaignAddr)).attachModule(REPAY_TYPE, REPAY_KIND, address(repayImpl), "ipfs://repay");

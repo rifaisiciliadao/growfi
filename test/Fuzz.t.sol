@@ -171,6 +171,8 @@ contract FuzzTest is Test {
         _buy(alice, pay);
 
         vm.prank(producer);
+        campaign.activateCampaign();
+        vm.prank(producer);
         campaign.startSeason();
 
         uint256 stakeAmount = 1000e18;
@@ -206,6 +208,8 @@ contract FuzzTest is Test {
         _buy(alice, pay);
 
         vm.prank(producer);
+        campaign.activateCampaign();
+        vm.prank(producer);
         campaign.startSeason();
 
         vm.startPrank(alice);
@@ -239,6 +243,8 @@ contract FuzzTest is Test {
         _buy(alice, pay);
         _buy(bob, pay);
 
+        vm.prank(producer);
+        campaign.activateCampaign();
         vm.prank(producer);
         campaign.startSeason();
 

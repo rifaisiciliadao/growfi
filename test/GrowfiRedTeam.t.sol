@@ -257,6 +257,11 @@ contract GrowfiRedTeamTest is Test {
         vm.prank(ATTACKER);
         IGrowfiCampaignFull(payable(campaign)).buy(address(usdc), 50 * ONE_USDC);
 
+        // Reaching softcap no longer auto-activates — producer activates explicitly,
+        // flipping the GROW minter to Active so escrow becomes claimable.
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campaign)).activateCampaign();
+
         // Claim escrow → 50 GROW in wallet.
         vm.prank(ATTACKER);
         growMinter.claimEscrow(campaign);

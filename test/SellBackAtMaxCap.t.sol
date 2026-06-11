@@ -98,6 +98,8 @@ contract SellBackAtMaxCapTest is Test {
         uint256 aliceSpend = (MAX_CAP * USDC_FIXED_RATE) / 1e18;
         vm.prank(alice);
         campaign.buy(address(usdc), aliceSpend);
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active), "must be Active");
         assertEq(campaign.currentSupply(), MAX_CAP, "supply == maxCap");
 
@@ -129,6 +131,8 @@ contract SellBackAtMaxCapTest is Test {
         uint256 aliceSpend = (MAX_CAP * USDC_FIXED_RATE) / 1e18;
         vm.prank(alice);
         campaign.buy(address(usdc), aliceSpend);
+        vm.prank(producer);
+        campaign.activateCampaign();
 
         vm.prank(alice);
         campaign.sellBack(50e18);
@@ -149,6 +153,8 @@ contract SellBackAtMaxCapTest is Test {
         uint256 aliceSpend = (600e18 * USDC_FIXED_RATE) / 1e18;
         vm.prank(alice);
         campaign.buy(address(usdc), aliceSpend);
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
 
         vm.prank(alice);

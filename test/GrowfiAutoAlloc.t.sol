@@ -135,12 +135,14 @@ contract GrowfiAutoAllocTest is Test {
         IGrowfiCampaignFull(payable(campaign))
             .addAcceptedToken(address(usdc), SaleClassicModule.PricingMode.Fixed, price / 1e12, address(0));
 
-        // Push past softcap so state -> Active.
+        // Push past softcap, then explicitly activate (buy() no longer auto-activates).
         usdc.mint(producer, 200 * ONE_USDC);
         vm.prank(producer);
         usdc.approve(campaign, 200 * ONE_USDC);
         vm.prank(producer);
         IGrowfiCampaignFull(payable(campaign)).buy(address(usdc), 50 * ONE_USDC);
+        vm.prank(producer);
+        IGrowfiCampaignFull(payable(campaign)).activateCampaign();
     }
 
     // ============================================================

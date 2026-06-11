@@ -155,13 +155,17 @@ contract E2ETest is Test {
         campaign.buy(address(weth), bobPayWeth);
         assertApproxEqRel(campaignToken.balanceOf(bob), 15_000e18, 0.0001e18, "bob ~15k");
 
-        // Charlie pushes over min cap → auto-activation
+        // Charlie pushes over min cap → producer can now activate
         uint256 charliePay = 25_000 * USDC_FIXED_RATE;
         vm.prank(charlie);
         campaign.buy(address(usdc), charliePay);
 
         assertGt(campaign.currentSupply(), MIN_CAP, "minCap reached");
-        assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active), "auto-activated");
+
+        // Producer explicitly activates now that the soft cap is reached
+        vm.prank(producer);
+        campaign.activateCampaign();
+        assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active), "activated");
 
         // Protocol fee was taken (2% of escrowed funds)
         uint256 feeRecipientUsdc = usdc.balanceOf(feeRecipient);

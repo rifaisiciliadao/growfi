@@ -97,6 +97,10 @@ contract RepaymentModuleTest is Test {
         // (the module itself is NOT attached — we just need the storage
         // value so RepaymentModule's principal calc has a non-zero base).
         vm.store(address(campaign), SALE_PRICE_SLOT, bytes32(PRICE_PER_TOKEN_USD18));
+        // Seed SaleClassic.currentSupply (struct offset +6) so RepaymentModule's
+        // redeem path can decrement it without underflowing. Mirrors the 1_500 CT
+        // minted directly to Alice + Bob below.
+        vm.store(address(campaign), bytes32(uint256(SALE_PRICE_SLOT) + 6), bytes32(uint256(1_500e18)));
 
         // Attach repayment via factory
         vm.prank(address(registry));
@@ -415,6 +419,10 @@ contract RepaymentModuleTest is Test {
 
     function test_redeem_revertsWhenEnded() public {
         _fundPool(INITIAL_POOL);
+        // endCampaign now refuses to strand escrow: from Funding it only
+        // succeeds with zero outstanding supply. Zero the seeded sale supply
+        // so the campaign can reach Ended (redeem reverts on Ended regardless).
+        vm.store(address(campaign), bytes32(uint256(SALE_PRICE_SLOT) + 6), bytes32(uint256(0)));
         vm.prank(producer);
         campaign.endCampaign();
 

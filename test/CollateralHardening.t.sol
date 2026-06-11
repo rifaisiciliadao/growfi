@@ -116,6 +116,8 @@ contract CollateralHardeningTest is Test {
         rog.approve(address(campaign), type(uint256).max);
         campaign.buy(address(rog), 60_000 * USDC_RATE_RGN);
         vm.stopPrank();
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
 
         rog.mint(producer, 1_000e18);
@@ -146,6 +148,9 @@ contract CollateralHardeningTest is Test {
         campaign.buy(address(rog), 60_000 * USDC_RATE_RGN);
         ct.approve(address(campaign), type(uint256).max);
         vm.stopPrank();
+
+        vm.prank(producer);
+        campaign.activateCampaign();
 
         rog.mint(producer, 100_000e18);
         vm.startPrank(producer);

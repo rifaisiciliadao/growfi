@@ -95,6 +95,8 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     error NotFactory();
     error AlreadyTracked();
     error NotTracked();
+    error NotAFactoryCampaign();
+    error MinCapZero();
     error AlreadyAccepted();
     error NotAccepted();
     error CannotRescueAcceptedStablecoin();
@@ -281,6 +283,14 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
 
     function addTrackedCampaign(address campaign) external onlyFactory {
         if (campaign == address(0)) revert ZeroAddress();
+        // Only genuine factory-deployed campaigns may back GROW. This blocks
+        // tracking an arbitrary contract whose `buy()` keeps the stablecoins
+        // and mints a fake CampaignToken.
+        if (!IGrowfiCampaignFactoryView(factory).isCampaign(campaign)) revert NotAFactoryCampaign();
+        // Reject campaigns with a zero soft cap: a `minCap == 0` campaign can
+        // be activated with no real funding, which would let GROW be minted
+        // (via the Minter bonding curve) against a campaign holding no value.
+        if (IGrowfiCampaignView(campaign).minCap() == 0) revert MinCapZero();
         if (!_trackedCampaigns.add(campaign)) revert AlreadyTracked();
         emit CampaignTracked(campaign);
     }

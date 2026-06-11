@@ -105,17 +105,20 @@ contract GasBoundsTest is Test {
             campaign.addAcceptedToken(address(t), SaleClassicModule.PricingMode.Fixed, PRICE_PER_TOKEN, address(0));
         }
 
-        // Alice buys enough USDC to trigger auto-activation
+        // Alice buys enough USDC to reach the soft cap
         address alice = makeAddr("alice");
         uint256 payment = 10_000 * USDC_FIXED_RATE;
         usdc.mint(alice, payment);
         vm.startPrank(alice);
         usdc.approve(address(campaign), type(uint256).max);
-
-        uint256 gasBefore = gasleft();
         campaign.buy(address(usdc), payment);
-        uint256 gasUsed = gasBefore - gasleft();
         vm.stopPrank();
+
+        // Producer activation runs the escrow-release loop over all accepted tokens.
+        vm.prank(producer);
+        uint256 gasBefore = gasleft();
+        campaign.activateCampaign();
+        uint256 gasUsed = gasBefore - gasleft();
 
         // Sanity: under 1M gas even with the full loop. (In practice ~500-700k.)
         assertLt(gasUsed, 1_000_000, "activation gas explosion");

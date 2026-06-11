@@ -113,6 +113,9 @@ contract ParamUpdatesTest is Test {
         uint256 spend = (MIN_CAP * USDC_FIXED_RATE) / 1e18;
         vm.prank(alice);
         campaign.buy(address(usdc), spend);
+        // Activation is now explicit (no auto-activate inside buy).
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
 
         vm.prank(producer);
@@ -123,9 +126,17 @@ contract ParamUpdatesTest is Test {
     // --- setMinCap -------------------------------------------------------
 
     function test_setMinCap_happy() public {
+        // minCap can only be RAISED (default MIN_CAP = 500e18).
         vm.prank(producer);
+        campaign.setMinCap(600e18);
+        assertEq(campaign.minCap(), 600e18);
+    }
+
+    function test_setMinCap_lowering_reverts() public {
+        // Lowering the advertised soft cap is forbidden.
+        vm.prank(producer);
+        vm.expectRevert(SaleClassicModule.MinCapNotIncreased.selector);
         campaign.setMinCap(300e18);
-        assertEq(campaign.minCap(), 300e18);
     }
 
     function test_setMinCap_belowSupply_reverts() public {
@@ -148,10 +159,13 @@ contract ParamUpdatesTest is Test {
         uint256 spend = (MIN_CAP * USDC_FIXED_RATE) / 1e18;
         vm.prank(alice);
         campaign.buy(address(usdc), spend);
+        // Activation is now explicit (no auto-activate inside buy).
+        vm.prank(producer);
+        campaign.activateCampaign();
 
         vm.prank(producer);
         vm.expectRevert();
-        campaign.setMinCap(100e18);
+        campaign.setMinCap(600e18);
     }
 
     // --- setMaxCap -------------------------------------------------------
@@ -167,11 +181,12 @@ contract ParamUpdatesTest is Test {
         vm.prank(alice);
         campaign.buy(address(usdc), spend);
 
+        // maxCap can be lowered down to minCap (500e18) during Funding; it
+        // must stay >= minCap and >= committed supply. minCap itself can no
+        // longer be lowered, so we lower maxCap to the floor instead.
         vm.prank(producer);
-        campaign.setMinCap(220e18);
-        vm.prank(producer);
-        campaign.setMaxCap(300e18);
-        assertEq(campaign.maxCap(), 300e18);
+        campaign.setMaxCap(MIN_CAP);
+        assertEq(campaign.maxCap(), MIN_CAP);
     }
 
     function test_setMaxCap_belowCurrentSupply_reverts() public {
@@ -188,6 +203,8 @@ contract ParamUpdatesTest is Test {
         uint256 spend = (MIN_CAP * USDC_FIXED_RATE) / 1e18;
         vm.prank(alice);
         campaign.buy(address(usdc), spend);
+        vm.prank(producer);
+        campaign.activateCampaign();
         vm.prank(alice);
         campaignToken.approve(address(campaign), type(uint256).max);
         vm.prank(alice);
@@ -203,6 +220,8 @@ contract ParamUpdatesTest is Test {
         uint256 spend = (MIN_CAP * USDC_FIXED_RATE) / 1e18;
         vm.prank(alice);
         campaign.buy(address(usdc), spend);
+        vm.prank(producer);
+        campaign.activateCampaign();
         assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
 
         vm.prank(producer);

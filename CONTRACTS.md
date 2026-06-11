@@ -1,5 +1,56 @@
 # GrowFi — Deployments
 
+## Base Sepolia (chain 84532) — v4 audit-hardened rebuild
+
+**Deployed:** 2026-06-11 · **Deployer/owner:** `0xFF6bdef4fB646EE44e29FE8FC0862B02F0Ba8a33` · **Factory deploy block:** `42697602`
+
+> Fresh full v4 deploy on Base Sepolia from the 2026-06 audit-hardened build
+> (auto-activation removed, Treasury `minCap>0` + `isCampaign` guard, escrow-safe
+> `endCampaign`, repayment `currentSupply` sync, monotonic `minCap`, separate
+> factory/producer pause, zero-GROW dust guard). 5 seed campaigns, including one
+> with the **DebtRestructuringModule** attached. Subgraph indexed locally for
+> verification; ugraph production push pending.
+
+### Core v4 + GROW + stables
+
+| Contract | Address |
+|---|---|
+| CampaignFactory (proxy) | `0xAf81c05747EDA1e1715fF23626ab83c3351dCfF6` |
+| CampaignFactory impl | `0x183f5f21A39890E2E1b6EB65D48e5c9E9480d6D3` |
+| Campaign impl | `0x2Db5e242755E44b70bB84C030d841729DC1f2869` |
+| CampaignToken impl | `0x9FD2705c264901Ed656C2803249f2f40f4268206` |
+| StakingVault impl | `0xF8aA824C02596c7f3eDbe487d5602389d8d955B7` |
+| YieldToken impl | `0xd8eD0d2bC7B9A30F4073Bc0C11E60D6eAE083d6F` |
+| HarvestManager impl | `0xA2bC85c0E4440dA0A0E5EdFA047ccae207B5EA14` |
+| SaleClassicModule impl | `0xceA009E498BE9e4cf0386BB2E66FE000a34C878f` |
+| CollateralModule impl | `0x8931f022248C92A66de12036723506C3aE77ca96` |
+| RepaymentModule impl | `0x039BC1531A427D299bbeae37D4fb6eE9Ebf4477E` |
+| EcommerceModule impl | `0x4C561d79CD7f99E53C75cD44601A94E12B37e1E2` |
+| DebtRestructuringModule impl | `0x204591b6A10479B21A841937489Ea89562f608FB` |
+| CampaignRegistry | `0xf15E94B1db45eF645Ca611D62ECC6b10F5461515` |
+| ProducerRegistry | `0x0ad6Af458718963aeE1C7C4e142427E9c2c381a7` |
+| MockUSDC (6) | `0x784d2221e11f4E87FA031aAC15c168D27b5cCeb4` |
+| MockUSDT (6) | `0x9c872074c9fc38E5e777ff53EeEcBC61d1Cf3186` |
+| MockDAI (18) | `0x18d1777Cc183F6073D585F934335a773ffC7284c` |
+| GrowfiToken (proxy) | `0x88E1Fd001D09bE235BbEbeEd19e33E7abCF5385E` |
+| GrowfiTreasury (proxy) | `0x66B3b38FCe61b0E5C96e9a1F0279321b14aC54D0` |
+| GrowfiMinter (proxy) | `0xa9D37cEF4756349ad2BE0023643122Af16868B57` |
+| GrowfiFeeSplitter (proxy) | `0xF0Ad36ef051742b4397048Aa4d5D7AB08F88FEf7` |
+| GrowfiStakingPool (proxy) | `0x0BfbC2dCc439CeA0d2b6b8a7B759C5af583A5E00` |
+| MockOracle ($1 peg) | `0xa35b4E2C791E242052eD4596aC2fA86Ad7f9EBa2` |
+
+### Seed campaigns (all Active)
+
+| Campaign | Address | Notes |
+|---|---|---|
+| Olive Sicily (OLIVE) | `0xE5816a75B7DBB5110C8847b573a9c584d6613628` | $0.144/CT, tracked in Treasury |
+| Vineyard of Etna (ETNA) | `0x90005164979714D1670acc5B0E30214B25A15D85` | $0.10/CT, tracked in Treasury |
+| Ecommerce Olive Shop (ESHOP) | `0xAc8b683626aD1EE08B1abab63e6ca08eA47B58C0` | Ecommerce + Repayment attached |
+| Repayment Vineyard (RPAY) | `0xB2ae1c8F4461FaFD3af0Db9E5bDc5cE89316E080` | Repayment pool 2,000 USDC |
+| Almond Grove Restructure (ALMD) | `0x059C43A62C7D2E218570d539d1Cd94CC6D1f4263` | **DebtRestructuringModule attached** |
+
+---
+
 ## Ethereum Sepolia (chain 11155111) — v4 module architecture + GROW system
 
 **Deployed:** 2026-05-12 · **Refreshed:** 2026-05-29 · **Deployer/owner:** `0xFF6bdef4fB646EE44e29FE8FC0862B02F0Ba8a33`

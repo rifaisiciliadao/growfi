@@ -12,7 +12,7 @@ import {MockOracle} from "../test/helpers/MockOracle.sol";
 ///         USDC (mUSDC) was already deployed by DeployTestnetSepolia.
 contract DeployStablesSepolia is Script {
     function run() public {
-        require(block.chainid == 11_155_111, "Sepolia only");
+        require((block.chainid == 11_155_111 || block.chainid == 84_532), "Sepolia only");
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
         address deployer = vm.addr(deployerPk);
         GrowfiCampaignFactory factory = GrowfiCampaignFactory(vm.envAddress("FACTORY_ADDRESS"));

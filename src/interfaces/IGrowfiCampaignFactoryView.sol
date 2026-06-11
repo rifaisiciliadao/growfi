@@ -11,4 +11,5 @@ pragma solidity 0.8.24;
 interface IGrowfiCampaignFactoryView {
     function growfiMinter() external view returns (address);
     function usdc() external view returns (address);
+    function isCampaign(address campaign) external view returns (bool);
 }
