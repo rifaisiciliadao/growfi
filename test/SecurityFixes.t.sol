@@ -232,4 +232,30 @@ contract SecurityFixesTest is Test {
         campaign.setPaused(false);
         assertFalse(campaign.paused(), "producer can clear its own pause");
     }
+
+    // ------------------------------------------------------------------
+    // SaleClassic storage-slot offset invariant
+    // ------------------------------------------------------------------
+    // GrowfiCampaign.endCampaign, RepaymentModule._decreaseSaleCurrentSupply
+    // and DebtRestructuringModule._increaseSaleCurrentSupply all read/write
+    // SaleClassic.currentSupply via raw assembly at SALE_CLASSIC_SLOT + 6.
+    // Lock that invariant: a future reorder of SaleClassicModule.Layout's
+    // first 7 fields would silently corrupt those paths.
+
+    function test_saleClassicSlotConstant_matchesNamespace() public pure {
+        assertEq(
+            bytes32(0xd7250d23bb7bc8e93366cf6815d31bcb947e004baa702b9bb515d6082501a234),
+            keccak256("growfi.module.sale.classic.v1"),
+            "SALE_CLASSIC_SLOT must equal keccak256(namespace)"
+        );
+    }
+
+    function test_currentSupply_livesAtSlotOffset6() public {
+        _buy(alice, 123e18);
+        uint256 supply = campaign.currentSupply();
+        assertEq(supply, 123e18, "sanity: bought 123 CT");
+        bytes32 slot = keccak256("growfi.module.sale.classic.v1");
+        bytes32 raw = vm.load(address(campaign), bytes32(uint256(slot) + 6));
+        assertEq(uint256(raw), supply, "currentSupply must live at SALE_CLASSIC_SLOT + 6");
+    }
 }
