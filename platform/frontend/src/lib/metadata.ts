@@ -1,7 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 import { useReadContracts } from "wagmi";
 import type { Address } from "viem";
-import { abis, getAddresses } from "@/contracts";
+import { abis, CHAIN_ID, getAddresses } from "@/contracts";
+
+const WAGMI_CHAIN_ID = CHAIN_ID as never;
 
 export interface CampaignMetadata {
   name: string;
@@ -94,12 +96,14 @@ export function useResolvedCampaignMetadata(
       {
         address: registry,
         abi: abis.CampaignRegistry,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "metadataURI",
         args: [campaign as Address],
       },
       {
         address: registry,
         abi: abis.CampaignRegistry,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "version",
         args: [campaign as Address],
       },

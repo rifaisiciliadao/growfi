@@ -312,8 +312,8 @@
       "oracle": "Prezzo Oracle",
       "youPay": "Paghi",
       "balance": "Saldo: {amount} {token}",
-      "mint": "Minta {amount} mUSDC",
-      "mintHint": "Faucet testnet — minta 10,000 mUSDC nel tuo wallet",
+      "mint": "Minta {amount} test USDC",
+      "mintHint": "Faucet testnet — minta 10,000 test USDC nel tuo wallet",
       "youReceive": "Ricevi",
       "priceInfo": "1 ${symbol} = ${price}",
       "cta": "Acquista ${symbol}",
@@ -352,7 +352,8 @@
       "escrow": "Fondi in escrow fino all'attivazione della campagna",
       "escrowFunding": "Fondi in escrow fino al raggiungimento del minimo. Rimborsabili se la campagna non raggiunge il target.",
       "escrowActive": "Campagna attiva — i pagamenti vanno direttamente al coltivatore.",
-      "demoNotice": "Dati di esempio. Deploya la factory e visita l'indirizzo di una campagna reale per acquistare on-chain."
+      "demoNotice": "Caricamento dati campagna on-chain…",
+      "loadingCampaign": "Caricamento dati campagna on-chain…"
     },
     "investors": {
       "title": "Investitori",
@@ -499,7 +500,7 @@
       "protocolFee": "Commissione protocollo",
       "repayment": "Riserva rimborso",
       "growerNet": "Netto coltivatore",
-      "mintUsdc": "Ottieni 10.000 mUSDC",
+      "mintUsdc": "Ottieni 10.000 test USDC",
       "balance": "Saldo: {amount} USDC",
       "reviewCheckout": "Rivedi checkout",
       "checkoutTitle": "Rivedi e conferma",
@@ -535,8 +536,8 @@
       "emailDelivered": "Email di ricevuta inviata.",
       "emailPending": "Ordine confermato. Email di ricevuta in invio.",
       "receiptProductSummary": "{count, plural, one {# prodotto} other {# prodotti}}",
-      "defaultProductName": "Olio extravergine di oliva 500 ml",
-      "defaultProductDescription": "Olio extravergine siciliano spremuto a freddo, riservato dal negozio della campagna."
+      "defaultProductName": "Prodotto della campagna",
+      "defaultProductDescription": "Prodotto riservato dal negozio della campagna."
     },
     "productiveAsset": {
       "title": "Impegno del coltivatore",
@@ -648,8 +649,8 @@
     },
     "info": {
       "title": "Informazioni Campagna",
-      "about": "Questo progetto rigenerativo punta a restaurare e mantenere 200 ulivi centenari in Sicilia, preservando biodiversità e producendo olio extravergine d'oliva di altissima qualità.",
-      "tokens": "Ogni token $CAMPAIGN rappresenta 1/1000 di un ulivo. Detenendo i token, contribuisci alla rigenerazione del territorio e ricevi una quota della produzione annuale.",
+      "about": "I metadata descrittivi non sono ancora disponibili. I parametri economici e lo stato della campagna sono letti dai contratti e dall'indice pubblico.",
+      "tokens": "I Campaign Token rappresentano la quota tokenizzata di questa campagna. Prezzo, cap, supply e stato sono verificabili on-chain.",
       "contract": "Contract Address",
       "block": "Deploy Block",
       "dmrv": "Vedi report dMRV su Silvi.earth →"
@@ -866,8 +867,8 @@
         "publishFailed": "Aggiornamento commercio fallito",
         "updateCta": "Aggiorna negozio",
         "enableCta": "Abilita negozio",
-        "defaultProductName": "Olio extravergine di oliva 500 ml",
-        "defaultProductDescription": "Olio extravergine siciliano spremuto a freddo, riservato dal negozio della campagna."
+        "defaultProductName": "Prodotto della campagna",
+        "defaultProductDescription": "Prodotto riservato dal negozio della campagna."
       },
       "usdcObligationsTitle": "Stagioni rendicontate",
       "noObligations": "Nessuna stagione rendicontata. Avvia una stagione, chiudila e rendiconta il raccolto per vederla qui.",
@@ -940,11 +941,11 @@
     "treasuryHoldsHint": "$GROW (esclusi dal divisore del floor)",
     "buy": {
       "title": "Compra $GROW",
-      "blurb": "Vendita primaria diretta: paghi una stablecoin in allowlist, mintano nuovo $GROW al floor + {markup}%. Il {markup}% di markup va alla Treasury — ogni acquisto è non-diluitivo.",
+      "blurb": "Compra $GROW con USDC. Prezzo e token vengono validati direttamente on-chain al momento della transazione.",
       "salePrice": "Sale price",
-      "salePriceHint": "floor + {markup}% markup",
+      "salePriceHint": "Prezzo live",
       "salePaused": "Vendita diretta attualmente in pausa dal multisig.",
-      "depegged": "Feed {symbol} non sano. Prezzo Chainlink stale o fuori dalla banda di depeg $0,95-$1,05. Acquisti con questo token sono bloccati finché il feed non si riprende (o il multisig revoca il token).",
+      "depegged": "Prezzo {symbol} non disponibile. La transazione verra validata on-chain.",
       "payWith": "Paga con",
       "mintFaucet": "+ Minta 10.000 {symbol}",
       "minting": "Minting…",
@@ -1102,7 +1103,7 @@
       },
       "s2": {
         "title": "Treasury auto-alloca",
-        "body": "I direct buy di $GROW al floor + 10% mandano gli USDC direttamente nel Treasury, che li ridistribuisce in modo equo su tutte le tracked Active. Nessun click del multisig."
+        "body": "Gli acquisti diretti di $GROW mandano USDC direttamente nel Treasury, che li ridistribuisce in modo equo sulle campagne attive tracciate. Nessun click del multisig."
       },
       "s3": {
         "title": "Lo yield torna indietro",
@@ -1428,7 +1429,7 @@
         "items": {
           "treasury": {
             "label": "Treasury",
-            "body": "Gli acquisti diretti mintano a floor più markup, con proventi trattenuti dalla treasury del protocollo."
+            "body": "Gli acquisti diretti alimentano la treasury del protocollo con USDC."
           },
           "staking": {
             "label": "Staking",

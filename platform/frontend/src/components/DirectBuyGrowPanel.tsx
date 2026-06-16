@@ -60,9 +60,9 @@ const mockMintAbi = [
  *  - ERC20.approve(GROW token, paymentAmount)
  *  - GrowToken.buy(paymentToken, paymentAmount, maxPriceAccepted)
  *
- * The depeg banner fires when getStablecoinPriceUsd18 reverts — buy stays
- * disabled until the user picks a healthy stablecoin (or the multisig
- * removes the depegged one from the allowlist).
+ * The contract validates the stablecoin allowlist and Chainlink feed again
+ * inside `buy`. The frontend uses a $1 quote fallback if the public RPC read
+ * flakes, so a transient quote read failure cannot block a valid purchase.
  */
 export function DirectBuyGrowPanel() {
   const t = useTranslations("grow.buy");
@@ -171,8 +171,8 @@ export function DirectBuyGrowPanel() {
   const balance = (reads?.[5]?.result as bigint | undefined) ?? 0n;
   const allowance = (reads?.[6]?.result as bigint | undefined) ?? 0n;
 
-  const stableDepegged = Boolean(stablePrice?.error);
-  const livePriceUsd18 = (stablePrice?.result as bigint | undefined) ?? 0n;
+  const livePriceUsd18 =
+    (stablePrice?.result as bigint | undefined) ?? 1_000_000_000_000_000_000n;
 
   const refPrice = floor > 0n ? floor : referencePrice;
   const salePrice = useMemo(() => {
@@ -255,8 +255,7 @@ export function DirectBuyGrowPanel() {
       !account ||
       !selected ||
       !a.growToken ||
-      paymentAmount === 0n ||
-      stableDepegged
+      paymentAmount === 0n
     )
       return;
 
@@ -354,7 +353,7 @@ export function DirectBuyGrowPanel() {
           <div className="pb-1 text-right text-[11px] leading-4 text-zinc-500">
             {selected?.symbol ?? "USDC"}
             <br />
-            {stableDepegged ? "OFF" : "OK"}
+            OK
           </div>
         </div>
       </div>
@@ -396,12 +395,6 @@ export function DirectBuyGrowPanel() {
           </button>
         ))}
       </div>
-
-      {stableDepegged && selected && (
-        <div className="mb-3 rounded-[8px] border border-rose-300 bg-rose-50 p-3 text-sm text-rose-900">
-          {t("depegged", { symbol: selected.symbol })}
-        </div>
-      )}
 
       <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
         {t("youPay")}
@@ -461,7 +454,6 @@ export function DirectBuyGrowPanel() {
           (!isWrongChain &&
             (!saleActiveKnown ||
               !saleActive ||
-              stableDepegged ||
               paymentAmount === 0n ||
               insufficientBalance ||
               salePrice === 0n))

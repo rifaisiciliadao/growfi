@@ -81,6 +81,8 @@ const mockUsdcMintAbi = [
 
 const campaignAbi = abis.Campaign as never;
 const WAGMI_CHAIN_ID = CHAIN_ID as never;
+const FAUCET_ENABLED =
+  CHAIN_ID === 31337 || CHAIN_ID === 84532 || CHAIN_ID === 11155111;
 
 const tokenConfigAbi = [
   {
@@ -552,7 +554,8 @@ export function BuyPanel({
                   {t("youPay")}
                 </label>
                 <div className="flex items-center gap-2">
-                  {selected &&
+                  {FAUCET_ENABLED &&
+                    selected &&
                     user &&
                     selected.address.toLowerCase() ===
                       mockUsdcAddress.toLowerCase() && (

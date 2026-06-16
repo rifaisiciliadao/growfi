@@ -312,8 +312,8 @@
       "oracle": "Oracle price",
       "youPay": "You Pay",
       "balance": "Balance: {amount} {token}",
-      "mint": "Mint {amount} mUSDC",
-      "mintHint": "Testnet faucet — mints 10,000 mUSDC to your wallet",
+      "mint": "Mint {amount} test USDC",
+      "mintHint": "Testnet faucet — mints 10,000 test USDC to your wallet",
       "youReceive": "You Receive",
       "priceInfo": "1 ${symbol} = ${price}",
       "cta": "Buy ${symbol}",
@@ -352,7 +352,8 @@
       "escrow": "Funds held in escrow until campaign activation",
       "escrowFunding": "Funds held in escrow until the min cap is reached. Refundable if the campaign fails.",
       "escrowActive": "Campaign is active — payments go directly to the grower.",
-      "demoNotice": "This is demo data. Deploy the factory and visit a real campaign address to buy on-chain."
+      "demoNotice": "Loading on-chain campaign data…",
+      "loadingCampaign": "Loading on-chain campaign data…"
     },
     "investors": {
       "title": "Investors",
@@ -499,7 +500,7 @@
       "protocolFee": "Protocol fee",
       "repayment": "Repayment pool",
       "growerNet": "Grower net",
-      "mintUsdc": "Mint 10,000 mUSDC",
+      "mintUsdc": "Mint 10,000 test USDC",
       "balance": "Balance: {amount} USDC",
       "reviewCheckout": "Review checkout",
       "checkoutTitle": "Review and confirm",
@@ -535,8 +536,8 @@
       "emailDelivered": "Receipt email sent.",
       "emailPending": "Order confirmed. Receipt email is pending.",
       "receiptProductSummary": "{count, plural, one {# product} other {# products}}",
-      "defaultProductName": "Extra virgin olive oil 500ml",
-      "defaultProductDescription": "Cold-pressed Sicilian olive oil reserved from the campaign shop."
+      "defaultProductName": "Campaign product",
+      "defaultProductDescription": "Product reserved from the campaign shop."
     },
     "productiveAsset": {
       "title": "Grower commitment",
@@ -648,8 +649,8 @@
     },
     "info": {
       "title": "Campaign Info",
-      "about": "This regenerative project aims to restore and maintain 200 centennial olive trees in Sicily, preserving biodiversity and producing premium extra virgin olive oil.",
-      "tokens": "Each $CAMPAIGN token represents 1/1000 of an olive tree. By holding tokens, you contribute to land regeneration and receive a share of the annual production.",
+      "about": "Descriptive metadata is not available yet. Economic parameters and campaign state are read from the contracts and the public index.",
+      "tokens": "Campaign Tokens represent the tokenized share of this campaign. Price, caps, supply, and state are verifiable on-chain.",
       "contract": "Contract Address",
       "block": "Deploy Block",
       "dmrv": "See dMRV report on Silvi.earth →"
@@ -866,8 +867,8 @@
         "publishFailed": "Ecommerce update failed",
         "updateCta": "Update shop",
         "enableCta": "Enable shop",
-        "defaultProductName": "Extra virgin olive oil 500ml",
-        "defaultProductDescription": "Cold-pressed Sicilian olive oil reserved from the campaign shop."
+        "defaultProductName": "Campaign product",
+        "defaultProductDescription": "Product reserved from the campaign shop."
       },
       "usdcObligationsTitle": "Reported seasons",
       "noObligations": "No reported seasons yet. Run a season, end it, and report the harvest to see it here.",
@@ -940,11 +941,11 @@
     "treasuryHoldsHint": "$GROW (excluded from floor divisor)",
     "buy": {
       "title": "Buy $GROW",
-      "blurb": "Direct primary sale: pay an allowlisted stablecoin, mint fresh $GROW at floor + {markup}%. The {markup}% markup goes to the Treasury — every buy is non-dilutive.",
+      "blurb": "Buy $GROW with USDC. Price and token validity are checked directly on-chain when the transaction runs.",
       "salePrice": "Sale price",
-      "salePriceHint": "floor + {markup}% markup",
+      "salePriceHint": "Live price",
       "salePaused": "Direct sale is currently paused by the multisig.",
-      "depegged": "{symbol} feed unhealthy. Chainlink price is stale or outside the $0.95-$1.05 depeg band. Buys with this token are blocked until the feed recovers (or the multisig revokes the token).",
+      "depegged": "{symbol} price unavailable. The transaction will validate it on-chain.",
       "payWith": "Pay with",
       "mintFaucet": "+ Mint 10,000 {symbol}",
       "minting": "Minting…",
@@ -1102,7 +1103,7 @@
       },
       "s2": {
         "title": "Treasury auto-allocates",
-        "body": "Direct buys of $GROW at floor + 10% land USDC straight into the Treasury, which auto-spreads it equally across all tracked Active campaigns. No multisig click needed."
+        "body": "Direct $GROW buys send USDC straight into the Treasury, which auto-spreads it across tracked active campaigns. No multisig click needed."
       },
       "s3": {
         "title": "Harvest yield flows back",
@@ -1428,7 +1429,7 @@
         "items": {
           "treasury": {
             "label": "Treasury",
-            "body": "Direct buys mint at floor plus markup, with proceeds held by the protocol treasury."
+            "body": "Direct buys fund the protocol treasury with USDC."
           },
           "staking": {
             "label": "Staking",

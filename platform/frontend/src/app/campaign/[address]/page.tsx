@@ -14,7 +14,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { formatUnits } from "viem";
 import { useCampaignData } from "@/contracts/hooks";
-import { abis, getAddresses } from "@/contracts";
+import { abis, CHAIN_ID, getAddresses } from "@/contracts";
 import { erc20Abi } from "@/contracts/erc20";
 import { useSubgraphCampaign, useSubgraphProducer } from "@/lib/subgraph";
 import { useTxNotify } from "@/lib/useTxNotify";
@@ -40,6 +40,8 @@ import { ECOMMERCE_MODULE_TYPE } from "@/contracts/ecommerce";
 import { campaignModuleHostAbi } from "@/contracts/repayment";
 
 const STATE_LABELS = ["funding", "active", "buyback", "ended"] as const;
+const WAGMI_CHAIN_ID = CHAIN_ID as never;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
 
 type Tab = "invest" | "shop" | "stake" | "harvest" | "info" | "manage";
 const TAB_KEYS: Tab[] = ["invest", "stake", "harvest", "info"];
@@ -82,24 +84,67 @@ export default function CampaignDetail({
   // fundingDeadline, state, campaignToken, stakingVault, harvestManager
   type MaybeResult = { result?: unknown };
   const cd = campaignData as readonly MaybeResult[] | undefined;
-  const pricePerToken = (cd?.[1]?.result as bigint | undefined) ?? 0n;
-  const stateIdx = (cd?.[6]?.result as number | undefined) ?? 0;
-  const hasOnChainData = !!cd?.[0]?.result;
-  const stateKey = STATE_LABELS[stateIdx] ?? "funding";
-
   // Off-chain metadata: subgraph → registry URI → fetch JSON.
   const { data: sgCampaign } = useSubgraphCampaign(
     isValidAddress ? campaignAddress : undefined,
   );
 
+  const sgStateIdx =
+    sgCampaign?.state === "Active"
+      ? 1
+      : sgCampaign?.state === "Buyback"
+        ? 2
+        : sgCampaign?.state === "Ended"
+          ? 3
+          : 0;
+  const producerAddress =
+    (cd?.[0]?.result as Address | undefined) ??
+    (sgCampaign?.producer as Address | undefined);
+  const pricePerToken =
+    (cd?.[1]?.result as bigint | undefined) ??
+    (sgCampaign ? BigInt(sgCampaign.pricePerToken) : 0n);
+  const minCap =
+    (cd?.[2]?.result as bigint | undefined) ??
+    (sgCampaign ? BigInt(sgCampaign.minCap) : 0n);
+  const maxCap =
+    (cd?.[3]?.result as bigint | undefined) ??
+    (sgCampaign ? BigInt(sgCampaign.maxCap) : 0n);
+  const currentSupply =
+    (cd?.[4]?.result as bigint | undefined) ??
+    (sgCampaign ? BigInt(sgCampaign.currentSupply) : 0n);
+  const fundingDeadline =
+    (cd?.[5]?.result as bigint | undefined) ??
+    (sgCampaign ? BigInt(sgCampaign.fundingDeadline) : 0n);
+  const stateIdx = (cd?.[6]?.result as number | undefined) ?? sgStateIdx;
+  const campaignTokenAddr =
+    (cd?.[7]?.result as Address | undefined) ??
+    (sgCampaign?.campaignToken as Address | undefined);
+  const stakingVaultAddr =
+    (cd?.[8]?.result as Address | undefined) ??
+    (sgCampaign?.stakingVault as Address | undefined);
+  const harvestManagerAddr =
+    (cd?.[9]?.result as Address | undefined) ??
+    (sgCampaign?.harvestManager as Address | undefined);
+  const yieldTokenAddr = sgCampaign?.yieldToken as Address | undefined;
+  const hasOnChainData = !!cd?.[0]?.result;
+  const hasIndexedData = !!sgCampaign;
+  const hasCampaignData = hasOnChainData || hasIndexedData;
+  const hasBuyData =
+    hasCampaignData &&
+    !!campaignTokenAddr &&
+    pricePerToken > 0n &&
+    maxCap > 0n;
+  const panelCampaignToken = campaignTokenAddr ?? ZERO_ADDRESS;
+  const stateKey = STATE_LABELS[stateIdx] ?? "funding";
+
   // Direct on-chain read of Treasury's CT balance — used as a fallback when the
   // subgraph isn't indexing yet (local anvil, fresh deploy). The funding bar
   // splits direct backers vs Treasury auto-alloc using whichever is fresher.
-  const campaignTokenAddr = cd?.[7]?.result as Address | undefined;
   const { growTreasury } = getAddresses();
   const { data: treasuryCtBalance } = useReadContract({
     abi: erc20Abi,
     address: campaignTokenAddr,
+    chainId: WAGMI_CHAIN_ID,
     functionName: "balanceOf",
     args: growTreasury ? [growTreasury] : undefined,
     query: {
@@ -108,7 +153,7 @@ export default function CampaignDetail({
     },
   });
   const { data: metadata } = useResolvedCampaignMetadata(
-    campaignAddress,
+    isValidAddress ? campaignAddress : undefined,
     sgCampaign?.metadataURI,
     sgCampaign?.metadataVersion,
   );
@@ -117,7 +162,6 @@ export default function CampaignDetail({
   // CampaignRegistry has no URI for this campaign. Happens when the create
   // flow's setMetadata step was rejected or missed before we made it mandatory.
   const { address: connected } = useAccount();
-  const producerAddress = cd?.[0]?.result as Address | undefined;
   const isProducerViewing =
     !!connected &&
     !!producerAddress &&
@@ -130,6 +174,7 @@ export default function CampaignDetail({
   const { data: ecommerceSlotData } = useReadContract({
     address: isValidAddress ? campaignAddress : undefined,
     abi: campaignModuleHostAbi,
+    chainId: WAGMI_CHAIN_ID,
     functionName: "moduleSlot",
     args: [ECOMMERCE_MODULE_TYPE],
     query: { enabled: isValidAddress, refetchInterval: 20_000 },
@@ -139,7 +184,7 @@ export default function CampaignDetail({
     | undefined;
   const hasEcommerce =
     Boolean(ecommerceSlot?.[4]) &&
-    ecommerceSlot?.[0] !== "0x0000000000000000000000000000000000000000";
+    ecommerceSlot?.[0] !== ZERO_ADDRESS;
   const visibleTabs: Tab[] = [
     ...TAB_KEYS.slice(0, 1),
     ...(hasEcommerce ? (["shop"] as Tab[]) : []),
@@ -220,13 +265,13 @@ export default function CampaignDetail({
         </div>
       </div>
 
-      {isProducerViewing && hasOnChainData && (
+      {isProducerViewing && hasCampaignData && (
         <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pt-6">
           <ActivateCtaBanner
             campaignAddress={campaignAddress}
             currentState={stateIdx}
-            currentSupply={(cd?.[4]?.result as bigint | undefined) ?? 0n}
-            minCap={(cd?.[2]?.result as bigint | undefined) ?? 0n}
+            currentSupply={currentSupply}
+            minCap={minCap}
             isProducerViewing={isProducerViewing}
           />
         </div>
@@ -260,61 +305,47 @@ export default function CampaignDetail({
           {effectiveTab === "invest" && (
             <>
               <FundingProgressCard
-                currentSupply={(cd?.[4]?.result as bigint | undefined) ?? 0n}
-                maxCap={(cd?.[3]?.result as bigint | undefined) ?? 0n}
-                minCap={(cd?.[2]?.result as bigint | undefined) ?? 0n}
+                currentSupply={currentSupply}
+                maxCap={maxCap}
+                minCap={minCap}
                 pricePerToken={pricePerToken}
-                fundingDeadline={
-                  (cd?.[5]?.result as bigint | undefined) ?? 0n
-                }
+                fundingDeadline={fundingDeadline}
                 treasuryTokensOut={
                   sgCampaign?.treasuryTokensOut
                     ? BigInt(sgCampaign.treasuryTokensOut)
                     : ((treasuryCtBalance as bigint | undefined) ?? 0n)
                 }
-                hasOnChainData={hasOnChainData}
+                hasOnChainData={hasCampaignData}
               />
 
-              {hasOnChainData && (
+              {hasCampaignData && (
                 <TriggerBuybackCta
                   campaignAddress={campaignAddress}
                   currentState={stateIdx}
-                  currentSupply={
-                    (cd?.[4]?.result as bigint | undefined) ?? 0n
-                  }
-                  minCap={(cd?.[2]?.result as bigint | undefined) ?? 0n}
-                  fundingDeadline={
-                    (cd?.[5]?.result as bigint | undefined) ?? 0n
-                  }
+                  currentSupply={currentSupply}
+                  minCap={minCap}
+                  fundingDeadline={fundingDeadline}
                 />
               )}
 
-              {!hasOnChainData ? (
+              {!hasBuyData ? (
                 <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15 text-center text-sm text-on-surface-variant">
-                  {t("buy.demoNotice")}
+                  {t("buy.loadingCampaign")}
                 </div>
               ) : stateIdx === 2 ? (
                 <RefundPanel
                   campaignAddress={campaignAddress}
-                  campaignToken={
-                    (cd?.[7]?.result as Address | undefined) ??
-                    "0x0000000000000000000000000000000000000000"
-                  }
+                  campaignToken={panelCampaignToken}
                   currentState={stateIdx}
                 />
               ) : (
                 <>
                   <BuyPanel
                     campaignAddress={campaignAddress}
-                    campaignToken={
-                      (cd?.[7]?.result as Address | undefined) ??
-                      "0x0000000000000000000000000000000000000000"
-                    }
+                    campaignToken={panelCampaignToken}
                     pricePerToken={pricePerToken}
-                    currentSupply={
-                      (cd?.[4]?.result as bigint | undefined) ?? 0n
-                    }
-                    maxCap={(cd?.[3]?.result as bigint | undefined) ?? 0n}
+                    currentSupply={currentSupply}
+                    maxCap={maxCap}
                     currentState={stateIdx}
                     annualHarvestUsd18={
                       sgCampaign
@@ -335,40 +366,29 @@ export default function CampaignDetail({
                   />
                   <SellBackPanel
                     campaignAddress={campaignAddress}
-                    campaignToken={
-                      (cd?.[7]?.result as Address | undefined) ??
-                      "0x0000000000000000000000000000000000000000"
-                    }
+                    campaignToken={panelCampaignToken}
                     currentState={stateIdx}
                   />
                   <RepaymentPanel
                     campaignAddress={campaignAddress}
-                    campaignToken={
-                      (cd?.[7]?.result as Address | undefined) ??
-                      "0x0000000000000000000000000000000000000000"
-                    }
+                    campaignToken={panelCampaignToken}
                     currentState={stateIdx}
                     repaymentPool={sgCampaign?.repaymentPool ?? null}
                   />
                 </>
               )}
 
-              {hasOnChainData && (
+              {hasCampaignData && campaignTokenAddr && (
                 <InvestorList
                   campaignAddress={campaignAddress}
-                  campaignToken={
-                    (cd?.[7]?.result as Address | undefined) ??
-                    "0x0000000000000000000000000000000000000000"
-                  }
-                  currentSupply={
-                    (cd?.[4]?.result as bigint | undefined) ?? 0n
-                  }
+                  campaignToken={campaignTokenAddr}
+                  currentSupply={currentSupply}
                 />
               )}
             </>
           )}
 
-          {effectiveTab === "shop" && hasOnChainData && hasEcommerce && (
+          {effectiveTab === "shop" && hasCampaignData && hasEcommerce && (
             <EcommerceShopPanel
               campaignAddress={campaignAddress}
               currentState={stateIdx}
@@ -376,19 +396,26 @@ export default function CampaignDetail({
             />
           )}
 
-          {effectiveTab === "stake" && hasOnChainData && sgCampaign && (
+          {effectiveTab === "stake" &&
+            hasCampaignData &&
+            stakingVaultAddr &&
+            campaignTokenAddr &&
+            yieldTokenAddr && (
             <StakingPanel
-              campaignToken={sgCampaign.campaignToken as Address}
-              stakingVault={sgCampaign.stakingVault as Address}
-              yieldToken={sgCampaign.yieldToken as Address}
-              seasonDuration={BigInt(sgCampaign.seasonDuration)}
+              campaignToken={campaignTokenAddr}
+              stakingVault={stakingVaultAddr}
+              yieldToken={yieldTokenAddr}
+              seasonDuration={sgCampaign ? BigInt(sgCampaign.seasonDuration) : 0n}
             />
           )}
-          {effectiveTab === "harvest" && hasOnChainData && sgCampaign && (
+          {effectiveTab === "harvest" &&
+            hasCampaignData &&
+            harvestManagerAddr &&
+            yieldTokenAddr && (
             <HarvestPanel
               campaignAddress={campaignAddress}
-              harvestManager={sgCampaign.harvestManager as Address}
-              yieldToken={sgCampaign.yieldToken as Address}
+              harvestManager={harvestManagerAddr}
+              yieldToken={yieldTokenAddr}
             />
           )}
           {effectiveTab === "info" && (
@@ -401,12 +428,14 @@ export default function CampaignDetail({
           )}
           {effectiveTab === "manage" &&
             isProducerViewing &&
-            hasOnChainData &&
-            sgCampaign && (
+            hasCampaignData &&
+            sgCampaign &&
+            stakingVaultAddr &&
+            harvestManagerAddr && (
               <ProducerManagePanel
                 campaignAddress={campaignAddress}
-                harvestManager={sgCampaign.harvestManager as Address}
-                stakingVault={sgCampaign.stakingVault as Address}
+                harvestManager={harvestManagerAddr}
+                stakingVault={stakingVaultAddr}
                 currentState={stateIdx}
                 minProductClaim={BigInt(sgCampaign.minProductClaim)}
                 seasonDuration={BigInt(sgCampaign.seasonDuration)}
@@ -417,8 +446,8 @@ export default function CampaignDetail({
         <div className="w-full lg:w-[35%] sticky top-36 flex flex-col gap-4">
           <StatsCard
             pricePerToken={pricePerToken}
-            maxCap={(cd?.[3]?.result as bigint | undefined) ?? 0n}
-            currentSupply={(cd?.[4]?.result as bigint | undefined) ?? 0n}
+            maxCap={maxCap}
+            currentSupply={currentSupply}
             totalStaked={
               sgCampaign ? BigInt(sgCampaign.totalStaked) : 0n
             }
@@ -433,7 +462,7 @@ export default function CampaignDetail({
               productUnit={productUnitLabel(metadata?.productType)}
               firstHarvestYear={BigInt(sgCampaign.firstHarvestYear ?? "0")}
               coverageHarvests={BigInt(sgCampaign.coverageHarvests ?? "0")}
-              maxCap18={(cd?.[3]?.result as bigint | undefined) ?? 0n}
+              maxCap18={maxCap}
               pricePerToken18={pricePerToken}
               collateralLocked6={BigInt(sgCampaign.collateralLocked ?? "0")}
               collateralDrawn6={BigInt(sgCampaign.collateralDrawn ?? "0")}
@@ -443,7 +472,7 @@ export default function CampaignDetail({
             campaignAddress={isValidAddress ? campaignAddress : undefined}
           />
           <ProducerCard
-            producer={(sgCampaign?.producer as Address) ?? undefined}
+            producer={producerAddress}
           />
         </div>
       </div>
@@ -1235,6 +1264,7 @@ function TokensAcceptedCard({
           {
             address: campaignAddress,
             abi: campaignAbi,
+            chainId: WAGMI_CHAIN_ID,
             functionName: "getAcceptedTokens",
           },
         ]
@@ -1280,10 +1310,16 @@ function TokenRow({
 
   const { data } = useReadContracts({
     contracts: [
-      { address: tokenAddress, abi: erc20Abi, functionName: "symbol" },
+      {
+        address: tokenAddress,
+        abi: erc20Abi,
+        chainId: WAGMI_CHAIN_ID,
+        functionName: "symbol",
+      },
       {
         address: campaignAddress,
         abi: campaignAbi,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "tokenConfigs",
         args: [tokenAddress],
       },

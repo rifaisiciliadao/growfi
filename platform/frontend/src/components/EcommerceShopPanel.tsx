@@ -35,9 +35,13 @@ import { Spinner } from "./Spinner";
 const USDC_DECIMALS = 6;
 const DEMO_CATALOG_TITLE = "Campaign shop";
 const DEMO_CATALOG_DESCRIPTION = "On-chain checkout for products reserved from this campaign.";
-const DEMO_PRODUCT_NAME = "Extra virgin olive oil 500ml";
-const DEMO_PRODUCT_DESCRIPTION = "Cold-pressed Sicilian olive oil reserved from the campaign shop.";
-const DEMO_PRODUCT_DESCRIPTION_ALT = "Cold-pressed Sicilian olive oil, reserved from the campaign shop.";
+const DEMO_PRODUCT_NAME = "Campaign product";
+const DEMO_PRODUCT_DESCRIPTION = "Product reserved from this campaign shop.";
+const DEMO_PRODUCT_DESCRIPTION_ALT = "Product reserved from the campaign shop.";
+const FAUCET_ENABLED =
+  EXPECTED_CHAIN_ID === 31337 ||
+  EXPECTED_CHAIN_ID === 84532 ||
+  EXPECTED_CHAIN_ID === 11155111;
 const mockUsdcMintAbi = [
   {
     type: "function",
@@ -426,7 +430,7 @@ export function EcommerceShopPanel({
   };
 
   const handleMintUsdc = async () => {
-    if (!user) return;
+    if (!user || !FAUCET_ENABLED) return;
     if (isWrongChain) {
       await handleSwitchNetwork();
       return;
@@ -442,7 +446,7 @@ export function EcommerceShopPanel({
       });
       setStatus({ kind: "mint-chain" });
       const receipt = await waitForTx(hash);
-      if (receipt.status !== "success") throw new Error("mUSDC mint reverted");
+      if (receipt.status !== "success") throw new Error("USDC mint reverted");
       await refetchBalance();
       notify.success(tx("mintConfirmed"), hash);
       setStatus({ kind: "idle" });
@@ -827,13 +831,15 @@ export function EcommerceShopPanel({
               </div>
 
               <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-on-surface-variant">
-                <button
-                  onClick={handleMintUsdc}
-                  disabled={!user || interactionBusy || isWrongChain}
-                  className="font-semibold text-primary disabled:opacity-50"
-                >
-                  {t("mintUsdc")}
-                </button>
+                {FAUCET_ENABLED && (
+                  <button
+                    onClick={handleMintUsdc}
+                    disabled={!user || interactionBusy || isWrongChain}
+                    className="font-semibold text-primary disabled:opacity-50"
+                  >
+                    {t("mintUsdc")}
+                  </button>
+                )}
                 <span>{t("balance", { amount: formatUsdc(balance) })}</span>
               </div>
 

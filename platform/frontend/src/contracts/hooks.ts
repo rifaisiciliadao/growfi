@@ -2,11 +2,12 @@
 
 import { useReadContract, useReadContracts } from "wagmi";
 import type { Address } from "viem";
-import { abis, getAddresses } from "./index";
+import { abis, CHAIN_ID, getAddresses } from "./index";
 
 const factoryAbi = abis.CampaignFactory as never;
 const campaignAbi = abis.Campaign as never;
 const stakingAbi = abis.StakingVault as never;
+const WAGMI_CHAIN_ID = CHAIN_ID as never;
 
 /**
  * Returns array of all deployed campaign addresses
@@ -17,6 +18,7 @@ export function useCampaignsList() {
   return useReadContract({
     address: factory,
     abi: factoryAbi,
+    chainId: WAGMI_CHAIN_ID,
     functionName: "getCampaigns",
     query: {
       enabled:
@@ -43,16 +45,16 @@ export function useCampaignData(address: Address | undefined) {
   return useReadContracts({
     contracts: address
       ? [
-          { address, abi: campaignAbi, functionName: "producer" },
-          { address, abi: campaignAbi, functionName: "pricePerToken" },
-          { address, abi: campaignAbi, functionName: "minCap" },
-          { address, abi: campaignAbi, functionName: "maxCap" },
-          { address, abi: campaignAbi, functionName: "currentSupply" },
-          { address, abi: campaignAbi, functionName: "fundingDeadline" },
-          { address, abi: campaignAbi, functionName: "state" },
-          { address, abi: campaignAbi, functionName: "campaignToken" },
-          { address, abi: campaignAbi, functionName: "stakingVault" },
-          { address, abi: campaignAbi, functionName: "harvestManager" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "producer" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "pricePerToken" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "minCap" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "maxCap" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "currentSupply" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "fundingDeadline" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "state" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "campaignToken" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "stakingVault" },
+          { address, abi: campaignAbi, chainId: WAGMI_CHAIN_ID, functionName: "harvestManager" },
         ]
       : [],
     query: { enabled: !!address },
@@ -66,9 +68,9 @@ export function useStakingData(vaultAddress: Address | undefined) {
   return useReadContracts({
     contracts: vaultAddress
       ? [
-          { address: vaultAddress, abi: stakingAbi, functionName: "totalStaked" },
-          { address: vaultAddress, abi: stakingAbi, functionName: "currentYieldRate" },
-          { address: vaultAddress, abi: stakingAbi, functionName: "currentSeasonId" },
+          { address: vaultAddress, abi: stakingAbi, chainId: WAGMI_CHAIN_ID, functionName: "totalStaked" },
+          { address: vaultAddress, abi: stakingAbi, chainId: WAGMI_CHAIN_ID, functionName: "currentYieldRate" },
+          { address: vaultAddress, abi: stakingAbi, chainId: WAGMI_CHAIN_ID, functionName: "currentSeasonId" },
         ]
       : [],
     query: { enabled: !!vaultAddress },
