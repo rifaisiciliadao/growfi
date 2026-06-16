@@ -48,6 +48,9 @@ kept in `CONTRACTS.md` for reference.
 Live mainnet endpoint: `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
 Direct legacy endpoints and the stale `prod` tag were removed; use only ugraph
 URLs for app config.
+The frontend network fallback is Ethereum mainnet: if `NEXT_PUBLIC_CHAIN_ID` is
+missing or invalid, `EXPECTED_CHAIN`, RainbowKit chains, and explorer links must
+fall back to chain 1, never Base Sepolia.
 
 ## v4 module architecture (Diamond-style host + delegatecall router)
 
