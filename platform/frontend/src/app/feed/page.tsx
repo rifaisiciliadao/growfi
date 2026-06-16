@@ -209,15 +209,16 @@ function FeedRow({
 }) {
   const t = useTranslations("feed");
   const tProducer = useTranslations("grower");
+  const campaign = item.kind === "growBuy" ? null : item.campaign;
   const { data: meta } = useResolvedCampaignMetadata(
-    item.campaign.id,
-    item.campaign.metadataURI,
-    item.campaign.metadataVersion,
+    campaign?.id,
+    campaign?.metadataURI,
+    campaign?.metadataVersion,
   );
 
   const displayName =
     protocolLabel?.label || profile?.name || ens || tProducer("anonymous");
-  const campaignName = meta?.name ?? shortAddr(item.campaign.id);
+  const campaignName = campaign ? meta?.name ?? shortAddr(campaign.id) : null;
   const when = relativeTime(item.timestamp, t);
 
   const description = renderDescription(item, t);
@@ -256,12 +257,15 @@ function FeedRow({
           )}{" "}
           {description.verb}{" "}
           <span className="font-semibold">{description.amount}</span>
-          {description.preposition && (
+          {description.detail && (
+            <span className="text-on-surface-variant"> {description.detail}</span>
+          )}
+          {description.preposition && campaign && campaignName && (
             <>
               {" "}
               {description.preposition}{" "}
               <Link
-                href={`/campaign/${item.campaign.id}`}
+                href={`/campaign/${campaign.id}`}
                 prefetch={false}
                 className="font-semibold text-primary hover:underline"
               >
@@ -310,13 +314,21 @@ function FeedRow({
 function renderDescription(
   item: FeedItem,
   t: ReturnType<typeof useTranslations>,
-): { verb: string; amount: string; preposition: string | null } {
+): { verb: string; amount: string; detail?: string; preposition: string | null } {
   switch (item.kind) {
+    case "growBuy": {
+      const tok = paymentTokenInfo(item.paymentToken);
+      return {
+        verb: t("activity.verbs.growBought"),
+        amount: `${formatTokens18(item.growOut)} $GROW`,
+        detail: t("activity.withPayment", {
+          amount: `${formatRaw(item.paymentAmount, tok.decimals)} ${tok.symbol}`,
+        }),
+        preposition: null,
+      };
+    }
     case "buy": {
-      const tok = paymentTokenInfo(
-        // `paymentToken` was added to FeedItem.buy in this change.
-        (item as Extract<FeedItem, { kind: "buy" }>).paymentToken,
-      );
+      const tok = paymentTokenInfo(item.paymentToken);
       return {
         verb: t("activity.verbs.bought"),
         amount: `${formatRaw(item.paymentAmount, tok.decimals)} ${tok.symbol}`,
@@ -377,6 +389,7 @@ function ActionIcon({
   protocolEmoji?: string;
 }) {
   const map: Record<FeedItem["kind"], { bg: string; emoji: string }> = {
+    growBuy: { bg: "bg-emerald-950 text-emerald-50", emoji: "$" },
     buy: { bg: "bg-emerald-50 text-emerald-700", emoji: "🌱" },
     shop: { bg: "bg-lime-50 text-lime-700", emoji: "🛒" },
     sellback: { bg: "bg-amber-50 text-amber-700", emoji: "↩️" },

@@ -727,6 +727,17 @@ type CampaignRef = { id: string; metadataURI: string | null; metadataVersion: st
 
 export type FeedItem =
   | {
+      kind: "growBuy";
+      id: string;
+      timestamp: number;
+      user: string;
+      paymentAmount: string;
+      paymentToken: string;
+      growOut: string;
+      effectivePrice: string;
+      txHash: string | null;
+    }
+  | {
       kind: "buy";
       id: string;
       timestamp: number;
@@ -814,6 +825,16 @@ export function useFeed(limit = 50) {
           transactionHash: string;
           campaign: { id: string; metadataURI: string | null; metadataVersion: string };
         }>;
+        growDirectBuys: Array<{
+          id: string;
+          buyer: { id: string };
+          paymentAmount: string;
+          paymentToken: string;
+          growOut: string;
+          effectivePrice: string;
+          timestamp: string;
+          transactionHash: string;
+        }>;
         ecommerceOrders: Array<{
           id: string;
           buyer: string;
@@ -876,6 +897,16 @@ export function useFeed(limit = 50) {
             id buyer paymentAmount paymentToken campaignTokensOut timestamp transactionHash
             campaign { ${FEED_CAMPAIGN_FIELDS} }
           }
+          growDirectBuys(first: $limit, orderBy: timestamp, orderDirection: desc) {
+            id
+            buyer { id }
+            paymentAmount
+            paymentToken
+            growOut
+            effectivePrice
+            timestamp
+            transactionHash
+          }
           ecommerceOrders(first: $limit, orderBy: timestamp, orderDirection: desc) {
             id buyer quantity grossPaid timestamp transactionHash
             campaign { ${FEED_CAMPAIGN_FIELDS} }
@@ -905,6 +936,19 @@ export function useFeed(limit = 50) {
 
       const items: FeedItem[] = [];
 
+      for (const b of data.growDirectBuys) {
+        items.push({
+          kind: "growBuy",
+          id: `grow-buy-${b.id}`,
+          timestamp: Number(b.timestamp),
+          user: b.buyer.id,
+          paymentAmount: b.paymentAmount,
+          paymentToken: b.paymentToken,
+          growOut: b.growOut,
+          effectivePrice: b.effectivePrice,
+          txHash: b.transactionHash,
+        });
+      }
       for (const p of data.purchases) {
         items.push({
           kind: "buy",

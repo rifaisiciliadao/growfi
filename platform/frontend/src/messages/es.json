@@ -25,6 +25,7 @@
       "title": "Actividad",
       "empty": "Sin actividad aún. Sé el primero en respaldar una campaña.",
       "verbs": {
+        "growBought": "compró",
         "bought": "invirtió",
         "shopBought": "compró en la tienda",
         "sellback": "pidió sellback de",
@@ -34,6 +35,7 @@
         "redeemedUsdc": "canjeó",
         "launched": "lanzó una nueva campaña"
       },
+      "withPayment": "con {amount}",
       "prepositions": {
         "in": "en",
         "from": "de"

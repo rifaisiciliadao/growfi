@@ -25,6 +25,7 @@
       "title": "Activity",
       "empty": "No activity yet. Be the first to back a campaign.",
       "verbs": {
+        "growBought": "bought",
         "bought": "invested",
         "shopBought": "bought from the shop",
         "sellback": "requested sellback of",
@@ -34,6 +35,7 @@
         "redeemedUsdc": "redeemed",
         "launched": "launched a new campaign"
       },
+      "withPayment": "with {amount}",
       "prepositions": {
         "in": "in",
         "from": "from"

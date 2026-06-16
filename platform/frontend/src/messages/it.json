@@ -25,6 +25,7 @@
       "title": "Attività",
       "empty": "Nessuna attività ancora. Sii il primo a finanziare una campagna.",
       "verbs": {
+        "growBought": "ha comprato",
         "bought": "ha investito",
         "shopBought": "ha acquistato dal negozio",
         "sellback": "ha richiesto sellback di",
@@ -34,6 +35,7 @@
         "redeemedUsdc": "ha riscattato",
         "launched": "ha lanciato una nuova campagna"
       },
+      "withPayment": "con {amount}",
       "prepositions": {
         "in": "in",
         "from": "da"
