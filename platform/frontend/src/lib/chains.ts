@@ -5,7 +5,7 @@ export const EXPECTED_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 1);
 const KNOWN_CHAINS = [foundry, sepolia, mainnet, baseSepolia, base] as const;
 
 export const EXPECTED_CHAIN =
-  KNOWN_CHAINS.find((chain) => chain.id === EXPECTED_CHAIN_ID) ?? baseSepolia;
+  KNOWN_CHAINS.find((chain) => chain.id === EXPECTED_CHAIN_ID) ?? mainnet;
 
 export function chainName(chainId: number | undefined): string {
   if (!chainId) return "Unknown network";

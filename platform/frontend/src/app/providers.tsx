@@ -84,8 +84,7 @@ function selectChains() {
   if (isLocal) return [foundry, sepolia, mainnet] as const;
   if (isSepolia) return [sepolia, mainnet] as const;
   if (isMainnet) return [mainnet, sepolia] as const;
-  // legacy default: Base
-  return [baseSepolia, base] as const;
+  return [mainnet, sepolia] as const;
 }
 
 export const config = getDefaultConfig({

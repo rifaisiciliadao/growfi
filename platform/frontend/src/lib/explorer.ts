@@ -1,6 +1,6 @@
 import { baseSepolia, base, sepolia, mainnet } from "wagmi/chains";
 
-const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? baseSepolia.id);
+const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID ?? mainnet.id);
 
 const EXPLORERS: Record<number, string> = {
   [baseSepolia.id]: "https://sepolia.basescan.org",
@@ -17,11 +17,11 @@ const EXPLORER_NAMES: Record<number, string> = {
 };
 
 export function explorerBase(chainId: number = CHAIN_ID): string {
-  return EXPLORERS[chainId] ?? EXPLORERS[baseSepolia.id];
+  return EXPLORERS[chainId] ?? EXPLORERS[mainnet.id];
 }
 
 export function explorerName(chainId: number = CHAIN_ID): string {
-  return EXPLORER_NAMES[chainId] ?? EXPLORER_NAMES[baseSepolia.id];
+  return EXPLORER_NAMES[chainId] ?? EXPLORER_NAMES[mainnet.id];
 }
 
 export function txUrl(hash: string, chainId: number = CHAIN_ID): string {
