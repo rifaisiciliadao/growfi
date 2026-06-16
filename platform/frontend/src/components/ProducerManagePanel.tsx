@@ -10,8 +10,10 @@ import {
 } from "wagmi";
 import { formatUnits, parseUnits, zeroAddress, type Address } from "viem";
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
+import { campaignTokenConfigAbi } from "@/contracts/campaign";
 import {
-  KNOWN_TOKENS,
+  getEnabledTokens,
+  type KnownToken,
   PRICING_MODE_ENUM,
   resolveTokenAddress,
 } from "@/contracts/tokens";
@@ -36,6 +38,7 @@ import { waitForTx } from "@/lib/waitForTx";
 import { addressUrl, txUrl } from "@/lib/explorer";
 
 const campaignAbi = abis.Campaign as never;
+const WAGMI_CHAIN_ID = CHAIN_ID as never;
 
 interface Props {
   campaignAddress: Address;
@@ -49,6 +52,10 @@ interface Props {
 
 const harvestAbi = abis.HarvestManager as never;
 const USDC_DECIMALS = 6;
+const PAYMENT_TOKEN_OPTIONS = getEnabledTokens(CHAIN_ID);
+const PAYMENT_TOKEN_FALLBACK_ADDRESSES = PAYMENT_TOKEN_OPTIONS.map((token) =>
+  resolveTokenAddress(token, CHAIN_ID),
+);
 
 /**
  * Producer-only dashboard for post-harvest ops. The innovative part of
@@ -945,9 +952,9 @@ function DebtRestructuringModuleManager({
 
 /**
  * Let the producer add or remove payment tokens after the campaign is
- * already live. Reads getAcceptedTokens + tokenConfigs to render the
+ * already live. Reads getAcceptedTokens + tokenConfig to render the
  * current whitelist, each entry has a Remove button. Add form picks from
- * KNOWN_TOKENS (same curated list used in /create) and signs
+ * the active-chain curated token list and signs
  * addAcceptedToken. Both flows use the imperative sig→chain pattern.
  */
 function AcceptedTokensManager({
@@ -964,55 +971,64 @@ function AcceptedTokensManager({
     {
       address: campaignAddress,
       abi: campaignAbi,
+      chainId: WAGMI_CHAIN_ID,
       functionName: "getAcceptedTokens",
       query: { refetchInterval: 20_000 },
     },
   ) as { data: Address[] | undefined; refetch: () => void };
+  const tokenAddresses =
+    acceptedAddresses && acceptedAddresses.length > 0
+      ? acceptedAddresses
+      : PAYMENT_TOKEN_FALLBACK_ADDRESSES;
 
   const symbolContracts = useMemo(() => {
-    if (!acceptedAddresses) return [];
-    return acceptedAddresses.flatMap((addr) => [
-      { address: addr, abi: erc20Abi, functionName: "symbol" },
+    return tokenAddresses.flatMap((addr) => [
+      {
+        address: addr,
+        abi: erc20Abi,
+        chainId: WAGMI_CHAIN_ID,
+        functionName: "symbol",
+      },
       {
         address: campaignAddress,
-        abi: campaignAbi,
-        functionName: "tokenConfigs",
+        abi: campaignTokenConfigAbi,
+        chainId: WAGMI_CHAIN_ID,
+        functionName: "tokenConfig",
         args: [addr],
       },
     ]);
-  }, [acceptedAddresses, campaignAddress]);
+  }, [campaignAddress, tokenAddresses]);
 
   const { data: symbolData } = useReadContracts({
     contracts: symbolContracts as never,
-    query: { enabled: symbolContracts.length > 0 },
+    query: { enabled: symbolContracts.length > 0, refetchInterval: 20_000 },
   });
 
   type MaybeResult = { result?: unknown };
-  const results = (symbolData ?? []) as readonly MaybeResult[];
 
   const accepted = useMemo(() => {
-    if (!acceptedAddresses) return [];
-    return acceptedAddresses.map((addr, i) => {
+    const results = (symbolData ?? []) as readonly MaybeResult[];
+    return tokenAddresses.map((addr, i) => {
       const symbol = (results[i * 2]?.result as string | undefined) ?? "?";
-      // tokenConfigs returns (PricingMode, fixedRate, oracleFeed, paymentDecimals, active)
+      // tokenConfig returns (PricingMode, fixedRate, oracleFeed, paymentDecimals, active)
       const cfg = results[i * 2 + 1]?.result as
         | readonly [number, bigint, Address, number, boolean]
         | undefined;
       const pricingMode = cfg?.[0] ?? 0;
-      return { address: addr, symbol, pricingMode };
-    });
-  }, [acceptedAddresses, results]);
+      return { address: addr, symbol, pricingMode, active: cfg?.[4] ?? false };
+    }).filter((tok) => tok.active);
+  }, [symbolData, tokenAddresses]);
 
   const usedSymbols = new Set(
     accepted.map((a) => {
-      const match = KNOWN_TOKENS.find(
+      const match = PAYMENT_TOKEN_OPTIONS.find(
         (k) => resolveLower(k) === a.address.toLowerCase(),
       );
       return match?.symbol ?? "";
     }),
   );
-  const nextAvailable = KNOWN_TOKENS.find(
-    (k) => k.enabled && !usedSymbols.has(k.symbol),
+  const nextAvailable = PAYMENT_TOKEN_OPTIONS.find(
+    (k) => !usedSymbols.has(k.symbol),
   );
 
   const [addSymbol, setAddSymbol] = useState<string>(
@@ -1039,6 +1055,7 @@ function AcceptedTokensManager({
       const hash = await writeContractAsync({
         address: campaignAddress,
         abi: campaignAbi,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "removeAcceptedToken",
         args: [token],
       });
@@ -1057,7 +1074,7 @@ function AcceptedTokensManager({
 
   const handleAdd = async () => {
     setError(null);
-    const known = KNOWN_TOKENS.find((k) => k.symbol === addSymbol);
+    const known = PAYMENT_TOKEN_OPTIONS.find((k) => k.symbol === addSymbol);
     if (!known) return;
     try {
       const tokenAddress = resolveTokenAddress(known, CHAIN_ID);
@@ -1081,6 +1098,7 @@ function AcceptedTokensManager({
       const hash = await writeContractAsync({
         address: campaignAddress,
         abi: campaignAbi,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "addAcceptedToken",
         args: [tokenAddress, pricingMode, fixedRate, oracleFeed],
       });
@@ -1098,7 +1116,9 @@ function AcceptedTokensManager({
     }
   };
 
-  const selectedKnown = KNOWN_TOKENS.find((k) => k.symbol === addSymbol);
+  const selectedKnown = PAYMENT_TOKEN_OPTIONS.find(
+    (k) => k.symbol === addSymbol,
+  );
   const isOracle = selectedKnown?.defaultMode === "oracle";
   const addBusy = pending?.kind === "add";
 
@@ -1165,7 +1185,7 @@ function AcceptedTokensManager({
               disabled={addBusy}
               className="bg-surface-container rounded-lg px-3 py-2 text-sm border border-outline-variant/15 outline-none focus:border-primary/50"
             >
-              {KNOWN_TOKENS.map((k) => {
+              {PAYMENT_TOKEN_OPTIONS.map((k) => {
                 const alreadyUsed = usedSymbols.has(k.symbol);
                 return (
                   <option
@@ -1212,11 +1232,16 @@ function AcceptedTokensManager({
         </div>
       )}
 
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-error">
+          {error}
+        </div>
+      )}
     </div>
   );
 }
 
-function resolveLower(token: (typeof KNOWN_TOKENS)[number]): string {
+function resolveLower(token: KnownToken): string {
   const addr = token.addresses[CHAIN_ID];
   return addr ? addr.toLowerCase() : "";
 }

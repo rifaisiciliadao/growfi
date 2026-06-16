@@ -55,8 +55,9 @@ const mainnetTransport = fallback(
     ...(process.env.NEXT_PUBLIC_MAINNET_RPC_URL
       ? [http(process.env.NEXT_PUBLIC_MAINNET_RPC_URL, { retryCount: 3, retryDelay: 500, timeout: 10_000 })]
       : []),
+    http("https://ethereum-rpc.publicnode.com", { retryCount: 3, retryDelay: 500, timeout: 10_000 }),
     http("https://eth.llamarpc.com", { retryCount: 3, retryDelay: 500, timeout: 10_000 }),
-    http("https://cloudflare-eth.com", { retryCount: 3, retryDelay: 500, timeout: 10_000 }),
+    http("https://1rpc.io/eth", { retryCount: 3, retryDelay: 500, timeout: 10_000 }),
   ],
   { rank: false, retryCount: 1 },
 );

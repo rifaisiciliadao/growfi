@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useTranslations } from "next-intl";
 import {
   useAccount,
@@ -10,6 +10,11 @@ import {
 } from "wagmi";
 import { parseUnits, formatUnits, type Address } from "viem";
 import { abis, CHAIN_ID, getAddresses } from "@/contracts";
+import {
+  campaignTokenConfigAbi,
+  readCampaignTokenConfig,
+} from "@/contracts/campaign";
+import { getEnabledTokens, resolveTokenAddress } from "@/contracts/tokens";
 import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
@@ -83,55 +88,9 @@ const campaignAbi = abis.Campaign as never;
 const WAGMI_CHAIN_ID = CHAIN_ID as never;
 const FAUCET_ENABLED =
   CHAIN_ID === 31337 || CHAIN_ID === 84532 || CHAIN_ID === 11155111;
-
-const tokenConfigAbi = [
-  {
-    type: "function",
-    name: "tokenConfig",
-    stateMutability: "view",
-    inputs: [{ name: "token", type: "address" }],
-    outputs: [
-      {
-        type: "tuple",
-        components: [
-          { name: "pricingMode", type: "uint8" },
-          { name: "fixedRate", type: "uint256" },
-          { name: "oracleFeed", type: "address" },
-          { name: "paymentDecimals", type: "uint8" },
-          { name: "active", type: "bool" },
-        ],
-      },
-    ],
-  },
-] as const;
-
-type TokenConfigResult =
-  | readonly [number | bigint, bigint, Address, number | bigint, boolean]
-  | {
-      pricingMode?: number | bigint;
-      fixedRate?: bigint;
-      oracleFeed?: Address;
-      paymentDecimals?: number | bigint;
-      active?: boolean;
-    };
-
-function readTokenConfig(raw: unknown) {
-  const cfg = raw as TokenConfigResult | undefined;
-  if (!cfg) return null;
-  if (Array.isArray(cfg)) {
-    return {
-      pricingMode: Number(cfg[0] ?? 0),
-      fixedRate: cfg[1] ?? 0n,
-      active: Boolean(cfg[4]),
-    };
-  }
-  const cfgObj = cfg as Exclude<TokenConfigResult, readonly unknown[]>;
-  return {
-    pricingMode: Number(cfgObj.pricingMode ?? 0),
-    fixedRate: cfgObj.fixedRate ?? 0n,
-    active: cfgObj.active ?? false,
-  };
-}
+const PAYMENT_TOKEN_FALLBACK_ADDRESSES = getEnabledTokens(CHAIN_ID).map(
+  (token) => resolveTokenAddress(token, CHAIN_ID),
+);
 
 const MOCK_USDC_DECIMALS = 6;
 const MOCK_USDC_MINT_AMOUNT = 10_000n * 10n ** BigInt(MOCK_USDC_DECIMALS); // 10,000 mUSDC
@@ -174,16 +133,20 @@ export function BuyPanel({
     address: campaignAddress,
     abi: campaignAbi,
     functionName: "getAcceptedTokens",
+    query: { refetchInterval: 20_000 },
   }) as { data: Address[] | undefined };
+  const tokenAddresses =
+    acceptedTokenAddresses && acceptedTokenAddresses.length > 0
+      ? acceptedTokenAddresses
+      : PAYMENT_TOKEN_FALLBACK_ADDRESSES;
 
   // 2) For each accepted token, read tokenConfig + ERC20 symbol/decimals
   const tokenConfigContracts = useMemo(() => {
-    if (!acceptedTokenAddresses) return [];
-    return acceptedTokenAddresses.flatMap((addr) => [
+    return tokenAddresses.flatMap((addr) => [
       {
         address: campaignAddress,
         chainId: WAGMI_CHAIN_ID,
-        abi: tokenConfigAbi,
+        abi: campaignTokenConfigAbi,
         functionName: "tokenConfig",
         args: [addr],
       },
@@ -200,23 +163,23 @@ export function BuyPanel({
         functionName: "decimals",
       },
     ]);
-  }, [acceptedTokenAddresses, campaignAddress]);
+  }, [campaignAddress, tokenAddresses]);
 
   const { data: tokenConfigs } = useReadContracts({
     contracts: tokenConfigContracts as never,
-    query: { enabled: tokenConfigContracts.length > 0 },
+    query: { enabled: tokenConfigContracts.length > 0, refetchInterval: 20_000 },
   });
 
   // Assemble token info array
   const tokens: AcceptedTokenInfo[] = useMemo(() => {
-    if (!acceptedTokenAddresses || !tokenConfigs) return [];
+    if (!tokenConfigs) return [];
     type MaybeResult = { result?: unknown };
     const results = tokenConfigs as readonly MaybeResult[];
-    return acceptedTokenAddresses.map((addr, i) => {
+    return tokenAddresses.map((addr, i) => {
       const cfgResult = results[i * 3];
       const symResult = results[i * 3 + 1];
       const decResult = results[i * 3 + 2];
-      const cfg = readTokenConfig(cfgResult?.result);
+      const cfg = readCampaignTokenConfig(cfgResult?.result);
 
       return {
         address: addr,
@@ -227,13 +190,19 @@ export function BuyPanel({
         active: cfg?.active ?? false,
       };
     }).filter((tok) => tok.active);
-  }, [acceptedTokenAddresses, tokenConfigs]);
+  }, [tokenAddresses, tokenConfigs]);
 
   // Selected token (default: first)
   const [selectedIdx, setSelectedIdx] = useState(0);
   const selected = tokens[selectedIdx];
 
-  const [payAmount, setPayAmount] = useState("1000");
+  useEffect(() => {
+    if (tokens.length > 0 && selectedIdx >= tokens.length) {
+      setSelectedIdx(0);
+    }
+  }, [selectedIdx, tokens.length]);
+
+  const [payAmount, setPayAmount] = useState("10");
 
   // 3) Compute quote via view function `getPrice`
   const parsedAmount = useMemo(() => {

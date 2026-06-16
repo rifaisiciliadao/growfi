@@ -15,6 +15,11 @@ import type { Address } from "viem";
 import { formatUnits } from "viem";
 import { useCampaignData } from "@/contracts/hooks";
 import { abis, CHAIN_ID, getAddresses } from "@/contracts";
+import {
+  campaignTokenConfigAbi,
+  readCampaignTokenConfig,
+} from "@/contracts/campaign";
+import { getEnabledTokens, resolveTokenAddress } from "@/contracts/tokens";
 import { erc20Abi } from "@/contracts/erc20";
 import { useSubgraphCampaign, useSubgraphProducer } from "@/lib/subgraph";
 import { useTxNotify } from "@/lib/useTxNotify";
@@ -42,6 +47,9 @@ import { campaignModuleHostAbi } from "@/contracts/repayment";
 const STATE_LABELS = ["funding", "active", "buyback", "ended"] as const;
 const WAGMI_CHAIN_ID = CHAIN_ID as never;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as Address;
+const PAYMENT_TOKEN_FALLBACK_ADDRESSES = getEnabledTokens(CHAIN_ID).map(
+  (token) => resolveTokenAddress(token, CHAIN_ID),
+);
 
 type Tab = "invest" | "shop" | "stake" | "harvest" | "info" | "manage";
 const TAB_KEYS: Tab[] = ["invest", "stake", "harvest", "info"];
@@ -1273,19 +1281,21 @@ function TokensAcceptedCard({
   });
 
   const tokens = (acceptedTokens?.[0]?.result as Address[] | undefined) ?? [];
+  const tokenCandidates =
+    tokens.length > 0 ? tokens : PAYMENT_TOKEN_FALLBACK_ADDRESSES;
 
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15">
       <h3 className="text-sm font-semibold text-on-surface mb-4">
         {t("acceptedTokens")}
       </h3>
-      {tokens.length === 0 ? (
+      {tokenCandidates.length === 0 ? (
         <div className="text-xs text-on-surface-variant py-2">
           {t("noTokens")}
         </div>
       ) : (
         <div className="space-y-3">
-          {tokens.map((addr) => (
+          {tokenCandidates.map((addr) => (
             <TokenRow
               key={addr}
               tokenAddress={addr}
@@ -1306,7 +1316,6 @@ function TokenRow({
   campaignAddress: Address;
 }) {
   const t = useTranslations("detail.sidebar");
-  const campaignAbi = abis.Campaign as never;
 
   const { data } = useReadContracts({
     contracts: [
@@ -1318,20 +1327,18 @@ function TokenRow({
       },
       {
         address: campaignAddress,
-        abi: campaignAbi,
+        abi: campaignTokenConfigAbi,
         chainId: WAGMI_CHAIN_ID,
-        functionName: "tokenConfigs",
+        functionName: "tokenConfig",
         args: [tokenAddress],
       },
     ],
   });
 
   const symbol = (data?.[0]?.result as string | undefined) ?? "—";
-  // tokenConfigs returns TokenConfig struct: (pricingMode, paymentDecimals, fixedRate, oracleFeed, active)
-  const cfg = data?.[1]?.result as
-    | readonly [number, number, bigint, Address, boolean]
-    | undefined;
-  const isOracle = cfg ? cfg[0] === 1 : false;
+  const cfg = readCampaignTokenConfig(data?.[1]?.result);
+  if (cfg && !cfg.active) return null;
+  const isOracle = cfg ? cfg.pricingMode === 1 : false;
   const live = isOracle;
 
   return (

@@ -99,7 +99,7 @@ export function DirectBuyGrowPanel() {
   const [selectedSym, setSelectedSym] = useState<string>(
     stableOptions[0]?.symbol ?? "USDC",
   );
-  const [paymentInput, setPaymentInput] = useState<string>("100");
+  const [paymentInput, setPaymentInput] = useState<string>("10");
   const [tx, setTx] = useState<TxStatus>({ kind: "idle" });
 
   const selected =
@@ -412,13 +412,21 @@ export function DirectBuyGrowPanel() {
           {selected?.symbol}
         </div>
       </div>
-      <div className="mb-4 flex justify-between text-xs text-zinc-500">
-        <span>
+      <div className="mb-4 flex items-center justify-between gap-3 text-xs text-zinc-500">
+        <button
+          type="button"
+          onClick={() =>
+            selected && setPaymentInput(formatUnits(balance, selected.decimals))
+          }
+          disabled={!selected}
+          className="min-h-[28px] -mx-2 rounded-[6px] px-2 text-left transition hover:bg-zinc-100 hover:text-emerald-700 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-zinc-500"
+        >
           {t("balance")}:{" "}
           <span className="font-mono">
             {selected ? formatUnits(balance, selected.decimals) : "—"}
-          </span>
-        </span>
+          </span>{" "}
+          <span className="font-semibold">MAX</span>
+        </button>
         {insufficientBalance && (
           <span className="text-rose-600">{t("insufficientBalance")}</span>
         )}

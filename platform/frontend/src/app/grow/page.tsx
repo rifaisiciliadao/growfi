@@ -3,7 +3,7 @@
 import { useReadContracts } from "wagmi";
 import { formatUnits, type Address } from "viem";
 import { useTranslations } from "next-intl";
-import { abis, getAddresses } from "@/contracts";
+import { abis, CHAIN_ID, getAddresses } from "@/contracts";
 import { DirectBuyGrowPanel } from "@/components/DirectBuyGrowPanel";
 import { EscrowClaimPanel } from "@/components/EscrowClaimPanel";
 import { GrowStakingPanel } from "@/components/GrowStakingPanel";
@@ -11,6 +11,7 @@ import { Flywheel } from "@/components/grow/Flywheel";
 
 const treasuryAbi = abis.GrowTreasury as never;
 const tokenAbi = abis.GrowToken as never;
+const WAGMI_CHAIN_ID = CHAIN_ID as never;
 
 export default function GrowDashboard() {
   const t = useTranslations("grow");
@@ -23,16 +24,19 @@ export default function GrowDashboard() {
       {
         abi: treasuryAbi,
         address: a.growTreasury as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "intrinsicFloorPrice",
       },
       {
         abi: tokenAbi,
         address: a.growToken as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "totalSupply",
       },
       {
         abi: tokenAbi,
         address: a.growToken as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "balanceOf",
         args: [a.growTreasury as Address],
       },

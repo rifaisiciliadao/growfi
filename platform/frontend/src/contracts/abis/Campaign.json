@@ -1737,39 +1737,46 @@
   },
   {
     "type": "function",
-    "name": "tokenConfigs",
+    "name": "tokenConfig",
     "inputs": [
       {
-        "name": "",
+        "name": "token",
         "type": "address",
         "internalType": "address"
       }
     ],
     "outputs": [
       {
-        "name": "pricingMode",
-        "type": "uint8",
-        "internalType": "enum Campaign.PricingMode"
-      },
-      {
-        "name": "fixedRate",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "oracleFeed",
-        "type": "address",
-        "internalType": "contract AggregatorV3Interface"
-      },
-      {
-        "name": "paymentDecimals",
-        "type": "uint8",
-        "internalType": "uint8"
-      },
-      {
-        "name": "active",
-        "type": "bool",
-        "internalType": "bool"
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct SaleClassicModule.TokenConfig",
+        "components": [
+          {
+            "name": "pricingMode",
+            "type": "uint8",
+            "internalType": "enum SaleClassicModule.PricingMode"
+          },
+          {
+            "name": "fixedRate",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "oracleFeed",
+            "type": "address",
+            "internalType": "contract AggregatorV3Interface"
+          },
+          {
+            "name": "paymentDecimals",
+            "type": "uint8",
+            "internalType": "uint8"
+          },
+          {
+            "name": "active",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
       }
     ],
     "stateMutability": "view"
