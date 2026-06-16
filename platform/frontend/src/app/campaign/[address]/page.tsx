@@ -18,7 +18,7 @@ import { abis, getAddresses } from "@/contracts";
 import { erc20Abi } from "@/contracts/erc20";
 import { useSubgraphCampaign, useSubgraphProducer } from "@/lib/subgraph";
 import { useTxNotify } from "@/lib/useTxNotify";
-import { useCampaignMetadata, useProducerProfile } from "@/lib/metadata";
+import { useProducerProfile, useResolvedCampaignMetadata } from "@/lib/metadata";
 import { productUnitLabel } from "@/lib/productUnit";
 import { useLocalizedProductDisplay } from "@/lib/useLocalizedProductDisplay";
 import { uploadImage, uploadMetadata } from "@/lib/api";
@@ -107,7 +107,8 @@ export default function CampaignDetail({
       refetchInterval: 15_000,
     },
   });
-  const { data: metadata } = useCampaignMetadata(
+  const { data: metadata } = useResolvedCampaignMetadata(
+    campaignAddress,
     sgCampaign?.metadataURI,
     sgCampaign?.metadataVersion,
   );
@@ -122,7 +123,9 @@ export default function CampaignDetail({
     !!producerAddress &&
     connected.toLowerCase() === producerAddress.toLowerCase();
   const metadataMissing =
-    !!sgCampaign && (!sgCampaign.metadataURI || sgCampaign.metadataURI === "");
+    !!sgCampaign &&
+    !metadata &&
+    (!sgCampaign.metadataURI || sgCampaign.metadataURI === "");
 
   const { data: ecommerceSlotData } = useReadContract({
     address: isValidAddress ? campaignAddress : undefined,

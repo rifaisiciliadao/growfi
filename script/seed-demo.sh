@@ -25,8 +25,15 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+
 # shellcheck disable=SC1091
-source .env
+source script/lib/seed-common.sh
+CAST_BIN="$(find_cast)"
+
+# shellcheck disable=SC1091
+if [ -f .env ]; then
+  source .env
+fi
 
 BACKEND_URL="${BACKEND_URL:-https://growfi.dev}"
 # Defaults set explicitly to known-good assets so re-runs always land the
@@ -34,11 +41,22 @@ BACKEND_URL="${BACKEND_URL:-https://growfi.dev}"
 # today" (Unsplash silently 404s on hotlinks → uploads end up as 29-byte
 # HTML stubs, the bug we hit on the first run).
 CAMPAIGN_IMAGE_URL="${CAMPAIGN_IMAGE_URL:-https://www.visitsicily.info/wp-content/uploads/2022/02/nebrodi.b.5.jpg}"
-PRODUCER_LOGO_PATH="${PRODUCER_LOGO_PATH:-/Users/turinglabs/GIT/@rifaisicilia/website-2.0/public/rifailogo.jpg}"
+WEBSITE_PUBLIC_DIR="${WEBSITE_PUBLIC_DIR:-$GROWFI_ROOT/../website-2.0/public}"
+PRODUCER_LOGO_PATH="${PRODUCER_LOGO_PATH:-$WEBSITE_PUBLIC_DIR/rifailogo.jpg}"
+
+require_env PRIVATE_KEY
+require_env FACTORY_ADDRESS
+require_env REGISTRY_ADDRESS
+require_env PRODUCER_REGISTRY_ADDRESS
+require_env RPC_URL
+
+if [[ -z "${DEPLOYER_ADDRESS:-}" ]]; then
+  DEPLOYER_ADDRESS=$("$CAST_BIN" wallet address --private-key "$PRIVATE_KEY")
+fi
 
 # ---------- Resolve campaign address from on-chain if not supplied ----------
 if [[ -z "${CAMPAIGN_ADDRESS:-}" ]]; then
-  CAMPAIGN_ADDRESS=$(cast call "$FACTORY_ADDRESS" \
+  CAMPAIGN_ADDRESS=$("$CAST_BIN" call "$FACTORY_ADDRESS" \
     "campaigns(uint256)(address,address,address,address,address,address,uint256)" 0 \
     --rpc-url "$RPC_URL" | head -1)
 fi
@@ -101,7 +119,7 @@ echo "  ↳ $META_URL"
 
 # ---------- 4. CampaignRegistry.setMetadata(campaign, metadataUrl) ----------
 echo "▸ setMetadata on $REGISTRY_ADDRESS"
-cast send "$REGISTRY_ADDRESS" \
+"$CAST_BIN" send "$REGISTRY_ADDRESS" \
   "setMetadata(address,string)" "$CAMPAIGN_ADDRESS" "$META_URL" \
   --rpc-url "$RPC_URL" --private-key "$PRIVATE_KEY" \
   >/dev/null
@@ -126,17 +144,17 @@ echo "  ↳ $PROFILE_URL"
 
 # ---------- 6. ProducerRegistry.setProfile(profileUrl) ----------
 echo "▸ setProfile on $PRODUCER_REGISTRY_ADDRESS"
-cast send "$PRODUCER_REGISTRY_ADDRESS" \
+"$CAST_BIN" send "$PRODUCER_REGISTRY_ADDRESS" \
   "setProfile(string)" "$PROFILE_URL" \
   --rpc-url "$RPC_URL" --private-key "$PRIVATE_KEY" \
   >/dev/null
 echo "  ↳ ok"
 
 # ---------- 7. Re-assert KYC (idempotent — already true after deploy step) ----------
-KYC=$(cast call "$PRODUCER_REGISTRY_ADDRESS" "kyced(address)(bool)" "$DEPLOYER_ADDRESS" --rpc-url "$RPC_URL")
+KYC=$("$CAST_BIN" call "$PRODUCER_REGISTRY_ADDRESS" "kyced(address)(bool)" "$DEPLOYER_ADDRESS" --rpc-url "$RPC_URL")
 if [[ "$KYC" != "true" ]]; then
   echo "▸ setKyc(producer, true)"
-  cast send "$PRODUCER_REGISTRY_ADDRESS" \
+  "$CAST_BIN" send "$PRODUCER_REGISTRY_ADDRESS" \
     "setKyc(address,bool)" "$DEPLOYER_ADDRESS" true \
     --rpc-url "$RPC_URL" --private-key "$PRIVATE_KEY" \
     >/dev/null

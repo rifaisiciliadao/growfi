@@ -13,7 +13,7 @@ import {
   type BatchProducerProfile,
 } from "@/lib/subgraph";
 import { useBatchEnsNames } from "@/lib/ens";
-import { useCampaignMetadata } from "@/lib/metadata";
+import { useResolvedCampaignMetadata } from "@/lib/metadata";
 import { KycBadge } from "@/components/KycBadge";
 import { RefreshButton } from "@/components/RefreshButton";
 import { KNOWN_TOKENS } from "@/contracts/tokens";
@@ -209,7 +209,8 @@ function FeedRow({
 }) {
   const t = useTranslations("feed");
   const tProducer = useTranslations("grower");
-  const { data: meta } = useCampaignMetadata(
+  const { data: meta } = useResolvedCampaignMetadata(
+    item.campaign.id,
     item.campaign.metadataURI,
     item.campaign.metadataVersion,
   );

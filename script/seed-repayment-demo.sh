@@ -1,13 +1,20 @@
 #!/usr/bin/env bash
 # Seeds metadata for the Sepolia repayment demo campaign.
+# CAMPAIGN_ADDRESS is optional; when omitted, the script reads the latest
+# CreateRepaymentCampaignSepolia broadcast for the active CHAIN_ID.
 
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+# shellcheck disable=SC1091
+source script/lib/seed-common.sh
+CAST_BIN="$(find_cast)"
 
 ENV_BACKEND_URL="${BACKEND_URL:-}"
 ENV_RPC_URL="${RPC_URL:-}"
 ENV_REGISTRY_ADDRESS="${REGISTRY_ADDRESS:-}"
 ENV_CAMPAIGN_ADDRESS="${CAMPAIGN_ADDRESS:-}"
+ENV_CHAIN_ID="${CHAIN_ID:-}"
 
 # shellcheck disable=SC1091
 if [ -f .env ]; then
@@ -18,21 +25,19 @@ BACKEND_URL="${ENV_BACKEND_URL:-${BACKEND_URL:-${NEXT_PUBLIC_BACKEND_URL:-https:
 RPC_URL="${ENV_RPC_URL:-${RPC_URL:-}}"
 REGISTRY_ADDRESS="${ENV_REGISTRY_ADDRESS:-${REGISTRY_ADDRESS:-${NEXT_PUBLIC_REGISTRY_ADDRESS:-}}}"
 CAMPAIGN_ADDRESS="${ENV_CAMPAIGN_ADDRESS:-${CAMPAIGN_ADDRESS:-}}"
+CHAIN_ID="${ENV_CHAIN_ID:-${CHAIN_ID:-${NEXT_PUBLIC_CHAIN_ID:-11155111}}}"
 
-require_env() {
-  local name="$1"
-  if [ -z "${!name:-}" ]; then
-    echo "missing required env: $name" >&2
-    exit 1
-  fi
-}
+if [ -z "$CAMPAIGN_ADDRESS" ]; then
+  CAMPAIGN_ADDRESS="$(latest_campaign_address_at "CreateRepaymentCampaignSepolia.s.sol" 0 "$CHAIN_ID")"
+fi
 
 require_env PRIVATE_KEY
 require_env RPC_URL
 require_env REGISTRY_ADDRESS
 require_env CAMPAIGN_ADDRESS
 
-LOCAL_GRAPES="/Users/turinglabs/GIT/@rifaisicilia/website-2.0/public/grapes.jpeg"
+WEBSITE_PUBLIC_DIR="${WEBSITE_PUBLIC_DIR:-$GROWFI_ROOT/../website-2.0/public}"
+LOCAL_GRAPES="${LOCAL_GRAPES:-$WEBSITE_PUBLIC_DIR/grapes.jpeg}"
 REMOTE_IMAGE="https://www.visitsicily.info/wp-content/uploads/2022/02/nebrodi.b.5.jpg"
 TMP_IMG=$(mktemp -t growfi-repayment.XXXXXX.jpg)
 trap 'rm -f "$TMP_IMG"' EXIT
@@ -84,7 +89,7 @@ EOF
 echo "metadata: $META_URL"
 
 echo "setting campaign metadata"
-cast send "$REGISTRY_ADDRESS" \
+"$CAST_BIN" send "$REGISTRY_ADDRESS" \
   "setMetadata(address,string)" "$CAMPAIGN_ADDRESS" "$META_URL" \
   --rpc-url "$RPC_URL" --private-key "$PRIVATE_KEY" >/dev/null
 

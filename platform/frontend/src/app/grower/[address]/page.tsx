@@ -15,7 +15,7 @@ import {
 } from "@/lib/subgraph";
 import {
   useProducerProfile,
-  useCampaignMetadata,
+  useResolvedCampaignMetadata,
 } from "@/lib/metadata";
 import { uploadImage, uploadProducerProfile } from "@/lib/api";
 import { abis, getAddresses } from "@/contracts";
@@ -232,7 +232,8 @@ function DisconnectLink() {
 }
 
 function CampaignThumb({ campaign }: { campaign: SubgraphCampaign }) {
-  const { data: meta } = useCampaignMetadata(
+  const { data: meta } = useResolvedCampaignMetadata(
+    campaign.id,
     campaign.metadataURI,
     campaign.metadataVersion,
   );

@@ -25,10 +25,8 @@ export interface KnownToken {
 /**
  * Curated list of payment tokens shown to the producer in /create step 3.
  *
- * Only MockUSDC is `enabled: true` while we're on testnet; everything else
- * is preview-only so the producer can see what the catalog will look like on
- * mainnet. Once mainnet launches, flip `enabled` to true and fill in the
- * remaining address/feed gaps.
+ * Only factory-approved, standard ERC20 payment assets are enabled. On
+ * Ethereum mainnet the current policy allows USDC fixed-price campaigns.
  *
  * SECURITY INVARIANT: every entry MUST be a standard ERC20 — no
  * fee-on-transfer, no rebasing, no ERC777 hooks. `Campaign.buy` records the
@@ -51,12 +49,13 @@ export const KNOWN_TOKENS: KnownToken[] = [
     addresses: {
       84532:
         (process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}` | undefined) ||
-        "0x32C344Dc9713d904442d0E5B0d2b7994E52B0d4E",
+        "0x784d2221e11f4E87FA031aAC15c168D27b5cCeb4",
+      1: null,
       8453: null,
     },
     decimals: 6,
     defaultMode: "fixed",
-    oracleFeed: { 84532: null, 8453: null },
+    oracleFeed: { 84532: null, 1: null, 8453: null },
     enabled: true,
     stableUsd: true,
   },
@@ -65,6 +64,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
     name: "USD Coin",
     addresses: {
       84532: null,
+      1: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
       8453: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     },
     decimals: 6,
@@ -72,9 +72,10 @@ export const KNOWN_TOKENS: KnownToken[] = [
     oracleFeed: {
       // USDC/USD on Base Mainnet
       84532: null,
+      1: "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6",
       8453: "0x7e860098F58bBFC8648a4311b374B1D669a2bc6B",
     },
-    enabled: false,
+    enabled: true,
     stableUsd: true,
   },
   {
@@ -82,11 +83,12 @@ export const KNOWN_TOKENS: KnownToken[] = [
     name: "Tether USD",
     addresses: {
       84532: null,
+      1: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
       8453: "0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2",
     },
     decimals: 6,
     defaultMode: "fixed",
-    oracleFeed: { 84532: null, 8453: null },
+    oracleFeed: { 84532: null, 1: null, 8453: null },
     enabled: false,
     stableUsd: true,
   },
@@ -95,11 +97,12 @@ export const KNOWN_TOKENS: KnownToken[] = [
     name: "Dai Stablecoin",
     addresses: {
       84532: null,
+      1: "0x6B175474E89094C44Da98b954EedeAC495271d0F",
       8453: "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb",
     },
     decimals: 18,
     defaultMode: "fixed",
-    oracleFeed: { 84532: null, 8453: null },
+    oracleFeed: { 84532: null, 1: null, 8453: null },
     enabled: false,
     stableUsd: true,
   },
@@ -108,6 +111,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
     name: "Wrapped Ether",
     addresses: {
       84532: null,
+      1: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
       8453: "0x4200000000000000000000000000000000000006",
     },
     decimals: 18,
@@ -115,6 +119,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
     oracleFeed: {
       // ETH/USD on Base Mainnet
       84532: null,
+      1: "0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419",
       8453: "0x71041dddad3595F9CEd3DcCFBe3D1F4b0a16Bb70",
     },
     enabled: false,
@@ -124,6 +129,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
     name: "Coinbase Wrapped BTC",
     addresses: {
       84532: null,
+      1: null,
       8453: "0xcbB7C0000aB88B473b1f5aFd9ef808440eed33Bf",
     },
     decimals: 8,
@@ -131,6 +137,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
     oracleFeed: {
       // BTC/USD on Base Mainnet
       84532: null,
+      1: null,
       8453: "0x64c911996D3c6aC71f9b455B1E8E7266BcbD848F",
     },
     enabled: false,
@@ -138,7 +145,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
 ];
 
 export function getEnabledTokens(chainId?: number): KnownToken[] {
-  const cid = chainId ?? Number(process.env.NEXT_PUBLIC_CHAIN_ID || 84532);
+  const cid = chainId ?? Number(process.env.NEXT_PUBLIC_CHAIN_ID || 1);
   return KNOWN_TOKENS.filter(
     (t) => t.enabled && t.addresses[cid] !== null,
   );
@@ -153,7 +160,7 @@ export function resolveTokenAddress(
   token: KnownToken,
   chainId?: number,
 ): Address {
-  const cid = chainId ?? Number(process.env.NEXT_PUBLIC_CHAIN_ID || 84532);
+  const cid = chainId ?? Number(process.env.NEXT_PUBLIC_CHAIN_ID || 1);
   const addr = token.addresses[cid];
   if (!addr) {
     throw new Error(

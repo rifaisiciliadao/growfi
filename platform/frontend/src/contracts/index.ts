@@ -29,7 +29,7 @@ export const abis = {
   GrowStakingPool: GrowStakingPoolAbi,
 } as const;
 
-export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 84532);
+export const CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 1);
 
 type ChainAddresses = {
   factory: Address;
@@ -78,23 +78,30 @@ export const addresses: Record<number, ChainAddresses> = {
   84532: {
     factory:
       (process.env.NEXT_PUBLIC_FACTORY_ADDRESS as Address) ||
-      "0x3fA41528a22645Bef478E9eBae83981C02e98f74",
+      "0xAf81c05747EDA1e1715fF23626ab83c3351dCfF6",
     usdc:
       (process.env.NEXT_PUBLIC_USDC_ADDRESS as Address) ||
-      "0x32C344Dc9713d904442d0E5B0d2b7994E52B0d4E",
+      "0x784d2221e11f4E87FA031aAC15c168D27b5cCeb4",
     usdt: process.env.NEXT_PUBLIC_USDT_ADDRESS as Address | undefined,
     dai: process.env.NEXT_PUBLIC_DAI_ADDRESS as Address | undefined,
     registry:
       (process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as Address) ||
-      "0xb0Ba4660b2D136BF087FA9bf0aec946f0a87597e",
+      "0xf15E94B1db45eF645Ca611D62ECC6b10F5461515",
     producerRegistry:
       (process.env.NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS as Address) ||
-      "0x702915469f66415C70b4203b40ab9A97203D979b",
-    growToken: process.env.NEXT_PUBLIC_GROW_TOKEN as Address | undefined,
-    growTreasury: process.env.NEXT_PUBLIC_GROW_TREASURY as Address | undefined,
-    growMinter: process.env.NEXT_PUBLIC_GROW_MINTER as Address | undefined,
+      "0x0ad6af458718963aEE1c7c4E142427e9c2C381A7",
+    growToken:
+      (process.env.NEXT_PUBLIC_GROW_TOKEN as Address | undefined) ||
+      "0x88E1Fd001D09bE235BbEbeEd19e33E7abCF5385E",
+    growTreasury:
+      (process.env.NEXT_PUBLIC_GROW_TREASURY as Address | undefined) ||
+      "0x66B3b38FCe61b0E5C96e9a1F0279321b14aC54D0",
+    growMinter:
+      (process.env.NEXT_PUBLIC_GROW_MINTER as Address | undefined) ||
+      "0xa9D37cEF4756349ad2BE0023643122Af16868B57",
     growFeeSplitter:
-      process.env.NEXT_PUBLIC_GROW_FEE_SPLITTER as Address | undefined,
+      (process.env.NEXT_PUBLIC_GROW_FEE_SPLITTER as Address | undefined) ||
+      "0xF0Ad36ef051742b4397048Aa4d5D7AB08F88FEf7",
     growStakingPool:
       process.env.NEXT_PUBLIC_GROW_STAKING_POOL as Address | undefined,
     repaymentImpl:
@@ -130,26 +137,42 @@ export const addresses: Record<number, ChainAddresses> = {
   },
   // Ethereum Mainnet (production target)
   1: {
-    factory: (process.env.NEXT_PUBLIC_FACTORY_ADDRESS as Address) || ZERO,
+    factory:
+      (process.env.NEXT_PUBLIC_FACTORY_ADDRESS as Address) ||
+      "0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2",
     usdc: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", // real USDC on mainnet
     usdt: "0xdAC17F958D2ee523a2206206994597C13D831ec7", // real USDT
     dai: "0x6B175474E89094C44Da98b954EedeAC495271d0F", // real DAI
-    registry: (process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as Address) || ZERO,
+    registry:
+      (process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as Address) ||
+      "0xA3AEb95Ff4555E266aa1366000204a75FaD4142B",
     producerRegistry:
-      (process.env.NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS as Address) || ZERO,
-    growToken: process.env.NEXT_PUBLIC_GROW_TOKEN as Address | undefined,
-    growTreasury: process.env.NEXT_PUBLIC_GROW_TREASURY as Address | undefined,
-    growMinter: process.env.NEXT_PUBLIC_GROW_MINTER as Address | undefined,
+      (process.env.NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS as Address) ||
+      "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5",
+    growToken:
+      (process.env.NEXT_PUBLIC_GROW_TOKEN as Address | undefined) ||
+      "0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725",
+    growTreasury:
+      (process.env.NEXT_PUBLIC_GROW_TREASURY as Address | undefined) ||
+      "0x47ea5710ea674f5D653A59c96836E2d20288813a",
+    growMinter:
+      (process.env.NEXT_PUBLIC_GROW_MINTER as Address | undefined) ||
+      "0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B",
     growFeeSplitter:
-      process.env.NEXT_PUBLIC_GROW_FEE_SPLITTER as Address | undefined,
+      (process.env.NEXT_PUBLIC_GROW_FEE_SPLITTER as Address | undefined) ||
+      "0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f",
     growStakingPool:
-      process.env.NEXT_PUBLIC_GROW_STAKING_POOL as Address | undefined,
+      (process.env.NEXT_PUBLIC_GROW_STAKING_POOL as Address | undefined) ||
+      "0xD4f6c69457F34332D3cd9ea287F69a91e84a803A",
     repaymentImpl:
-      process.env.NEXT_PUBLIC_REPAYMENT_IMPL as Address | undefined,
+      (process.env.NEXT_PUBLIC_REPAYMENT_IMPL as Address | undefined) ||
+      "0x2224A91Fd2603bCd33c920b02eDCf6dF7D2696FD",
     ecommerceImpl:
-      process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined,
+      (process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined) ||
+      "0x412337b6940B908093A0223b25798Cd00B2eC072",
     debtRestructuringImpl:
-      process.env.NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL as Address | undefined,
+      (process.env.NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL as Address | undefined) ||
+      "0x91811Da0B10e6927882dadC458f0fBB7Cf55f3b5",
   },
   // Base Mainnet (future)
   8453: {
@@ -164,5 +187,5 @@ export const addresses: Record<number, ChainAddresses> = {
 };
 
 export function getAddresses(chainId: number = CHAIN_ID) {
-  return addresses[chainId] || addresses[84532];
+  return addresses[chainId] || addresses[1];
 }

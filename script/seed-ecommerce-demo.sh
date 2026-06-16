@@ -1,13 +1,42 @@
 #!/usr/bin/env bash
+# Seeds metadata and ecommerce catalog for the Sepolia ecommerce demo campaign.
+# CAMPAIGN_ADDRESS is optional; when omitted, the script reads the latest
+# CreateEcommerceCampaignSepolia broadcast for the active CHAIN_ID.
 set -euo pipefail
 
-: "${BACKEND_URL:=https://growfi.dev}"
-: "${CAMPAIGN_ADDRESS:?Set CAMPAIGN_ADDRESS}"
-: "${REGISTRY_ADDRESS:?Set REGISTRY_ADDRESS}"
-: "${RPC_URL:?Set RPC_URL}"
-: "${PRIVATE_KEY:?Set PRIVATE_KEY}"
+cd "$(dirname "$0")/.."
 
-SKU_ID="${SKU_ID:-$(cast keccak "olive-oil-500ml")}"
+# shellcheck disable=SC1091
+source script/lib/seed-common.sh
+CAST_BIN="$(find_cast)"
+
+ENV_BACKEND_URL="${BACKEND_URL:-}"
+ENV_RPC_URL="${RPC_URL:-}"
+ENV_REGISTRY_ADDRESS="${REGISTRY_ADDRESS:-}"
+ENV_CAMPAIGN_ADDRESS="${CAMPAIGN_ADDRESS:-}"
+ENV_CHAIN_ID="${CHAIN_ID:-}"
+
+# shellcheck disable=SC1091
+if [ -f .env ]; then
+  source .env
+fi
+
+BACKEND_URL="${ENV_BACKEND_URL:-${BACKEND_URL:-${NEXT_PUBLIC_BACKEND_URL:-https://growfi.dev}}}"
+RPC_URL="${ENV_RPC_URL:-${RPC_URL:-}}"
+REGISTRY_ADDRESS="${ENV_REGISTRY_ADDRESS:-${REGISTRY_ADDRESS:-${NEXT_PUBLIC_REGISTRY_ADDRESS:-}}}"
+CAMPAIGN_ADDRESS="${ENV_CAMPAIGN_ADDRESS:-${CAMPAIGN_ADDRESS:-}}"
+CHAIN_ID="${ENV_CHAIN_ID:-${CHAIN_ID:-${NEXT_PUBLIC_CHAIN_ID:-11155111}}}"
+
+if [ -z "$CAMPAIGN_ADDRESS" ]; then
+  CAMPAIGN_ADDRESS="$(latest_campaign_address_at "CreateEcommerceCampaignSepolia.s.sol" 0 "$CHAIN_ID")"
+fi
+
+require_env PRIVATE_KEY
+require_env RPC_URL
+require_env REGISTRY_ADDRESS
+require_env CAMPAIGN_ADDRESS
+
+SKU_ID="${SKU_ID:-$("$CAST_BIN" keccak "olive-oil-500ml")}"
 IMAGE_URL="${IMAGE_URL:-https://growfi.dev/investors-olive-hero.jpg}"
 PRODUCT_NAME="${PRODUCT_NAME:-Extra virgin olive oil 500ml}"
 CAMPAIGN_NAME="${CAMPAIGN_NAME:-Ecommerce Olive Shop Demo}"
@@ -49,14 +78,14 @@ if [[ "$catalog_url" == "null" || -z "$catalog_url" ]]; then
   exit 1
 fi
 
-cast send "$REGISTRY_ADDRESS" \
+"$CAST_BIN" send "$REGISTRY_ADDRESS" \
   "setMetadata(address,string)" \
   "$CAMPAIGN_ADDRESS" \
   "$metadata_url" \
   --rpc-url "$RPC_URL" \
   --private-key "$PRIVATE_KEY"
 
-cast send "$CAMPAIGN_ADDRESS" \
+"$CAST_BIN" send "$CAMPAIGN_ADDRESS" \
   "setCatalogURI(string)" \
   "$catalog_url" \
   --rpc-url "$RPC_URL" \

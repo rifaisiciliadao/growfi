@@ -72,7 +72,7 @@ export function DirectBuyGrowPanel() {
   /// Faucet visible on testnets where the stablecoins are MockUSDC/MockStablecoin
   /// (public mint). Mainnet stablecoins do NOT have public mint, so the button
   /// is gated. Allow: anvil (31337), Base Sepolia (84532), ETH Sepolia (11155111).
-  const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 84532);
+  const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 1);
   const faucetEnabled = chainId === 31337 || chainId === 84532 || chainId === 11155111;
 
   const stableOptions = useMemo<StableOption[]>(() => {

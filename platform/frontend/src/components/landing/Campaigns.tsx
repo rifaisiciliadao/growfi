@@ -7,7 +7,7 @@ import { useReadContracts } from "wagmi";
 import { formatUnits, type Address } from "viem";
 import { useInView } from "@/lib/landing/useInView";
 import { useSubgraphCampaigns, type SubgraphCampaign } from "@/lib/subgraph";
-import { useCampaignMetadata } from "@/lib/metadata";
+import { useResolvedCampaignMetadata } from "@/lib/metadata";
 import { useLocalizedProductDisplay } from "@/lib/useLocalizedProductDisplay";
 import { useInviteGate } from "@/lib/inviteGate";
 import { useInviteModal } from "@/lib/inviteModal";
@@ -91,7 +91,8 @@ function LiveCampaignCard({
 }) {
   const t = useTranslations("landing.campaigns");
   const { assetProductLabel } = useLocalizedProductDisplay();
-  const { data: meta } = useCampaignMetadata(
+  const { data: meta } = useResolvedCampaignMetadata(
+    campaign.id,
     campaign.metadataURI,
     campaign.metadataVersion,
   );

@@ -1,4 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
+import { useReadContracts } from "wagmi";
+import type { Address } from "viem";
+import { abis, getAddresses } from "@/contracts";
 
 export interface CampaignMetadata {
   name: string;
@@ -72,4 +75,52 @@ export function useCampaignMetadata(
     gcTime: 60 * 60_000, // 1h
     retry: 1,
   });
+}
+
+export function useResolvedCampaignMetadata(
+  campaign: string | null | undefined,
+  uri: string | null | undefined,
+  version: string | number | null | undefined,
+) {
+  const { registry } = getAddresses();
+  const hasSubgraphUri = Boolean(uri && uri.length > 0);
+  const shouldReadRegistry =
+    Boolean(campaign) &&
+    !hasSubgraphUri &&
+    registry !== "0x0000000000000000000000000000000000000000";
+
+  const { data: registryReads } = useReadContracts({
+    contracts: [
+      {
+        address: registry,
+        abi: abis.CampaignRegistry,
+        functionName: "metadataURI",
+        args: [campaign as Address],
+      },
+      {
+        address: registry,
+        abi: abis.CampaignRegistry,
+        functionName: "version",
+        args: [campaign as Address],
+      },
+    ],
+    query: {
+      enabled: shouldReadRegistry,
+      refetchInterval: shouldReadRegistry ? 15_000 : false,
+    },
+  });
+
+  const registryUri =
+    registryReads?.[0]?.status === "success"
+      ? (registryReads[0].result as string)
+      : null;
+  const registryVersion =
+    registryReads?.[1]?.status === "success"
+      ? String(registryReads[1].result)
+      : null;
+
+  const resolvedUri = hasSubgraphUri ? uri : registryUri || null;
+  const resolvedVersion = hasSubgraphUri ? version : registryVersion;
+
+  return useCampaignMetadata(resolvedUri, resolvedVersion);
 }

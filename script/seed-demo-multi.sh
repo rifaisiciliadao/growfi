@@ -7,10 +7,19 @@
 #   RPC_URL                         Ethereum Sepolia RPC
 #   REGISTRY_ADDRESS                CampaignRegistry address
 #   PRODUCER_REGISTRY_ADDRESS       ProducerRegistry address
-#   CAMP_A / CAMP_B                 campaign addresses from SmokeSepoliaMultiCampaign
+#
+# Optional:
+#   CAMP_A / CAMP_B                 overrides; otherwise read from latest
+#                                   SmokeSepoliaMultiCampaign broadcast
+#   CHAIN_ID                        default 11155111
+#   WEBSITE_PUBLIC_DIR              default ../website-2.0/public
 #
 set -euo pipefail
 cd "$(dirname "$0")/.."
+
+# shellcheck disable=SC1091
+source script/lib/seed-common.sh
+CAST_BIN="$(find_cast)"
 
 ENV_BACKEND_URL="${BACKEND_URL:-}"
 ENV_RPC_URL="${RPC_URL:-}"
@@ -21,6 +30,7 @@ ENV_CAMP_A="${CAMP_A:-}"
 ENV_CAMP_B="${CAMP_B:-}"
 ENV_OLIVE_CAMPAIGN_ADDRESS="${OLIVE_CAMPAIGN_ADDRESS:-}"
 ENV_ETNA_CAMPAIGN_ADDRESS="${ETNA_CAMPAIGN_ADDRESS:-}"
+ENV_CHAIN_ID="${CHAIN_ID:-}"
 
 # shellcheck disable=SC1091
 if [ -f .env ]; then
@@ -29,6 +39,7 @@ fi
 
 BACKEND_URL="${ENV_BACKEND_URL:-${BACKEND_URL:-${NEXT_PUBLIC_BACKEND_URL:-https://growfi.dev}}}"
 RPC_URL="${ENV_RPC_URL:-${RPC_URL:-}}"
+CHAIN_ID="${ENV_CHAIN_ID:-${CHAIN_ID:-${NEXT_PUBLIC_CHAIN_ID:-11155111}}}"
 
 REGISTRY_ADDRESS="${ENV_REGISTRY_ADDRESS:-${REGISTRY_ADDRESS:-${NEXT_PUBLIC_REGISTRY_ADDRESS:-}}}"
 PRODUCER_REGISTRY_ADDRESS="${ENV_PRODUCER_REGISTRY_ADDRESS:-${PRODUCER_REGISTRY_ADDRESS:-${NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS:-}}}"
@@ -37,13 +48,12 @@ DEPLOYER_ADDRESS="${ENV_DEPLOYER_ADDRESS:-${DEPLOYER_ADDRESS:-}}"
 CAMP_A="${ENV_CAMP_A:-${ENV_OLIVE_CAMPAIGN_ADDRESS:-${CAMP_A:-${OLIVE_CAMPAIGN_ADDRESS:-}}}}"
 CAMP_B="${ENV_CAMP_B:-${ENV_ETNA_CAMPAIGN_ADDRESS:-${CAMP_B:-${ETNA_CAMPAIGN_ADDRESS:-}}}}"
 
-require_env() {
-  local name="$1"
-  if [ -z "${!name:-}" ]; then
-    echo "✗ missing required env: $name" >&2
-    exit 1
-  fi
-}
+if [ -z "$CAMP_A" ]; then
+  CAMP_A="$(latest_campaign_address_at "SmokeSepoliaMultiCampaign.s.sol" 0 "$CHAIN_ID")"
+fi
+if [ -z "$CAMP_B" ]; then
+  CAMP_B="$(latest_campaign_address_at "SmokeSepoliaMultiCampaign.s.sol" 1 "$CHAIN_ID")"
+fi
 
 require_env PRIVATE_KEY
 require_env RPC_URL
@@ -52,14 +62,19 @@ require_env PRODUCER_REGISTRY_ADDRESS
 require_env CAMP_A
 require_env CAMP_B
 
+echo "▸ campaign A: $CAMP_A"
+echo "▸ campaign B: $CAMP_B"
+echo "▸ backend   : $BACKEND_URL"
+
 if [ -z "$DEPLOYER_ADDRESS" ]; then
-  DEPLOYER_ADDRESS=$(cast wallet address --private-key "$PRIVATE_KEY")
+  DEPLOYER_ADDRESS=$("$CAST_BIN" wallet address --private-key "$PRIVATE_KEY")
 fi
 
 # Image sources.
 A_IMG_URL="https://www.visitsicily.info/wp-content/uploads/2022/02/nebrodi.b.5.jpg"
-B_IMG_LOCAL="/Users/turinglabs/GIT/@rifaisicilia/website-2.0/public/grapes.jpeg"
-PRODUCER_LOGO_PATH="/Users/turinglabs/GIT/@rifaisicilia/website-2.0/public/rifailogo.jpg"
+WEBSITE_PUBLIC_DIR="${WEBSITE_PUBLIC_DIR:-$GROWFI_ROOT/../website-2.0/public}"
+B_IMG_LOCAL="${B_IMG_LOCAL:-$WEBSITE_PUBLIC_DIR/grapes.jpeg}"
+PRODUCER_LOGO_PATH="${PRODUCER_LOGO_PATH:-$WEBSITE_PUBLIC_DIR/rifailogo.jpg}"
 
 TMP_A=$(mktemp -t growfi-img-A.XXXXXX.jpg)
 TMP_B=$(mktemp -t growfi-img-B.XXXXXX.jpg)
@@ -97,7 +112,16 @@ curl -sSL --max-time 60 "$A_IMG_URL" -o "$TMP_A"
 [ "$(wc -c < "$TMP_A" | tr -d ' ')" -gt 1000 ] || { echo "✗ A image too small"; exit 1; }
 
 echo "▸ copying vineyard cover (B) → $TMP_B"
+if [ ! -f "$B_IMG_LOCAL" ]; then
+  echo "✗ vineyard cover not found at $B_IMG_LOCAL" >&2
+  exit 1
+fi
 cp "$B_IMG_LOCAL" "$TMP_B"
+
+if [ ! -f "$PRODUCER_LOGO_PATH" ]; then
+  echo "✗ producer logo not found at $PRODUCER_LOGO_PATH" >&2
+  exit 1
+fi
 
 echo "▸ uploading A cover"
 A_IMG=$(upload_image "$TMP_A")
@@ -139,13 +163,13 @@ EOF
 echo "  ↳ $B_META"
 
 echo "▸ setMetadata A on $REGISTRY_ADDRESS"
-cast send "$REGISTRY_ADDRESS" \
+"$CAST_BIN" send "$REGISTRY_ADDRESS" \
   "setMetadata(address,string)" "$CAMP_A" "$A_META" \
   --rpc-url "$RPC_URL" --private-key "$PRIVATE_KEY" >/dev/null
 echo "  ↳ ok"
 
 echo "▸ setMetadata B on $REGISTRY_ADDRESS"
-cast send "$REGISTRY_ADDRESS" \
+"$CAST_BIN" send "$REGISTRY_ADDRESS" \
   "setMetadata(address,string)" "$CAMP_B" "$B_META" \
   --rpc-url "$RPC_URL" --private-key "$PRIVATE_KEY" >/dev/null
 echo "  ↳ ok"
@@ -164,24 +188,24 @@ EOF
 echo "  ↳ $PROFILE_URL"
 
 echo "▸ setProfile on $PRODUCER_REGISTRY_ADDRESS"
-cast send "$PRODUCER_REGISTRY_ADDRESS" \
+"$CAST_BIN" send "$PRODUCER_REGISTRY_ADDRESS" \
   "setProfile(string)" "$PROFILE_URL" \
   --rpc-url "$RPC_URL" --private-key "$PRIVATE_KEY" >/dev/null
 echo "  ↳ ok"
 
-KYC=$(cast call "$PRODUCER_REGISTRY_ADDRESS" "kyced(address)(bool)" "$DEPLOYER_ADDRESS" --rpc-url "$RPC_URL")
+KYC=$("$CAST_BIN" call "$PRODUCER_REGISTRY_ADDRESS" "kyced(address)(bool)" "$DEPLOYER_ADDRESS" --rpc-url "$RPC_URL")
 if [ "$KYC" != "true" ]; then
   # First grant ourselves the KYC admin role (idempotent — owner can re-grant safely).
-  IS_ADMIN=$(cast call "$PRODUCER_REGISTRY_ADDRESS" "isKycAdmin(address)(bool)" "$DEPLOYER_ADDRESS" --rpc-url "$RPC_URL")
+  IS_ADMIN=$("$CAST_BIN" call "$PRODUCER_REGISTRY_ADDRESS" "isKycAdmin(address)(bool)" "$DEPLOYER_ADDRESS" --rpc-url "$RPC_URL")
   if [ "$IS_ADMIN" != "true" ]; then
     echo "▸ grantKycAdmin(producer)"
-    cast send "$PRODUCER_REGISTRY_ADDRESS" \
+    "$CAST_BIN" send "$PRODUCER_REGISTRY_ADDRESS" \
       "grantKycAdmin(address)" "$DEPLOYER_ADDRESS" \
       --rpc-url "$RPC_URL" --private-key "$PRIVATE_KEY" >/dev/null
     echo "  ↳ ok"
   fi
   echo "▸ setKyc(producer, true)"
-  cast send "$PRODUCER_REGISTRY_ADDRESS" \
+  "$CAST_BIN" send "$PRODUCER_REGISTRY_ADDRESS" \
     "setKyc(address,bool)" "$DEPLOYER_ADDRESS" true \
     --rpc-url "$RPC_URL" --private-key "$PRIVATE_KEY" >/dev/null
   echo "  ↳ ok"

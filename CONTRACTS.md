@@ -1,5 +1,74 @@
 # GrowFi — Deployments
 
+## Ethereum Mainnet (chain 1) — v4 audit-hardened launch
+
+**Deployed:** 2026-06-16 · **Deployer/owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` · **Factory deploy block:** `25328624`
+
+> Fresh full v4 deploy on Ethereum Mainnet from the 2026-06 audit-hardened
+> build. No campaigns were seeded during launch; the first production campaign
+> must be created manually through the app. Real USDC is the only enabled
+> payment/stablecoin policy at launch. UGraph serves the mainnet index at
+> `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
+>
+> Fee receiver / operations Safe: `0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9`
+> (threshold 2; owners `0x2DC077446182287f1d79847074893CDb559D41f4` and
+> `0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1`). Factory/protocol owner remains
+> the deployer during the launch phase.
+
+### Core v4 + GROW
+
+| Contract | Address |
+|---|---|
+| CampaignFactory (proxy) | [`0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2`](https://etherscan.io/address/0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2) |
+| CampaignFactory impl | [`0x5f6AC680e4C176AC8874d33050ea1FED12e12b02`](https://etherscan.io/address/0x5f6AC680e4C176AC8874d33050ea1FED12e12b02) |
+| Campaign impl | [`0x7cd7513a798F22E9E6CCEeF90829233E5F1BB63A`](https://etherscan.io/address/0x7cd7513a798F22E9E6CCEeF90829233E5F1BB63A) |
+| CampaignToken impl | [`0x53b2c6C52363C36BF35D728A15a36DFC0882c11b`](https://etherscan.io/address/0x53b2c6C52363C36BF35D728A15a36DFC0882c11b) |
+| StakingVault impl | [`0xA9Ae8956B199A2f8a087584cA3B7cf9Fca5066D1`](https://etherscan.io/address/0xA9Ae8956B199A2f8a087584cA3B7cf9Fca5066D1) |
+| YieldToken impl | [`0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20`](https://etherscan.io/address/0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20) |
+| HarvestManager impl | [`0x852987797CCB62735B9880CEaE3251e948bcBA50`](https://etherscan.io/address/0x852987797CCB62735B9880CEaE3251e948bcBA50) |
+| SaleClassicModule impl | [`0xC1Dd8228A100Ff90450C1D2984c797F76FbFD281`](https://etherscan.io/address/0xC1Dd8228A100Ff90450C1D2984c797F76FbFD281) |
+| CollateralModule impl | [`0x6Cbd67988f0E7b976a51E5de6D498339477D6bEf`](https://etherscan.io/address/0x6Cbd67988f0E7b976a51E5de6D498339477D6bEf) |
+| RepaymentModule impl | [`0x2224A91Fd2603bCd33c920b02eDCf6dF7D2696FD`](https://etherscan.io/address/0x2224A91Fd2603bCd33c920b02eDCf6dF7D2696FD) |
+| EcommerceModule impl | [`0x412337b6940B908093A0223b25798Cd00B2eC072`](https://etherscan.io/address/0x412337b6940B908093A0223b25798Cd00B2eC072) |
+| DebtRestructuringModule impl | [`0x91811Da0B10e6927882dadC458f0fBB7Cf55f3b5`](https://etherscan.io/address/0x91811Da0B10e6927882dadC458f0fBB7Cf55f3b5) |
+| CampaignRegistry | [`0xA3AEb95Ff4555E266aa1366000204a75FaD4142B`](https://etherscan.io/address/0xA3AEb95Ff4555E266aa1366000204a75FaD4142B) |
+| ProducerRegistry | [`0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5`](https://etherscan.io/address/0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5) |
+| GrowfiToken (proxy) | [`0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725`](https://etherscan.io/address/0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725) |
+| GrowfiTreasury (proxy) | [`0x47ea5710ea674f5D653A59c96836E2d20288813a`](https://etherscan.io/address/0x47ea5710ea674f5D653A59c96836E2d20288813a) |
+| GrowfiMinter (proxy) | [`0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B`](https://etherscan.io/address/0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B) |
+| GrowfiFeeSplitter (proxy) | [`0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f`](https://etherscan.io/address/0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f) |
+| GrowfiStakingPool (proxy) | [`0xD4f6c69457F34332D3cd9ea287F69a91e84a803A`](https://etherscan.io/address/0xD4f6c69457F34332D3cd9ea287F69a91e84a803A) |
+
+### Mainnet stablecoin config
+
+| Token | Address | Decimals | Feed | Treasury accepted |
+|---|---|---:|---|:-:|
+| USDC | [`0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`](https://etherscan.io/address/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) | 6 | [`0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6`](https://etherscan.io/address/0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6) | yes |
+
+Treasury stablecoin config: scale `1e12`, heartbeat `86400`, depeg band
+`9500`-`10500`. Factory `minSeasonDuration` is `2592000` seconds (30 days).
+
+### Frontend env (Ethereum Mainnet)
+
+```ini
+NEXT_PUBLIC_CHAIN_ID=1
+NEXT_PUBLIC_FACTORY_ADDRESS=0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2
+NEXT_PUBLIC_USDC_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+NEXT_PUBLIC_REGISTRY_ADDRESS=0xA3AEb95Ff4555E266aa1366000204a75FaD4142B
+NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5
+NEXT_PUBLIC_REPAYMENT_IMPL=0x2224A91Fd2603bCd33c920b02eDCf6dF7D2696FD
+NEXT_PUBLIC_ECOMMERCE_IMPL=0x412337b6940B908093A0223b25798Cd00B2eC072
+NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL=0x91811Da0B10e6927882dadC458f0fBB7Cf55f3b5
+NEXT_PUBLIC_GROW_TOKEN=0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725
+NEXT_PUBLIC_GROW_TREASURY=0x47ea5710ea674f5D653A59c96836E2d20288813a
+NEXT_PUBLIC_GROW_MINTER=0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B
+NEXT_PUBLIC_GROW_FEE_SPLITTER=0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f
+NEXT_PUBLIC_GROW_STAKING_POOL=0xD4f6c69457F34332D3cd9ea287F69a91e84a803A
+NEXT_PUBLIC_SUBGRAPH_URL=https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
+```
+
+---
+
 ## Base Sepolia (chain 84532) — v4 audit-hardened rebuild
 
 **Deployed:** 2026-06-11 · **Deployer/owner:** `0xFF6bdef4fB646EE44e29FE8FC0862B02F0Ba8a33` · **Factory deploy block:** `42697602`

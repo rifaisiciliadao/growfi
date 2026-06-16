@@ -7,7 +7,7 @@ import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { formatUnits, type Address } from "viem";
 import { useMemo } from "react";
 import { useUserPortfolio, type UserPortfolio } from "@/lib/subgraph";
-import { useCampaignMetadata } from "@/lib/metadata";
+import { useResolvedCampaignMetadata } from "@/lib/metadata";
 import { erc20Abi } from "@/contracts/erc20";
 import { RefreshButton } from "@/components/RefreshButton";
 
@@ -327,7 +327,8 @@ function PositionCard({
   const t = useTranslations("portfolio");
   const { address: user } = useAccount();
 
-  const { data: metadata } = useCampaignMetadata(
+  const { data: metadata } = useResolvedCampaignMetadata(
+    position.campaign.id,
     position.campaign.metadataURI,
     position.campaign.metadataVersion,
   );

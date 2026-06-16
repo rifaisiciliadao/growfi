@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useCampaignMetadata } from "@/lib/metadata";
+import { useResolvedCampaignMetadata } from "@/lib/metadata";
 import { CampaignImage } from "./CampaignImage";
 
 export type CampaignState = "funding" | "active" | "ended";
@@ -65,7 +65,11 @@ export function CampaignCard({
   const cfg = stateConfig[state];
   const isEnded = state === "ended";
 
-  const { data: metadata } = useCampaignMetadata(metadataURI, metadataVersion);
+  const { data: metadata } = useResolvedCampaignMetadata(
+    address,
+    metadataURI,
+    metadataVersion,
+  );
 
   const resolvedName = metadata?.name || name;
   const resolvedImage = metadata?.image || image || null;

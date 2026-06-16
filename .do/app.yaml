@@ -129,46 +129,49 @@ services:
       failure_threshold: 3
     envs:
       - key: NEXT_PUBLIC_CHAIN_ID
-        value: "11155111"
+        value: "1"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_FACTORY_ADDRESS
-        value: "0xa4DEd8Ab35e89bCAF1f7DFeb7aB2c1ED533b3f05"
+        value: "0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_USDC_ADDRESS
-        value: "0x32C344Dc9713d904442d0E5B0d2b7994E52B0d4E"
+        value: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_USDT_ADDRESS
-        value: "0x7c47aa550061117f8440128c6b829da5bf88de06"
+        value: "0xdAC17F958D2ee523a2206206994597C13D831ec7"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_DAI_ADDRESS
-        value: "0x3540ea8a6fa084a31321e790b89a6fbe677ae00e"
+        value: "0x6B175474E89094C44Da98b954EedeAC495271d0F"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_REGISTRY_ADDRESS
-        value: "0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE"
+        value: "0xA3AEb95Ff4555E266aa1366000204a75FaD4142B"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS
-        value: "0x8DDc90F40Bf8847672EA5B256d93607F42Fd540E"
+        value: "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_REPAYMENT_IMPL
-        value: "0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6"
+        value: "0x2224A91Fd2603bCd33c920b02eDCf6dF7D2696FD"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_ECOMMERCE_IMPL
-        value: "0x4921f38F3D0de21057Ef202629D501E8b99d8616"
+        value: "0x412337b6940B908093A0223b25798Cd00B2eC072"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL
+        value: "0x91811Da0B10e6927882dadC458f0fBB7Cf55f3b5"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_GROW_TOKEN
-        value: "0x9bB4f9C41ed922282C181f2f3e01d8384c960b44"
+        value: "0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_GROW_TREASURY
-        value: "0xB71D13F80ceAed17A179B4e0D9eb1e8410DeaDDd"
+        value: "0x47ea5710ea674f5D653A59c96836E2d20288813a"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_GROW_MINTER
-        value: "0xD99c1985B257a4A55bA8D0836Fab536389cdd24C"
+        value: "0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_GROW_FEE_SPLITTER
-        value: "0xF1a8527E00916588f4Bb137cE450E8459b6BD436"
+        value: "0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_GROW_STAKING_POOL
-        value: "0xD1D8491370A8CF597bEcFc49D3253BfFAF34CDc8"
+        value: "0xD4f6c69457F34332D3cd9ea287F69a91e84a803A"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_SUBGRAPH_URL
         value: https://ugraph.growfi.dev/subgraphs/growfi/latest/gn

@@ -1,6 +1,6 @@
 import { base, baseSepolia, foundry, mainnet, sepolia } from "wagmi/chains";
 
-export const EXPECTED_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 84532);
+export const EXPECTED_CHAIN_ID = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 1);
 
 const KNOWN_CHAINS = [foundry, sepolia, mainnet, baseSepolia, base] as const;
 
