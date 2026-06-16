@@ -106,7 +106,11 @@ export function DirectBuyGrowPanel() {
     stableOptions.find((s) => s.symbol === selectedSym) ?? stableOptions[0];
 
   // Quote & balance reads
-  const { data: reads, refetch } = useReadContracts({
+  const {
+    data: reads,
+    isLoading: readsLoading,
+    refetch,
+  } = useReadContracts({
     query: { enabled: Boolean(a.growToken && a.growTreasury && selected) },
     contracts: [
       {
@@ -160,7 +164,9 @@ export function DirectBuyGrowPanel() {
   const floor = (reads?.[0]?.result as bigint | undefined) ?? 0n;
   const markupBps = (reads?.[1]?.result as bigint | undefined) ?? 1_000n;
   const referencePrice = (reads?.[2]?.result as bigint | undefined) ?? 0n;
-  const saleActive = (reads?.[3]?.result as boolean | undefined) ?? false;
+  const saleActiveResult = reads?.[3]?.result as boolean | undefined;
+  const saleActiveKnown = typeof saleActiveResult === "boolean";
+  const saleActive = saleActiveResult === true;
   const stablePrice = reads?.[4]; // result | error
   const balance = (reads?.[5]?.result as bigint | undefined) ?? 0n;
   const allowance = (reads?.[6]?.result as bigint | undefined) ?? 0n;
@@ -326,14 +332,14 @@ export function DirectBuyGrowPanel() {
               : "border-amber-200 bg-amber-50 text-amber-700"
           }`}
         >
-          {saleActive ? "ON" : "OFF"}
+          {saleActive ? "ON" : saleActiveKnown ? "OFF" : "..."}
         </span>
       </div>
       <p className="mb-5 text-sm leading-6 text-zinc-600">
         {t("blurb", { markup: markupPct.toLocaleString() })}
       </p>
 
-      {!saleActive && (
+      {!readsLoading && saleActiveKnown && !saleActive && (
         <div className="mb-4 rounded-[8px] border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           {t("salePaused")}
         </div>
@@ -457,7 +463,8 @@ export function DirectBuyGrowPanel() {
           isSwitching ||
           isBusy ||
           (!isWrongChain &&
-            (!saleActive ||
+            (!saleActiveKnown ||
+              !saleActive ||
               stableDepegged ||
               paymentAmount === 0n ||
               insufficientBalance ||
