@@ -938,7 +938,7 @@
     "circulating": "En circulación",
     "circulatingHint": "de {total} $GROW totales",
     "treasuryHolds": "Treasury tiene",
-    "treasuryHoldsHint": "$GROW (excluidos del divisor del floor)",
+    "treasuryHoldsHint": "$GROW",
     "buy": {
       "title": "Comprar $GROW",
       "blurb": "Compra $GROW con USDC. Precio y token se validan directamente on-chain al ejecutar la transacción.",
