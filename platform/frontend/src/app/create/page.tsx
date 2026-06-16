@@ -14,7 +14,7 @@ import {
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
 import { erc20Abi } from "@/contracts/erc20";
 import {
-  KNOWN_TOKENS,
+  getEnabledTokens,
   PRICING_MODE_ENUM,
   resolveTokenAddress,
 } from "@/contracts/tokens";
@@ -27,6 +27,9 @@ import { Spinner } from "@/components/Spinner";
 
 const USDC_DECIMALS = 6;
 const MOCK_USDC_MINT_AMOUNT = 10_000n * 10n ** BigInt(USDC_DECIMALS); // 10,000 mUSDC
+const WAGMI_CHAIN_ID = CHAIN_ID as never;
+const PAYMENT_TOKEN_OPTIONS = getEnabledTokens(CHAIN_ID);
+const DEFAULT_PAYMENT_TOKEN = PAYMENT_TOKEN_OPTIONS[0]?.symbol ?? "";
 
 /** MockUSDC exposes a permissionless mint for testers — testnet faucet. */
 const mockUsdcMintAbi = [
@@ -137,7 +140,9 @@ export default function CreateCampaign() {
     tokenSymbol: "",
     yieldName: "",
     yieldSymbol: "",
-    acceptedTokens: [],
+    acceptedTokens: DEFAULT_PAYMENT_TOKEN
+      ? [{ symbol: DEFAULT_PAYMENT_TOKEN, humanRate: "" }]
+      : [],
   });
 
   /**
@@ -270,7 +275,7 @@ export default function CreateCampaign() {
         form.acceptedTokens.length > 0 &&
         form.acceptedTokens.every((t) => {
           if (!t.symbol) return false;
-          const known = KNOWN_TOKENS.find((k) => k.symbol === t.symbol);
+          const known = PAYMENT_TOKEN_OPTIONS.find((k) => k.symbol === t.symbol);
           if (!known) return false;
           if (known.stableUsd) return Number(form.pricePerToken) > 0;
           if (known.defaultMode === "oracle") {
@@ -366,6 +371,7 @@ export default function CreateCampaign() {
       const required6 = parseUnits(form.initialCollateralUsd, USDC_DECIMALS);
       try {
         const balance = (await readContract(wagmiConfig, {
+          chainId: WAGMI_CHAIN_ID,
           address: getAddresses().usdc,
           abi: erc20Abi,
           functionName: "balanceOf",
@@ -418,25 +424,33 @@ export default function CreateCampaign() {
 
       const createHash = await writeContractAsync({
         address: factory,
+        chainId: WAGMI_CHAIN_ID,
         abi: abis.CampaignFactory as never,
         functionName: "createCampaign",
         args: [
           {
             producer: connectedAddress!,
-            tokenName: form.name,
-            tokenSymbol: form.tokenSymbol,
-            yieldName: form.yieldName,
-            yieldSymbol: form.yieldSymbol,
-            pricePerToken: parseUnits(form.pricePerToken, 18),
-            minCap: BigInt(minCap) * 10n ** 18n,
-            maxCap: BigInt(maxCap) * 10n ** 18n,
-            fundingDeadline: BigInt(deadline),
-            seasonDuration: BigInt(Number(form.seasonDuration) * 86400),
+            campaignTokenName: form.name,
+            campaignTokenSymbol: form.tokenSymbol,
+            yieldTokenName: form.yieldName,
+            yieldTokenSymbol: form.yieldSymbol,
             minProductClaim: BigInt(form.minProductClaim) * 10n ** 18n,
-            expectedAnnualHarvestUsd: annualHarvestUsd,
-            expectedAnnualHarvest: annualHarvestQty,
-            firstHarvestYear: firstHarvestYear,
-            coverageHarvests: coverage,
+            sale: {
+              pricePerToken: parseUnits(form.pricePerToken, 18),
+              minCap: BigInt(minCap) * 10n ** 18n,
+              maxCap: BigInt(maxCap) * 10n ** 18n,
+              fundingDeadline: BigInt(deadline),
+              seasonDuration: BigInt(Number(form.seasonDuration) * 86400),
+              fundingFeeBps: 0n,
+              sequencerUptimeFeed: zeroAddress,
+              growMinter: zeroAddress,
+            },
+            collateral: {
+              expectedAnnualHarvestUsd: annualHarvestUsd,
+              expectedAnnualHarvest: annualHarvestQty,
+              firstHarvestYear: firstHarvestYear,
+              coverageHarvests: coverage,
+            },
           },
         ],
       });
@@ -474,6 +488,7 @@ export default function CreateCampaign() {
         setStatus({ kind: "registering-sig", campaign: newCampaign });
         registryHash = await writeContractAsync({
           address: registry,
+          chainId: WAGMI_CHAIN_ID,
           abi: abis.CampaignRegistry as never,
           functionName: "setMetadata",
           args: [newCampaign, metadata.url],
@@ -490,7 +505,7 @@ export default function CreateCampaign() {
       let whitelistedCount = 0;
       for (let i = 0; i < total; i++) {
         const entry = form.acceptedTokens[i];
-        const known = KNOWN_TOKENS.find((k) => k.symbol === entry.symbol);
+        const known = PAYMENT_TOKEN_OPTIONS.find((k) => k.symbol === entry.symbol);
         if (!known) continue;
 
         const tokenAddress = resolveTokenAddress(known, CHAIN_ID);
@@ -530,6 +545,7 @@ export default function CreateCampaign() {
         try {
           const hash = await writeContractAsync({
             address: newCampaign,
+            chainId: WAGMI_CHAIN_ID,
             abi: abis.Campaign as never,
             functionName: "addAcceptedToken",
             args: [tokenAddress, pricingMode, fixedRate, oracleFeed],
@@ -571,6 +587,7 @@ export default function CreateCampaign() {
         setStatus({ kind: "collateral-approve-sig", campaign: newCampaign });
         const approveHash = await writeContractAsync({
           address: usdcAddr,
+          chainId: WAGMI_CHAIN_ID,
           abi: erc20Abi,
           functionName: "approve",
           args: [newCampaign, collateralAmount],
@@ -584,6 +601,7 @@ export default function CreateCampaign() {
         setStatus({ kind: "collateral-lock-sig", campaign: newCampaign });
         const lockHash = await writeContractAsync({
           address: newCampaign,
+          chainId: WAGMI_CHAIN_ID,
           abi: abis.Campaign as never,
           functionName: "lockCollateral",
           args: [collateralAmount],
@@ -1098,7 +1116,7 @@ export default function CreateCampaign() {
 
             <div className="space-y-4">
               {form.acceptedTokens.map((token, i) => {
-                const known = KNOWN_TOKENS.find((k) => k.symbol === token.symbol);
+                const known = PAYMENT_TOKEN_OPTIONS.find((k) => k.symbol === token.symbol);
                 const selectedSymbols = new Set(
                   form.acceptedTokens.map((tk, idx) =>
                     idx === i ? null : tk.symbol,
@@ -1152,9 +1170,9 @@ export default function CreateCampaign() {
                           }}
                           className="input"
                         >
-                          {KNOWN_TOKENS.map((k) => {
+                          {PAYMENT_TOKEN_OPTIONS.map((k) => {
                             const alreadyUsed = selectedSymbols.has(k.symbol);
-                            const disabled = !k.enabled || alreadyUsed;
+                            const disabled = alreadyUsed;
                             return (
                               <option
                                 key={k.symbol}
@@ -1162,7 +1180,6 @@ export default function CreateCampaign() {
                                 disabled={disabled}
                               >
                                 {k.symbol} — {k.name}
-                                {!k.enabled ? ` (${t("step3.comingSoon")})` : ""}
                               </option>
                             );
                           })}
@@ -1217,8 +1234,8 @@ export default function CreateCampaign() {
 
               {(() => {
                 const used = new Set(form.acceptedTokens.map((t) => t.symbol));
-                const nextAvailable = KNOWN_TOKENS.find(
-                  (k) => k.enabled && !used.has(k.symbol),
+                const nextAvailable = PAYMENT_TOKEN_OPTIONS.find(
+                  (k) => !used.has(k.symbol),
                 );
                 if (!nextAvailable) return null;
                 return (
@@ -1848,6 +1865,7 @@ function CollateralStep({
    * gate (in the outer component) blocks "Avanti" when value > balance.
    */
   const { data: balanceRaw, refetch: refetchBalance } = useReadContract({
+    chainId: WAGMI_CHAIN_ID,
     address: usdcAddress,
     abi: erc20Abi,
     functionName: "balanceOf",
@@ -1868,6 +1886,7 @@ function CollateralStep({
       setMinting(true);
       const hash = await writeContractAsync({
         address: usdcAddress,
+        chainId: WAGMI_CHAIN_ID,
         abi: mockUsdcMintAbi,
         functionName: "mint",
         args: [user, MOCK_USDC_MINT_AMOUNT],

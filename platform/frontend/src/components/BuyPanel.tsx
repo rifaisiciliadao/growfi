@@ -9,12 +9,13 @@ import {
   useWriteContract,
 } from "wagmi";
 import { parseUnits, formatUnits, type Address } from "viem";
-import { abis, getAddresses } from "@/contracts";
+import { abis, CHAIN_ID, getAddresses } from "@/contracts";
 import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
 import { txUrl } from "@/lib/explorer";
+import { useExpectedChain } from "@/lib/useExpectedChain";
 
 type AcceptedTokenInfo = {
   address: Address;
@@ -79,6 +80,7 @@ const mockUsdcMintAbi = [
 ] as const;
 
 const campaignAbi = abis.Campaign as never;
+const WAGMI_CHAIN_ID = CHAIN_ID as never;
 
 const tokenConfigAbi = [
   {
@@ -145,11 +147,19 @@ export function BuyPanel({
   firstHarvestYear,
 }: Props) {
   const t = useTranslations("detail.buy");
+  const tn = useTranslations("network");
   const { address: user, isConnected } = useAccount();
+  const {
+    expectedChain,
+    isSwitching,
+    isWrongChain,
+    switchToExpectedChain,
+  } = useExpectedChain();
   const { usdc: mockUsdcAddress } = getAddresses();
 
   // Real campaign token symbol (no more hardcoded "$CAMP" / "$CAMPAIGN")
   const { data: campaignSymbolRaw } = useReadContract({
+    chainId: WAGMI_CHAIN_ID,
     address: campaignToken,
     abi: erc20Abi,
     functionName: "symbol",
@@ -158,6 +168,7 @@ export function BuyPanel({
 
   // 1) Read accepted tokens list from the campaign
   const { data: acceptedTokenAddresses } = useReadContract({
+    chainId: WAGMI_CHAIN_ID,
     address: campaignAddress,
     abi: campaignAbi,
     functionName: "getAcceptedTokens",
@@ -169,12 +180,23 @@ export function BuyPanel({
     return acceptedTokenAddresses.flatMap((addr) => [
       {
         address: campaignAddress,
+        chainId: WAGMI_CHAIN_ID,
         abi: tokenConfigAbi,
         functionName: "tokenConfig",
         args: [addr],
       },
-      { address: addr, abi: erc20Abi, functionName: "symbol" },
-      { address: addr, abi: erc20Abi, functionName: "decimals" },
+      {
+        address: addr,
+        chainId: WAGMI_CHAIN_ID,
+        abi: erc20Abi,
+        functionName: "symbol",
+      },
+      {
+        address: addr,
+        chainId: WAGMI_CHAIN_ID,
+        abi: erc20Abi,
+        functionName: "decimals",
+      },
     ]);
   }, [acceptedTokenAddresses, campaignAddress]);
 
@@ -271,12 +293,14 @@ export function BuyPanel({
         ? [
             {
               address: selected.address,
+              chainId: WAGMI_CHAIN_ID,
               abi: erc20Abi,
               functionName: "balanceOf",
               args: [user],
             },
             {
               address: selected.address,
+              chainId: WAGMI_CHAIN_ID,
               abi: erc20Abi,
               functionName: "allowance",
               args: [user, campaignAddress],
@@ -304,6 +328,7 @@ export function BuyPanel({
 
   const canInteract =
     isConnected &&
+    !isWrongChain &&
     selected &&
     parsedAmount > 0n &&
     (currentState === 0 || currentState === 1) &&
@@ -323,11 +348,16 @@ export function BuyPanel({
 
   const handleApprove = async () => {
     if (!selected) return;
+    if (isWrongChain) {
+      await switchToExpectedChain();
+      return;
+    }
     try {
       setStatus({ kind: "approving-sig" });
       const approvalAmount = isClamped ? effectivePayment : parsedAmount;
       const hash = await writeContractAsync({
         address: selected.address,
+        chainId: WAGMI_CHAIN_ID,
         abi: erc20Abi,
         functionName: "approve",
         args: [campaignAddress, approvalAmount],
@@ -346,10 +376,15 @@ export function BuyPanel({
 
   const handleMintMockUsdc = async () => {
     if (!user) return;
+    if (isWrongChain) {
+      await switchToExpectedChain();
+      return;
+    }
     try {
       setStatus({ kind: "minting-sig" });
       const hash = await writeContractAsync({
         address: mockUsdcAddress,
+        chainId: WAGMI_CHAIN_ID,
         abi: mockUsdcMintAbi,
         functionName: "mint",
         args: [user, MOCK_USDC_MINT_AMOUNT],
@@ -368,10 +403,15 @@ export function BuyPanel({
 
   const handleBuy = async () => {
     if (!selected) return;
+    if (isWrongChain) {
+      await switchToExpectedChain();
+      return;
+    }
     try {
       setStatus({ kind: "buying-sig" });
       const hash = await writeContractAsync({
         address: campaignAddress,
+        chainId: WAGMI_CHAIN_ID,
         abi: campaignAbi,
         functionName: "buy",
         args: [selected.address, requiredPayment],
@@ -412,6 +452,8 @@ export function BuyPanel({
 
   const ctaLabel = !isConnected
     ? t("connectFirst")
+    : isWrongChain
+      ? tn("action", { chain: expectedChain.name })
     : !selected
       ? t("noToken")
       : currentState !== 0 && currentState !== 1
@@ -426,7 +468,11 @@ export function BuyPanel({
                 ? t("approve", { token: selected.symbol })
                 : t("cta", { symbol: campSymbol });
 
-  const onClick = needsApproval ? handleApprove : handleBuy;
+  const onClick = isWrongChain
+    ? () => void switchToExpectedChain()
+    : needsApproval
+      ? handleApprove
+      : handleBuy;
 
   return (
     <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15">
@@ -658,7 +704,11 @@ export function BuyPanel({
 
           <button
             onClick={onClick}
-            disabled={!canInteract || !hasEnoughBalance}
+            disabled={
+              isWrongChain
+                ? !isConnected || isSwitching || inFlight
+                : !canInteract || !hasEnoughBalance
+            }
             className="w-full mt-6 regen-gradient text-white rounded-xl h-14 font-bold text-base hover:shadow-xl hover:shadow-primary/20 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {inFlight && <Spinner size={18} />}

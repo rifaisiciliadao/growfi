@@ -4,11 +4,12 @@ import { useMemo, useState } from "react";
 import { useAccount, useReadContracts, useWriteContract } from "wagmi";
 import { formatUnits, parseUnits, type Address } from "viem";
 import { useTranslations } from "next-intl";
-import { abis, getAddresses } from "@/contracts";
+import { abis, CHAIN_ID, getAddresses } from "@/contracts";
 import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
+import { useExpectedChain } from "@/lib/useExpectedChain";
 
 type StableOption = {
   address: Address;
@@ -29,6 +30,7 @@ type TxStatus =
 
 const growTokenAbi = abis.GrowToken as never;
 const growTreasuryAbi = abis.GrowTreasury as never;
+const WAGMI_CHAIN_ID = CHAIN_ID as never;
 
 /// Both MockUSDC and MockStablecoin expose `mint(address, uint256)` permissionlessly
 /// on testnet/anvil. Constructor revert on mainnet chain ids guards production.
@@ -64,7 +66,14 @@ const mockMintAbi = [
  */
 export function DirectBuyGrowPanel() {
   const t = useTranslations("grow.buy");
+  const tn = useTranslations("network");
   const { address: account, isConnected } = useAccount();
+  const {
+    expectedChain,
+    isSwitching,
+    isWrongChain,
+    switchToExpectedChain,
+  } = useExpectedChain();
   const a = getAddresses();
   const notify = useTxNotify();
   const { writeContractAsync } = useWriteContract();
@@ -72,14 +81,18 @@ export function DirectBuyGrowPanel() {
   /// Faucet visible on testnets where the stablecoins are MockUSDC/MockStablecoin
   /// (public mint). Mainnet stablecoins do NOT have public mint, so the button
   /// is gated. Allow: anvil (31337), Base Sepolia (84532), ETH Sepolia (11155111).
-  const chainId = Number(process.env.NEXT_PUBLIC_CHAIN_ID || 1);
-  const faucetEnabled = chainId === 31337 || chainId === 84532 || chainId === 11155111;
+  const faucetEnabled =
+    CHAIN_ID === 31337 || CHAIN_ID === 84532 || CHAIN_ID === 11155111;
 
   const stableOptions = useMemo<StableOption[]>(() => {
     const out: StableOption[] = [];
     if (a.usdc) out.push({ address: a.usdc, symbol: "USDC", decimals: 6 });
-    if (a.usdt) out.push({ address: a.usdt, symbol: "USDT", decimals: 6 });
-    if (a.dai) out.push({ address: a.dai, symbol: "DAI", decimals: 18 });
+    if (CHAIN_ID !== 1 && a.usdt) {
+      out.push({ address: a.usdt, symbol: "USDT", decimals: 6 });
+    }
+    if (CHAIN_ID !== 1 && a.dai) {
+      out.push({ address: a.dai, symbol: "DAI", decimals: 18 });
+    }
     return out;
   }, [a.usdc, a.usdt, a.dai]);
 
@@ -99,38 +112,45 @@ export function DirectBuyGrowPanel() {
       {
         abi: growTreasuryAbi,
         address: a.growTreasury as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "intrinsicFloorPrice",
       },
       {
         abi: growTokenAbi,
         address: a.growToken as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "markupBps",
       },
       {
         abi: growTokenAbi,
         address: a.growToken as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "referencePrice",
       },
       {
         abi: growTokenAbi,
         address: a.growToken as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "saleActive",
       },
       {
         abi: growTreasuryAbi,
         address: a.growTreasury as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "getStablecoinPriceUsd18",
         args: selected ? [selected.address] : undefined,
       },
       {
         abi: erc20Abi,
         address: selected?.address as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "balanceOf",
         args: account ? [account] : undefined,
       },
       {
         abi: erc20Abi,
         address: selected?.address as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "allowance",
         args: account ? [account, a.growToken as Address] : undefined,
       },
@@ -184,12 +204,17 @@ export function DirectBuyGrowPanel() {
 
   async function handleMint() {
     if (!account || !selected || !faucetEnabled) return;
+    if (isWrongChain) {
+      await switchToExpectedChain();
+      return;
+    }
     try {
       setTx({ kind: "minting-sig" });
       const amount = selected.decimals === 6 ? 10_000n * 10n ** 6n : 10_000n * 10n ** 18n;
       const hash = await writeContractAsync({
         abi: mockMintAbi,
         address: selected.address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "mint",
         args: [account, amount],
       });
@@ -211,6 +236,15 @@ export function DirectBuyGrowPanel() {
   }
 
   async function handleBuy() {
+    if (isWrongChain) {
+      try {
+        await switchToExpectedChain();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        setTx({ kind: "error", message });
+      }
+      return;
+    }
     if (
       !account ||
       !selected ||
@@ -226,6 +260,7 @@ export function DirectBuyGrowPanel() {
         const approveHash = await writeContractAsync({
           abi: erc20Abi,
           address: selected.address,
+          chainId: WAGMI_CHAIN_ID,
           functionName: "approve",
           args: [a.growToken, paymentAmount],
         });
@@ -240,6 +275,7 @@ export function DirectBuyGrowPanel() {
       const buyHash = await writeContractAsync({
         abi: growTokenAbi,
         address: a.growToken as Address,
+        chainId: WAGMI_CHAIN_ID,
         functionName: "buy",
         args: [selected.address, paymentAmount, maxPriceAccepted],
       });
@@ -418,29 +454,33 @@ export function DirectBuyGrowPanel() {
         onClick={handleBuy}
         disabled={
           !isConnected ||
-          !saleActive ||
-          stableDepegged ||
+          isSwitching ||
           isBusy ||
-          paymentAmount === 0n ||
-          insufficientBalance ||
-          salePrice === 0n
+          (!isWrongChain &&
+            (!saleActive ||
+              stableDepegged ||
+              paymentAmount === 0n ||
+              insufficientBalance ||
+              salePrice === 0n))
         }
         className="flex w-full items-center justify-center gap-2 rounded-[8px] bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
       >
         {isBusy && <Spinner />}
         {!isConnected
           ? t("connectWallet")
-          : tx.kind === "approving-sig"
-            ? t("approvingSig")
-            : tx.kind === "approving-chain"
-              ? t("approvingChain")
-              : tx.kind === "buying-sig"
-                ? t("buyingSig")
-                : tx.kind === "buying-chain"
-                  ? t("buyingChain")
-                  : needsApproval && selected
-                    ? t("approveAndBuy", { symbol: selected.symbol })
-                    : t("buyButton")}
+          : isWrongChain
+            ? tn("action", { chain: expectedChain.name })
+            : tx.kind === "approving-sig"
+              ? t("approvingSig")
+              : tx.kind === "approving-chain"
+                ? t("approvingChain")
+                : tx.kind === "buying-sig"
+                  ? t("buyingSig")
+                  : tx.kind === "buying-chain"
+                    ? t("buyingChain")
+                    : needsApproval && selected
+                      ? t("approveAndBuy", { symbol: selected.symbol })
+                      : t("buyButton")}
       </button>
 
       {tx.kind === "error" && (

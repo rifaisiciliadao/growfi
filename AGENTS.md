@@ -51,6 +51,16 @@ URLs for app config.
 The frontend network fallback is Ethereum mainnet: if `NEXT_PUBLIC_CHAIN_ID` is
 missing or invalid, `EXPECTED_CHAIN`, RainbowKit chains, and explorer links must
 fall back to chain 1, never Base Sepolia.
+Frontend contract reads for buy/create surfaces must pin the configured chain
+(`CHAIN_ID` / `EXPECTED_CHAIN_ID`) so a wallet left on Sepolia does not read
+mainnet addresses on the wrong network and surface false failures. The
+`/create` flow must encode `CampaignFactory.createCampaign` with the current v4
+nested struct shape: top-level token/yield names plus `minProductClaim`, then
+`sale.pricePerToken/minCap/maxCap/fundingDeadline/seasonDuration/...` and
+`collateral.expectedAnnualHarvestUsd/expectedAnnualHarvest/firstHarvestYear/coverageHarvests`.
+The old flat v3 field names make viem throw while reading `sale.pricePerToken`.
+The `/create` payment-token selector must use `getEnabledTokens(CHAIN_ID)`;
+mainnet launch shows only real USDC, while `mUSDC` is testnet-only.
 
 ## v4 module architecture (Diamond-style host + delegatecall router)
 
