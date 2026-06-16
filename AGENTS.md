@@ -54,7 +54,15 @@ fall back to chain 1, never Base Sepolia.
 Frontend contract reads for buy/create surfaces must pin the configured chain
 (`CHAIN_ID` / `EXPECTED_CHAIN_ID`) so a wallet left on Sepolia does not read
 mainnet addresses on the wrong network and surface false failures. The
-`/create` flow must encode `CampaignFactory.createCampaign` with the current v4
+mainnet Wagmi transport must keep a healthy Ethereum RPC first
+(`https://ethereum-rpc.publicnode.com` as of 2026-06-16); do not rely on
+Cloudflare's old `https://cloudflare-eth.com` endpoint as a default because it
+redirects instead of serving JSON-RPC. Campaign payment-token UIs must read the
+live v4 module view `tokenConfig(address)` (tuple return) and not the stale
+generated `tokenConfigs(address)` mapping ABI; using the stale selector makes
+campaigns look like they have no accepted token even when USDC is active
+on-chain.
+The `/create` flow must encode `CampaignFactory.createCampaign` with the current v4
 nested struct shape: top-level token/yield names plus `minProductClaim`, then
 `sale.pricePerToken/minCap/maxCap/fundingDeadline/seasonDuration/...` and
 `collateral.expectedAnnualHarvestUsd/expectedAnnualHarvest/firstHarvestYear/coverageHarvests`.
