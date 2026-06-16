@@ -2,13 +2,14 @@
 
 ## Ethereum Mainnet (chain 1) — v4 audit-hardened launch
 
-**Deployed:** 2026-06-16 · **Deployer/owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` · **Factory deploy block:** `25328624`
+**Deployed:** 2026-06-16 · **Audit implementation patch:** block `25328977` · **Deployer/owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` · **Factory deploy block:** `25328624`
 
-> Fresh full v4 deploy on Ethereum Mainnet from the 2026-06 audit-hardened
-> build. No campaigns were seeded during launch; the first production campaign
-> must be created manually through the app. Real USDC is the only enabled
-> payment/stablecoin policy at launch. UGraph serves the mainnet index at
-> `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
+> Fresh full v4 deploy on Ethereum Mainnet, followed before any campaign
+> existed by an implementation-pointer patch to the merged 2026-06
+> audit-hardened build. No campaigns were seeded during launch; the first
+> production campaign must be created manually through the app. Real USDC is
+> the only enabled payment/stablecoin policy at launch. UGraph serves the
+> mainnet index at `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
 >
 > Fee receiver / operations Safe: `0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9`
 > (threshold 2; owners `0x2DC077446182287f1d79847074893CDb559D41f4` and
@@ -21,20 +22,22 @@
 |---|---|
 | CampaignFactory (proxy) | [`0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2`](https://etherscan.io/address/0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2) |
 | CampaignFactory impl | [`0x5f6AC680e4C176AC8874d33050ea1FED12e12b02`](https://etherscan.io/address/0x5f6AC680e4C176AC8874d33050ea1FED12e12b02) |
-| Campaign impl | [`0x7cd7513a798F22E9E6CCEeF90829233E5F1BB63A`](https://etherscan.io/address/0x7cd7513a798F22E9E6CCEeF90829233E5F1BB63A) |
+| Campaign impl | [`0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b`](https://etherscan.io/address/0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b) |
 | CampaignToken impl | [`0x53b2c6C52363C36BF35D728A15a36DFC0882c11b`](https://etherscan.io/address/0x53b2c6C52363C36BF35D728A15a36DFC0882c11b) |
 | StakingVault impl | [`0xA9Ae8956B199A2f8a087584cA3B7cf9Fca5066D1`](https://etherscan.io/address/0xA9Ae8956B199A2f8a087584cA3B7cf9Fca5066D1) |
 | YieldToken impl | [`0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20`](https://etherscan.io/address/0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20) |
 | HarvestManager impl | [`0x852987797CCB62735B9880CEaE3251e948bcBA50`](https://etherscan.io/address/0x852987797CCB62735B9880CEaE3251e948bcBA50) |
-| SaleClassicModule impl | [`0xC1Dd8228A100Ff90450C1D2984c797F76FbFD281`](https://etherscan.io/address/0xC1Dd8228A100Ff90450C1D2984c797F76FbFD281) |
-| CollateralModule impl | [`0x6Cbd67988f0E7b976a51E5de6D498339477D6bEf`](https://etherscan.io/address/0x6Cbd67988f0E7b976a51E5de6D498339477D6bEf) |
-| RepaymentModule impl | [`0x2224A91Fd2603bCd33c920b02eDCf6dF7D2696FD`](https://etherscan.io/address/0x2224A91Fd2603bCd33c920b02eDCf6dF7D2696FD) |
-| EcommerceModule impl | [`0x412337b6940B908093A0223b25798Cd00B2eC072`](https://etherscan.io/address/0x412337b6940B908093A0223b25798Cd00B2eC072) |
-| DebtRestructuringModule impl | [`0x91811Da0B10e6927882dadC458f0fBB7Cf55f3b5`](https://etherscan.io/address/0x91811Da0B10e6927882dadC458f0fBB7Cf55f3b5) |
+| SaleClassicModule impl | [`0x82dea032125FB620E104BF4837c3dEE43C52444E`](https://etherscan.io/address/0x82dea032125FB620E104BF4837c3dEE43C52444E) |
+| CollateralModule impl | [`0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6`](https://etherscan.io/address/0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6) |
+| RepaymentModule impl | [`0x34326058FD53c773Fd7E67a20af17d73ae4d793A`](https://etherscan.io/address/0x34326058FD53c773Fd7E67a20af17d73ae4d793A) |
+| EcommerceModule impl | [`0x881883a9fd1c296D198EE9937603E8Eec1AE5E70`](https://etherscan.io/address/0x881883a9fd1c296D198EE9937603E8Eec1AE5E70) |
+| DebtRestructuringModule impl | [`0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a`](https://etherscan.io/address/0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a) |
 | CampaignRegistry | [`0xA3AEb95Ff4555E266aa1366000204a75FaD4142B`](https://etherscan.io/address/0xA3AEb95Ff4555E266aa1366000204a75FaD4142B) |
 | ProducerRegistry | [`0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5`](https://etherscan.io/address/0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5) |
 | GrowfiToken (proxy) | [`0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725`](https://etherscan.io/address/0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725) |
+| GrowfiToken impl | [`0xdB8Da814194ADbe8E4fe80Cff87d10f483623D1E`](https://etherscan.io/address/0xdB8Da814194ADbe8E4fe80Cff87d10f483623D1E) |
 | GrowfiTreasury (proxy) | [`0x47ea5710ea674f5D653A59c96836E2d20288813a`](https://etherscan.io/address/0x47ea5710ea674f5D653A59c96836E2d20288813a) |
+| GrowfiTreasury impl | [`0x36DE403428280C10e7332534ae0f80e01FFa5982`](https://etherscan.io/address/0x36DE403428280C10e7332534ae0f80e01FFa5982) |
 | GrowfiMinter (proxy) | [`0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B`](https://etherscan.io/address/0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B) |
 | GrowfiFeeSplitter (proxy) | [`0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f`](https://etherscan.io/address/0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f) |
 | GrowfiStakingPool (proxy) | [`0xD4f6c69457F34332D3cd9ea287F69a91e84a803A`](https://etherscan.io/address/0xD4f6c69457F34332D3cd9ea287F69a91e84a803A) |
@@ -56,9 +59,9 @@ NEXT_PUBLIC_FACTORY_ADDRESS=0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2
 NEXT_PUBLIC_USDC_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 NEXT_PUBLIC_REGISTRY_ADDRESS=0xA3AEb95Ff4555E266aa1366000204a75FaD4142B
 NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5
-NEXT_PUBLIC_REPAYMENT_IMPL=0x2224A91Fd2603bCd33c920b02eDCf6dF7D2696FD
-NEXT_PUBLIC_ECOMMERCE_IMPL=0x412337b6940B908093A0223b25798Cd00B2eC072
-NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL=0x91811Da0B10e6927882dadC458f0fBB7Cf55f3b5
+NEXT_PUBLIC_REPAYMENT_IMPL=0x34326058FD53c773Fd7E67a20af17d73ae4d793A
+NEXT_PUBLIC_ECOMMERCE_IMPL=0x881883a9fd1c296D198EE9937603E8Eec1AE5E70
+NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL=0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a
 NEXT_PUBLIC_GROW_TOKEN=0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725
 NEXT_PUBLIC_GROW_TREASURY=0x47ea5710ea674f5D653A59c96836E2d20288813a
 NEXT_PUBLIC_GROW_MINTER=0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B

@@ -14,6 +14,10 @@ the frontend env, and the ugraph indexer all pointed at mainnet. Full address
 set in `CONTRACTS.md` (Ethereum Mainnet section, factory
 `0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2`, deploy block `25328624`).
 Sequencer-uptime feed = `address(0)` because this is L1.
+The mainnet deploy was patched before any campaign existed at block `25328977`
+via `script/UpgradeMainnetAuditMitigations.s.sol`: current factory pointers and
+default/optional module impls are the audit-hardened ones in `CONTRACTS.md`, and
+the stale launch module impls are revoked in the factory whitelist.
 
 Mainnet fee receiver / operations Safe:
 `0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9` (threshold 2; owners
@@ -226,6 +230,11 @@ Example reference: `script/UpgradeFactoryV2.s.sol` (adds `minSeasonDuration`, re
   and `MAINNET_DEPLOYER_PRIVATE_KEY`. Defaults fee receiver / ops to the mainnet
   Safe `0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9`; owner stays deployer unless
   `MAINNET_OWNER_ADDRESS` is explicitly set. **Does not create campaigns.**
+- `script/UpgradeMainnetAuditMitigations.s.sol` — one-time mainnet launch patch
+  run at block `25328977` before any campaign existed. Deploys the merged
+  audit-hardened host/modules, updates factory pointers/default modules,
+  revokes stale module impls, and upgrades the GROW Token/Treasury proxies.
+  **Does not create campaigns.**
 
 ### v4 Sepolia ETH (reference)
 

@@ -166,13 +166,13 @@ export const addresses: Record<number, ChainAddresses> = {
       "0xD4f6c69457F34332D3cd9ea287F69a91e84a803A",
     repaymentImpl:
       (process.env.NEXT_PUBLIC_REPAYMENT_IMPL as Address | undefined) ||
-      "0x2224A91Fd2603bCd33c920b02eDCf6dF7D2696FD",
+      "0x34326058FD53c773Fd7E67a20af17d73ae4d793A",
     ecommerceImpl:
       (process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined) ||
-      "0x412337b6940B908093A0223b25798Cd00B2eC072",
+      "0x881883a9fd1c296D198EE9937603E8Eec1AE5E70",
     debtRestructuringImpl:
       (process.env.NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL as Address | undefined) ||
-      "0x91811Da0B10e6927882dadC458f0fBB7Cf55f3b5",
+      "0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a",
   },
   // Base Mainnet (future)
   8453: {
