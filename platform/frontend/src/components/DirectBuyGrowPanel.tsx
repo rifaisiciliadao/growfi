@@ -335,10 +335,6 @@ export function DirectBuyGrowPanel() {
           {saleActive ? "ON" : saleActiveKnown ? "OFF" : "..."}
         </span>
       </div>
-      <p className="mb-5 text-sm leading-6 text-zinc-600">
-        {t("blurb", { markup: markupPct.toLocaleString() })}
-      </p>
-
       {!readsLoading && saleActiveKnown && !saleActive && (
         <div className="mb-4 rounded-[8px] border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           {t("salePaused")}
