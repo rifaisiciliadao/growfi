@@ -948,8 +948,6 @@
       "markup": "Markup",
       "floor": "Floor",
       "supply": "Supply",
-      "current": "ahora",
-      "mints": "~{amount} $GROW",
       "empty": "Curva no disponible hasta que floor y supply circulante sean mayores que cero."
     },
     "buy": {
