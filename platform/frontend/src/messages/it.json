@@ -941,6 +941,17 @@
     "circulatingHint": "su {total} $GROW totali",
     "treasuryHolds": "Treasury detiene",
     "treasuryHoldsHint": "$GROW",
+    "curve": {
+      "eyebrow": "Bonding curve",
+      "title": "Curva $GROW",
+      "live": "Prezzo ora",
+      "markup": "Markup",
+      "floor": "Floor",
+      "supply": "Supply",
+      "current": "ora",
+      "mints": "~{amount} $GROW",
+      "empty": "Curva non disponibile finche floor e supply circolante sono a zero."
+    },
     "buy": {
       "title": "Compra $GROW",
       "blurb": "Compra $GROW con USDC. Prezzo e token vengono validati direttamente on-chain al momento della transazione.",

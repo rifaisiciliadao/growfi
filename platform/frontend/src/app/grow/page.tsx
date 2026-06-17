@@ -40,13 +40,22 @@ export default function GrowDashboard() {
         functionName: "balanceOf",
         args: [a.growTreasury as Address],
       },
+      {
+        abi: tokenAbi,
+        address: a.growToken as Address,
+        chainId: WAGMI_CHAIN_ID,
+        functionName: "markupBps",
+      },
     ],
   });
 
   const floor = (reads?.[0]?.result as bigint | undefined) ?? 0n;
   const totalSupply = (reads?.[1]?.result as bigint | undefined) ?? 0n;
   const treasuryGrow = (reads?.[2]?.result as bigint | undefined) ?? 0n;
+  const markupBps = (reads?.[3]?.result as bigint | undefined) ?? 1_000n;
   const circulating = totalSupply > treasuryGrow ? totalSupply - treasuryGrow : 0n;
+  const salePrice =
+    floor > 0n ? (floor * (10_000n + markupBps)) / 10_000n : 0n;
   const stats = [
     {
       label: t("floorPrice"),
@@ -108,6 +117,13 @@ export default function GrowDashboard() {
           </div>
         </section>
 
+        <BondingCurve
+          floor={floor}
+          salePrice={salePrice}
+          markupBps={markupBps}
+          circulating={circulating}
+        />
+
         <section className="mt-6 grid grid-cols-1 items-start gap-6 lg:grid-cols-2">
           <DirectBuyGrowPanel />
           <GrowStakingPanel />
@@ -119,6 +135,141 @@ export default function GrowDashboard() {
         <Flywheel />
       </div>
     </div>
+  );
+}
+
+type CurvePoint = {
+  label: string;
+  cumulativeUsd: bigint;
+  floor: bigint;
+  salePrice: bigint;
+  minted: bigint;
+};
+
+function BondingCurve({
+  floor,
+  salePrice,
+  markupBps,
+  circulating,
+}: {
+  floor: bigint;
+  salePrice: bigint;
+  markupBps: bigint;
+  circulating: bigint;
+}) {
+  const t = useTranslations("grow.curve");
+  const points = buildCurvePoints(floor, markupBps, circulating);
+  const chartPoints = points.map((point, index) => ({
+    ...point,
+    x: points.length === 1 ? 0 : (index / (points.length - 1)) * 100,
+    yValue: Number(formatUnits(point.salePrice, 18)),
+  }));
+  const prices = chartPoints.map((point) => point.yValue);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceRange = Math.max(maxPrice - minPrice, 0.000001);
+  const path = chartPoints
+    .map((point, index) => {
+      const y = 100 - ((point.yValue - minPrice) / priceRange) * 82 - 9;
+      return `${index === 0 ? "M" : "L"} ${point.x.toFixed(2)} ${y.toFixed(2)}`;
+    })
+    .join(" ");
+
+  return (
+    <section className="mt-6 overflow-hidden rounded-[8px] border border-zinc-200 bg-white shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)]">
+      <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="border-b border-zinc-200 p-5 md:p-6 lg:border-b-0 lg:border-r">
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">
+            {t("eyebrow")}
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+            {t("title")}
+          </h2>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <CurveMetric label={t("live")} value={formatUsd18(salePrice)} />
+            <CurveMetric
+              label={t("markup")}
+              value={`${(Number(markupBps) / 100).toLocaleString(undefined, {
+                maximumFractionDigits: 2,
+              })}%`}
+            />
+            <CurveMetric
+              label={t("floor")}
+              value={floor === 0n ? "—" : formatUsd18(floor)}
+            />
+            <CurveMetric
+              label={t("supply")}
+              value={formatWholeGrow(circulating)}
+            />
+          </div>
+        </div>
+
+        <div className="p-5 md:p-6">
+          {floor === 0n || circulating === 0n ? (
+            <div className="flex min-h-[220px] items-center justify-center rounded-[8px] border border-dashed border-zinc-300 bg-zinc-50 px-4 text-center text-sm text-zinc-500">
+              {t("empty")}
+            </div>
+          ) : (
+            <>
+              <div className="relative h-[220px] rounded-[8px] border border-emerald-950/10 bg-[#071510] p-4">
+                <svg
+                  viewBox="0 0 100 100"
+                  preserveAspectRatio="none"
+                  className="h-full w-full overflow-visible"
+                  aria-hidden="true"
+                >
+                  <defs>
+                    <linearGradient id="grow-curve-fill" x1="0" x2="0" y1="0" y2="1">
+                      <stop offset="0%" stopColor="#34d399" stopOpacity="0.35" />
+                      <stop offset="100%" stopColor="#34d399" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  <path
+                    d={`${path} L 100 100 L 0 100 Z`}
+                    fill="url(#grow-curve-fill)"
+                  />
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke="#6ee7b7"
+                    strokeLinecap="round"
+                    strokeWidth="2.4"
+                    vectorEffect="non-scaling-stroke"
+                  />
+                </svg>
+                <div className="pointer-events-none absolute inset-4 flex flex-col justify-between text-[10px] font-mono text-emerald-50/55">
+                  <span>{formatUsdNumber(maxPrice)}</span>
+                  <span>{formatUsdNumber(minPrice)}</span>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {points.map((point) => (
+                  <div
+                    key={point.label}
+                    className="rounded-[8px] border border-zinc-200 bg-[#f7f9f4] p-3"
+                  >
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+                      {point.label}
+                    </div>
+                    <div className="mt-1 font-mono text-sm font-semibold text-zinc-950">
+                      {formatUsd18(point.salePrice)}
+                    </div>
+                    <div className="mt-1 text-[11px] leading-4 text-zinc-500">
+                      {point.cumulativeUsd === 0n
+                        ? t("current")
+                        : t("mints", {
+                            amount: formatGrowCompact(point.minted),
+                          })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -142,9 +293,82 @@ function Stat({
   );
 }
 
+function CurveMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-[8px] border border-zinc-200 bg-[#f7f9f4] p-3">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        {label}
+      </div>
+      <div className="mt-1 font-mono text-lg font-semibold text-zinc-950">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function buildCurvePoints(
+  floor: bigint,
+  markupBps: bigint,
+  circulating: bigint,
+): CurvePoint[] {
+  const cumulativeUsd = [0n, 100n, 250n, 500n, 1_000n, 2_500n].map(
+    (value) => value * 10n ** 18n,
+  );
+  if (floor === 0n || circulating === 0n) {
+    return cumulativeUsd.map((value) => ({
+      label: value === 0n ? "$0" : `+$${formatCompactUsd(value)}`,
+      cumulativeUsd: value,
+      floor: 0n,
+      salePrice: 0n,
+      minted: 0n,
+    }));
+  }
+
+  let backing = (floor * circulating) / 10n ** 18n;
+  let supply = circulating;
+  let consumed = 0n;
+  let mintedTotal = 0n;
+
+  return cumulativeUsd.map((target) => {
+    const delta = target - consumed;
+    if (delta > 0n && supply > 0n) {
+      const currentFloor = (backing * 10n ** 18n) / supply;
+      const currentSalePrice =
+        (currentFloor * (10_000n + markupBps)) / 10_000n;
+      if (currentSalePrice > 0n) {
+        const minted = (delta * 10n ** 18n) / currentSalePrice;
+        backing += delta;
+        supply += minted;
+        mintedTotal += minted;
+      }
+      consumed = target;
+    }
+
+    const projectedFloor = supply > 0n ? (backing * 10n ** 18n) / supply : 0n;
+    const projectedSalePrice =
+      (projectedFloor * (10_000n + markupBps)) / 10_000n;
+
+    return {
+      label: target === 0n ? "$0" : `+$${formatCompactUsd(target)}`,
+      cumulativeUsd: target,
+      floor: projectedFloor,
+      salePrice: projectedSalePrice,
+      minted: mintedTotal,
+    };
+  });
+}
+
 function formatUsd18(value: bigint) {
+  if (value === 0n) return "—";
   const amount = Number(formatUnits(value, 18));
   return `$${amount.toLocaleString(undefined, {
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  })}`;
+}
+
+function formatUsdNumber(value: number) {
+  return `$${value.toLocaleString(undefined, {
     minimumFractionDigits: 4,
     maximumFractionDigits: 4,
   })}`;
@@ -154,4 +378,15 @@ function formatWholeGrow(value: bigint) {
   return Number(formatUnits(value, 18)).toLocaleString(undefined, {
     maximumFractionDigits: 0,
   });
+}
+
+function formatGrowCompact(value: bigint) {
+  return Number(formatUnits(value, 18)).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+  });
+}
+
+function formatCompactUsd(value: bigint) {
+  const amount = Number(formatUnits(value, 18));
+  return amount >= 1_000 ? `${amount / 1_000}k` : amount.toLocaleString();
 }
