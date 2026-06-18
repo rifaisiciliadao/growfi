@@ -17,7 +17,7 @@ import {
   ECOMMERCE_MODULE_TYPE,
   ecommerceModuleAbi,
 } from "@/contracts/ecommerce";
-import { campaignModuleHostAbi } from "@/contracts/repayment";
+import { REPAYMENT_MODULE_TYPE, campaignModuleHostAbi } from "@/contracts/repayment";
 import {
   createEcommerceOrderDraft,
   sendEcommercePurchaseReceipt,
@@ -1058,6 +1058,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
   const [price, setPrice] = useState("18");
   const [inventory, setInventory] = useState("100");
   const [repaymentPct, setRepaymentPct] = useState("10");
+  const [skuIdOverride, setSkuIdOverride] = useState<`0x${string}` | null>(null);
   const [catalogHydratedURI, setCatalogHydratedURI] = useState("");
   const [skuHydratedId, setSkuHydratedId] = useState("");
   const [pending, setPending] = useState<string | null>(null);
@@ -1089,6 +1090,20 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
     query: { enabled: isAttached, refetchInterval: 20_000 },
   });
 
+  const { data: repaymentSlotData } = useReadContract({
+    address: campaignAddress,
+    abi: campaignModuleHostAbi,
+    functionName: "moduleSlot",
+    args: [REPAYMENT_MODULE_TYPE],
+    chainId: EXPECTED_CHAIN_ID,
+    query: { refetchInterval: 20_000 },
+  });
+  const repaymentSlot = repaymentSlotData as
+    | readonly [Address, `0x${string}`, string, bigint, boolean]
+    | undefined;
+  const repaymentModuleActive =
+    Boolean(repaymentSlot?.[4]) && (repaymentSlot?.[0] ?? zeroAddress) !== zeroAddress;
+
   const catalogURI = (reads?.[0]?.result as string | undefined) ?? "";
   const currentProtocolFee = Number((reads?.[1]?.result as number | bigint | undefined) ?? 0);
   const currentRepayment = Number((reads?.[2]?.result as number | bigint | undefined) ?? 0);
@@ -1109,18 +1124,25 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
     if (!catalogURI || !managerCatalog || catalogHydratedURI === catalogURI) return;
     const firstItem = managerCatalog.items[0];
     if (firstItem) {
-      setSkuKey(firstItem.skuId);
+      const existingSkuKey =
+        typeof firstItem.skuKey === "string" ? firstItem.skuKey.trim() : "";
+      setSkuKey(existingSkuKey || DEFAULT_SKU_KEY);
+      setSkuIdOverride(existingSkuKey ? null : firstItem.skuId);
       setProductName(firstItem.name?.trim() || t("defaultProductName"));
       setDescription(firstItem.description?.trim() || t("defaultProductDescription"));
       setImage(firstItem.image?.trim() || "");
       setImagePreview(firstItem.image?.trim() || "");
       setImageFile(null);
     }
-    setRepaymentPct(formatBpsPercent(managerCatalog.repaymentAllocationBps ?? currentRepayment));
+    setRepaymentPct(
+      repaymentModuleActive
+        ? formatBpsPercent(managerCatalog.repaymentAllocationBps ?? currentRepayment)
+        : "0",
+    );
     setCatalogHydratedURI(catalogURI);
-  }, [catalogHydratedURI, catalogURI, currentRepayment, managerCatalog, t]);
+  }, [catalogHydratedURI, catalogURI, currentRepayment, managerCatalog, repaymentModuleActive, t]);
 
-  const skuId = useMemo(() => resolveSkuId(skuKey), [skuKey]);
+  const skuId = useMemo(() => skuIdOverride ?? resolveSkuId(skuKey), [skuIdOverride, skuKey]);
 
   const { data: skuData } = useReadContract({
     address: campaignAddress,
@@ -1150,7 +1172,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
       if (!productName.trim()) throw new Error(t("nameRequired"));
       const priceUsdc = parseUnits(price || "0", USDC_DECIMALS);
       const inventoryUnits = BigInt(inventory || "0");
-      const repayment = percentToBps(repaymentPct || "0");
+      const repayment = repaymentModuleActive ? percentToBps(repaymentPct || "0") : 0;
       if (priceUsdc === 0n || inventoryUnits === 0n) throw new Error(t("skuRequired"));
 
       let imageUrl = image.trim();
@@ -1288,12 +1310,21 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
           </span>
           <input
             value={skuKey}
-            onChange={(e) => setSkuKey(e.target.value)}
+            onChange={(e) => {
+              setSkuKey(e.target.value);
+              setSkuIdOverride(null);
+              setSkuHydratedId("");
+            }}
             className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
           />
           <span className="mt-1 block text-[11px] leading-4 text-on-surface-variant">
             {t("skuHint")}
           </span>
+          {skuIdOverride && (
+            <span className="mt-1 block text-[11px] leading-4 text-on-surface-variant">
+              {t("skuIdPreserved", { id: shortHash(skuIdOverride) })}
+            </span>
+          )}
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
@@ -1402,11 +1433,14 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
             max="100"
             step="0.01"
             value={repaymentPct}
+            disabled={!repaymentModuleActive}
             onChange={(e) => setRepaymentPct(e.target.value)}
-            className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
+            className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50 disabled:cursor-not-allowed disabled:opacity-60"
           />
           <span className="mt-1 block text-[11px] text-on-surface-variant">
-            {t("currentPct", { value: formatBpsPercent(currentRepayment) })}
+            {repaymentModuleActive
+              ? t("currentPct", { value: formatBpsPercent(currentRepayment) })
+              : t("repaymentInactive")}
           </span>
         </label>
       </div>
