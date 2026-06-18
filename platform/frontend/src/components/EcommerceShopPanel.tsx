@@ -1173,7 +1173,9 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
       const priceUsdc = parseUnits(price || "0", USDC_DECIMALS);
       const inventoryUnits = BigInt(inventory || "0");
       const repayment = repaymentModuleActive ? percentToBps(repaymentPct || "0") : 0;
+      const shouldUpdateRepayment = repaymentModuleActive && currentRepayment !== repayment;
       if (priceUsdc === 0n || inventoryUnits === 0n) throw new Error(t("skuRequired"));
+      let finalTxHash: `0x${string}` | undefined;
 
       let imageUrl = image.trim();
       if (imageFile) {
@@ -1220,6 +1222,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
         setPending(t("attachChain"));
         const attachReceipt = await waitForTx(attachHash);
         if (attachReceipt.status !== "success") throw new Error("attachModule reverted");
+        finalTxHash = attachHash;
 
         setPending(t("initializeSig"));
         const initHash = await writeContractAsync({
@@ -1232,7 +1235,21 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
         setPending(t("initializeChain"));
         const initReceipt = await waitForTx(initHash);
         if (initReceipt.status !== "success") throw new Error("initializeEcommerceByProducer reverted");
+        finalTxHash = initHash;
       } else {
+        setPending(t("skuSig"));
+        const skuHash = await writeContractAsync({
+          address: campaignAddress,
+          abi: ecommerceModuleAbi,
+          functionName: "setSku",
+          args: [skuId, priceUsdc, inventoryUnits, true],
+          chainId: EXPECTED_CHAIN_ID,
+        });
+        setPending(t("skuChain"));
+        const skuReceipt = await waitForTx(skuHash);
+        if (skuReceipt.status !== "success") throw new Error("setSku reverted");
+        finalTxHash = skuHash;
+
         setPending(t("catalogSig"));
         const catalogHash = await writeContractAsync({
           address: campaignAddress,
@@ -1244,34 +1261,41 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
         setPending(t("catalogChain"));
         const catalogReceipt = await waitForTx(catalogHash);
         if (catalogReceipt.status !== "success") throw new Error("setCatalogURI reverted");
+        finalTxHash = catalogHash;
       }
 
-      setPending(t("repaymentSig"));
-      const repaymentHash = await writeContractAsync({
-        address: campaignAddress,
-        abi: ecommerceModuleAbi,
-        functionName: "setRepaymentAllocationBps",
-        args: [repayment],
-        chainId: EXPECTED_CHAIN_ID,
-      });
-      setPending(t("repaymentChain"));
-      const repaymentReceipt = await waitForTx(repaymentHash);
-      if (repaymentReceipt.status !== "success") throw new Error("setRepaymentAllocationBps reverted");
+      if (isAttached && shouldUpdateRepayment) {
+        setPending(t("repaymentSig"));
+        const repaymentHash = await writeContractAsync({
+          address: campaignAddress,
+          abi: ecommerceModuleAbi,
+          functionName: "setRepaymentAllocationBps",
+          args: [repayment],
+          chainId: EXPECTED_CHAIN_ID,
+        });
+        setPending(t("repaymentChain"));
+        const repaymentReceipt = await waitForTx(repaymentHash);
+        if (repaymentReceipt.status !== "success") throw new Error("setRepaymentAllocationBps reverted");
+        finalTxHash = repaymentHash;
+      }
 
-      setPending(t("skuSig"));
-      const skuHash = await writeContractAsync({
-        address: campaignAddress,
-        abi: ecommerceModuleAbi,
-        functionName: "setSku",
-        args: [skuId, priceUsdc, inventoryUnits, true],
-        chainId: EXPECTED_CHAIN_ID,
-      });
-      setPending(t("skuChain"));
-      const skuReceipt = await waitForTx(skuHash);
-      if (skuReceipt.status !== "success") throw new Error("setSku reverted");
+      if (!isAttached) {
+        setPending(t("skuSig"));
+        const skuHash = await writeContractAsync({
+          address: campaignAddress,
+          abi: ecommerceModuleAbi,
+          functionName: "setSku",
+          args: [skuId, priceUsdc, inventoryUnits, true],
+          chainId: EXPECTED_CHAIN_ID,
+        });
+        setPending(t("skuChain"));
+        const skuReceipt = await waitForTx(skuHash);
+        if (skuReceipt.status !== "success") throw new Error("setSku reverted");
+        finalTxHash = skuHash;
+      }
 
       await refresh();
-      notify.success(t("published"), skuHash);
+      notify.success(t("published"), finalTxHash);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (!/user (rejected|denied)/i.test(message)) setError(message);
