@@ -21,6 +21,7 @@ import { campaignModuleHostAbi } from "@/contracts/repayment";
 import {
   createEcommerceOrderDraft,
   sendEcommercePurchaseReceipt,
+  uploadImage,
   uploadEcommerceCatalog,
   type EcommerceCatalog,
   type EcommerceCatalogItem,
@@ -38,6 +39,8 @@ const DEMO_CATALOG_DESCRIPTION = "On-chain checkout for products reserved from t
 const DEMO_PRODUCT_NAME = "Campaign product";
 const DEMO_PRODUCT_DESCRIPTION = "Product reserved from this campaign shop.";
 const DEMO_PRODUCT_DESCRIPTION_ALT = "Product reserved from the campaign shop.";
+const DEFAULT_SKU_KEY = "tshirt";
+const ECOMMERCE_PROTOCOL_FEE_BPS = 0;
 const FAUCET_ENABLED =
   EXPECTED_CHAIN_ID === 31337 ||
   EXPECTED_CHAIN_ID === 84532 ||
@@ -146,6 +149,25 @@ function formatUsdc(value: bigint): string {
 
 function shortHash(value: string): string {
   return `${value.slice(0, 8)}…${value.slice(-6)}`;
+}
+
+function formatBpsPercent(value: number): string {
+  return (value / 100).toLocaleString(undefined, {
+    maximumFractionDigits: 2,
+    useGrouping: false,
+  });
+}
+
+function percentToBps(value: string): number {
+  const parsed = Number(value.replace(",", "."));
+  if (!Number.isFinite(parsed) || parsed < 0) return 0;
+  return Math.round(parsed * 100);
+}
+
+function resolveSkuId(value: string): `0x${string}` {
+  const trimmed = value.trim();
+  if (/^0x[a-fA-F0-9]{64}$/.test(trimmed)) return trimmed as `0x${string}`;
+  return keccak256(toBytes(trimmed || DEFAULT_SKU_KEY));
 }
 
 function localizedText(
@@ -720,7 +742,13 @@ export function EcommerceShopPanel({
                         disabled={interactionBusy || max === 0}
                         className="flex h-12 w-full items-center justify-center rounded-full bg-on-surface px-5 text-sm font-bold text-surface transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-45"
                       >
-                        {max === 0 ? t("soldOut") : t("addToCart")}
+                        {!sku?.exists
+                          ? t("skuMissing")
+                          : !sku.active
+                            ? t("skuInactive")
+                            : max === 0
+                              ? t("soldOut")
+                              : t("addToCart")}
                       </button>
                     )}
                   </div>
@@ -1021,14 +1049,17 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
   const { ecommerceImpl } = getAddresses();
   const { writeContractAsync } = useWriteContract();
 
-  const [skuKey, setSkuKey] = useState("olive-oil-500ml");
+  const [skuKey, setSkuKey] = useState(DEFAULT_SKU_KEY);
   const [productName, setProductName] = useState(() => t("defaultProductName"));
   const [description, setDescription] = useState(() => t("defaultProductDescription"));
   const [image, setImage] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState("");
   const [price, setPrice] = useState("18");
   const [inventory, setInventory] = useState("100");
-  const [repaymentBps, setRepaymentBps] = useState("1000");
-  const [protocolFeeBps, setProtocolFeeBps] = useState("0");
+  const [repaymentPct, setRepaymentPct] = useState("10");
+  const [catalogHydratedURI, setCatalogHydratedURI] = useState("");
+  const [skuHydratedId, setSkuHydratedId] = useState("");
   const [pending, setPending] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -1064,7 +1095,49 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
   const grossSales = (reads?.[3]?.result as bigint | undefined) ?? 0n;
   const repaymentAllocated = (reads?.[4]?.result as bigint | undefined) ?? 0n;
 
-  const skuId = useMemo(() => keccak256(toBytes(skuKey.trim() || "sku")), [skuKey]);
+  const { data: managerCatalog } = useQuery({
+    queryKey: ["ecommerce-manager-catalog", catalogURI],
+    enabled: Boolean(catalogURI),
+    queryFn: async (): Promise<EcommerceCatalog> => {
+      const res = await fetch(catalogURI, { cache: "no-store" });
+      if (!res.ok) throw new Error(`Catalog fetch failed: ${res.status}`);
+      return res.json();
+    },
+  });
+
+  useEffect(() => {
+    if (!catalogURI || !managerCatalog || catalogHydratedURI === catalogURI) return;
+    const firstItem = managerCatalog.items[0];
+    if (firstItem) {
+      setSkuKey(firstItem.skuId);
+      setProductName(firstItem.name?.trim() || t("defaultProductName"));
+      setDescription(firstItem.description?.trim() || t("defaultProductDescription"));
+      setImage(firstItem.image?.trim() || "");
+      setImagePreview(firstItem.image?.trim() || "");
+      setImageFile(null);
+    }
+    setRepaymentPct(formatBpsPercent(managerCatalog.repaymentAllocationBps ?? currentRepayment));
+    setCatalogHydratedURI(catalogURI);
+  }, [catalogHydratedURI, catalogURI, currentRepayment, managerCatalog, t]);
+
+  const skuId = useMemo(() => resolveSkuId(skuKey), [skuKey]);
+
+  const { data: skuData } = useReadContract({
+    address: campaignAddress,
+    abi: ecommerceModuleAbi,
+    functionName: "sku",
+    args: [skuId],
+    chainId: EXPECTED_CHAIN_ID,
+    query: { enabled: isAttached, refetchInterval: 20_000 },
+  });
+  const currentSku = useMemo(() => readSku(skuData), [skuData]);
+
+  useEffect(() => {
+    if (!currentSku?.exists || skuHydratedId === skuId) return;
+    setPrice(formatUnits(currentSku.priceUsdc, USDC_DECIMALS));
+    setInventory(currentSku.inventory.toString());
+    setSkuHydratedId(skuId);
+  }, [currentSku, skuHydratedId, skuId]);
 
   const refresh = async () => {
     await Promise.all([refetchSlot(), refetchReads()]);
@@ -1077,9 +1150,18 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
       if (!productName.trim()) throw new Error(t("nameRequired"));
       const priceUsdc = parseUnits(price || "0", USDC_DECIMALS);
       const inventoryUnits = BigInt(inventory || "0");
-      const repayment = Number(repaymentBps || "0");
-      const protocolFee = Number(protocolFeeBps || "0");
+      const repayment = percentToBps(repaymentPct || "0");
       if (priceUsdc === 0n || inventoryUnits === 0n) throw new Error(t("skuRequired"));
+
+      let imageUrl = image.trim();
+      if (imageFile) {
+        setPending(t("uploadingImage"));
+        const uploaded = await uploadImage(imageFile);
+        imageUrl = uploaded.url;
+        setImage(uploaded.url);
+        setImagePreview(uploaded.url);
+        setImageFile(null);
+      }
 
       setPending(t("uploading"));
       const catalog = await uploadEcommerceCatalog({
@@ -1092,7 +1174,8 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
             skuId,
             name: productName.trim(),
             description: description.trim(),
-            image: image.trim() || undefined,
+            image: imageUrl || undefined,
+            skuKey: skuKey.trim(),
             unit: "unit",
           } as EcommerceCatalogItem,
         ],
@@ -1121,7 +1204,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
           address: campaignAddress,
           abi: ecommerceModuleAbi,
           functionName: "initializeEcommerceByProducer",
-          args: [protocolFee, catalog.url],
+          args: [ECOMMERCE_PROTOCOL_FEE_BPS, catalog.url],
           chainId: EXPECTED_CHAIN_ID,
         });
         setPending(t("initializeChain"));
@@ -1139,20 +1222,6 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
         setPending(t("catalogChain"));
         const catalogReceipt = await waitForTx(catalogHash);
         if (catalogReceipt.status !== "success") throw new Error("setCatalogURI reverted");
-
-        if (currentProtocolFee !== protocolFee) {
-          setPending(t("feeSig"));
-          const feeHash = await writeContractAsync({
-            address: campaignAddress,
-            abi: ecommerceModuleAbi,
-            functionName: "setProtocolFeeBps",
-            args: [protocolFee],
-            chainId: EXPECTED_CHAIN_ID,
-          });
-          setPending(t("feeChain"));
-          const feeReceipt = await waitForTx(feeHash);
-          if (feeReceipt.status !== "success") throw new Error("setProtocolFeeBps reverted");
-        }
       }
 
       setPending(t("repaymentSig"));
@@ -1222,6 +1291,9 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
             onChange={(e) => setSkuKey(e.target.value)}
             className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
           />
+          <span className="mt-1 block text-[11px] leading-4 text-on-surface-variant">
+            {t("skuHint")}
+          </span>
         </label>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
@@ -1244,17 +1316,45 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
             className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
           />
         </label>
-        <label className="block md:col-span-2">
+        <div className="md:col-span-2">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
             {t("image")}
           </span>
-          <input
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-            placeholder="https://…"
-            className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
-          />
-        </label>
+          <div className="grid gap-3 md:grid-cols-[1fr_auto] md:items-start">
+            <input
+              value={image}
+              onChange={(e) => {
+                setImage(e.target.value);
+                setImagePreview(e.target.value);
+                setImageFile(null);
+              }}
+              placeholder="https://…"
+              className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
+            />
+            <label className="inline-flex h-10 cursor-pointer items-center justify-center rounded-lg border border-outline-variant/15 bg-surface-container px-4 text-sm font-semibold text-on-surface transition hover:border-primary/40">
+              {t("uploadImage")}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(event) => {
+                  const file = event.target.files?.[0];
+                  if (!file) return;
+                  setImageFile(file);
+                  const preview = URL.createObjectURL(file);
+                  setImagePreview(preview);
+                }}
+              />
+            </label>
+          </div>
+          {imagePreview && (
+            <img
+              src={imagePreview}
+              alt=""
+              className="mt-3 h-24 w-24 rounded-lg border border-outline-variant/15 object-cover"
+            />
+          )}
+        </div>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
             {t("price")}
@@ -1281,38 +1381,32 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
             className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
           />
         </label>
-        <label className="block">
+        <div className="block rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
             {t("protocolFee")}
           </span>
-          <input
-            type="number"
-            min="0"
-            max="1000"
-            step="1"
-            value={protocolFeeBps}
-            onChange={(e) => setProtocolFeeBps(e.target.value)}
-            className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
-          />
-          <span className="mt-1 block text-[11px] text-on-surface-variant">
-            {t("currentBps", { value: currentProtocolFee })}
+          <div className="text-sm font-semibold text-on-surface">
+            {formatBpsPercent(currentProtocolFee)}%
+          </div>
+          <span className="mt-1 block text-[11px] leading-4 text-on-surface-variant">
+            {t("protocolFeeHint")}
           </span>
-        </label>
+        </div>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-            {t("repaymentBps")}
+            {t("repaymentPct")}
           </span>
           <input
             type="number"
             min="0"
-            max="10000"
-            step="1"
-            value={repaymentBps}
-            onChange={(e) => setRepaymentBps(e.target.value)}
+            max="100"
+            step="0.01"
+            value={repaymentPct}
+            onChange={(e) => setRepaymentPct(e.target.value)}
             className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
           />
           <span className="mt-1 block text-[11px] text-on-surface-variant">
-            {t("currentBps", { value: currentRepayment })}
+            {t("currentPct", { value: formatBpsPercent(currentRepayment) })}
           </span>
         </label>
       </div>
