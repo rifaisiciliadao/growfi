@@ -1590,59 +1590,80 @@
   },
   "investors": {
     "hero": {
-      "kicker": "Seed round open",
-      "title": "GrowFi is raising to build the capital layer for regenerative agriculture.",
-      "body": "We are turning real harvest finance into programmable infrastructure on Ethereum mainnet: tokenized campaigns, automated treasury allocation, staking, harvest settlement, and verified grower onboarding.",
-      "requestCta": "Request a demo",
+      "kicker": "Live on Ethereum mainnet",
+      "title": "GrowFi is building the capital market for real harvests.",
+      "body": "The protocol is live on Ethereum mainnet: campaign creation, USDC funding, $GROW treasury automation, staking, producer verification and harvest settlement now run on production contracts, not test rails.",
+      "requestCta": "Request investor access",
+      "campaignCta": "Explore live campaigns",
       "deckCta": "Download pitch deck"
     },
     "stats": {
       "protocol": {
         "label": "Protocol",
         "value": "Ethereum mainnet",
-        "hint": "Production settlement is designed for Ethereum L1, not an app-specific L2."
+        "hint": "Chain 1 contracts, live subgraph and real USDC settlement are active."
       },
       "campaigns": {
         "label": "Supply",
-        "value": "2 seeded campaigns",
-        "hint": "Olive and vineyard test campaigns are active for investor walkthroughs."
+        "value": "Live campaigns",
+        "valueWithCount": "{count, plural, =0 {Live campaigns} one {# live campaign} other {# live campaigns}}",
+        "hint": "Production campaigns are indexed from mainnet and visible in the app."
       },
       "treasury": {
         "label": "Treasury",
-        "value": "$GROW ready",
-        "hint": "Direct sale, staking pool and campaign allocation are wired into the $GROW treasury loop."
+        "value": "$GROW live",
+        "hint": "Direct sale, staking pool and allocation rails are connected to production campaigns."
+      }
+    },
+    "proof": {
+      "kicker": "Live protocol proof",
+      "network": {
+        "label": "Network",
+        "value": "Ethereum mainnet",
+        "hint": "Chain 1 is the production settlement target."
+      },
+      "factory": {
+        "label": "Factory",
+        "hint": "Current campaign factory for mainnet launches."
+      },
+      "indexer": {
+        "label": "Indexer",
+        "value": "ugraph live",
+        "hint": "Campaign and treasury activity stream from the production subgraph."
       }
     },
     "thesis": {
       "kicker": "Investment thesis",
-      "title": "Agricultural working capital is still offline. GrowFi makes it legible, liquid and programmable.",
+      "title": "Agricultural working capital is still offline. GrowFi makes real productive assets investable onchain.",
       "items": {
         "market": "Small and medium growers need seasonal capital before harvest, while investors need transparent exposure to real productive assets.",
-        "protocol": "GrowFi converts each harvest into an auditable onchain campaign with escrow, refunds, staking yield, and settlement logic built into the product flow.",
-        "distribution": "The first wedge is Sicily: high-value crops, strong territorial brands, and a producer network that can be onboarded campaign by campaign."
+        "protocol": "GrowFi converts each harvest into an auditable onchain campaign with USDC escrow, refunds, staking yield, repayment modules and harvest settlement.",
+        "distribution": "The first wedge is Sicily: high-value crops, strong territorial brands and a producer network that can launch production campaigns one by one."
       }
     },
     "milestones": {
+      "kicker": "What is live",
+      "title": "The investor story is now a production mainnet rollout.",
       "product": {
         "phase": "Product",
-        "title": "Protocol v4 is deployed",
-        "body": "Campaign factory, modules, $GROW treasury, staking and harvest accounting are aligned for the Ethereum mainnet production path."
+        "title": "Mainnet protocol is live",
+        "body": "Campaign factory, modules, $GROW treasury, staking and harvest accounting are deployed on Ethereum mainnet."
       },
       "supply": {
         "phase": "Supply",
-        "title": "Demo campaigns are live",
-        "body": "Olive IGP Sicily and Vineyard of Etna are seeded with metadata, KYC producer state and indexed activity."
+        "title": "First production campaign is running",
+        "body": "Campaign activity is indexed from ugraph and new producers can launch through the production app."
       },
       "seed": {
-        "phase": "Seed",
-        "title": "The round funds Ethereum production",
-        "body": "Capital goes into audits, compliance, producer onboarding, liquidity operations and the first production campaigns on Ethereum."
+        "phase": "Scale",
+        "title": "The round expands real supply",
+        "body": "Capital goes into audits, compliance, producer onboarding, liquidity operations and a deeper pipeline of mainnet campaigns."
       }
     },
     "form": {
       "kicker": "Investor access",
-      "title": "Request the deck and a walkthrough.",
-      "body": "Tell us who you are and what you want to review. We will reply with the current materials and schedule a call if there is fit.",
+      "title": "Request the deck and mainnet walkthrough.",
+      "body": "Tell us who you are and what you want to review. We will share the current materials, live contract context and campaign pipeline.",
       "deck": "Download pitch deck",
       "name": "Name",
       "email": "Email",
@@ -1657,7 +1678,7 @@
     "mainnet": {
       "kicker": "Why Ethereum mainnet",
       "title": "We are building where long-term settlement is hardest to compromise.",
-      "body": "Agricultural finance is slow-cycle finance. A harvest, a buyback window and a producer relationship need infrastructure that can outlive market narratives.",
+      "body": "GrowFi is already live on Ethereum L1 because agricultural finance is slow-cycle finance. A harvest, a buyback window and a producer relationship need infrastructure that can outlive market narratives.",
       "items": {
         "security": "Ethereum L1 is the most battle-tested settlement layer for assets that must remain verifiable over years, not weeks.",
         "settlement": "Harvest claims, refunds and treasury reserves need strong finality and native liquidity more than cheap execution alone.",

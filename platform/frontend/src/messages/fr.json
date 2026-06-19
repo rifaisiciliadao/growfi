@@ -1590,59 +1590,80 @@
   },
   "investors": {
     "hero": {
-      "kicker": "Seed round ouvert",
-      "title": "GrowFi lève des fonds pour bâtir la couche financière de l’agriculture régénérative.",
-      "body": "Nous transformons le financement de récoltes réelles en infrastructure programmable sur Ethereum mainnet : campagnes tokenisées, treasury automatisée, staking, settlement de récolte et onboarding vérifié des producteurs.",
-      "requestCta": "Demander une démo",
+      "kicker": "Live sur Ethereum mainnet",
+      "title": "GrowFi construit le marché de capitaux des récoltes réelles.",
+      "body": "Le protocole est live sur Ethereum mainnet : création de campagnes, funding en USDC, automatisation treasury $GROW, staking, vérification producteurs et settlement de récolte tournent sur des contrats de production, pas sur des rails de test.",
+      "requestCta": "Demander l'accès investisseur",
+      "campaignCta": "Explorer les campagnes live",
       "deckCta": "Télécharger le pitch deck"
     },
     "stats": {
       "protocol": {
         "label": "Protocole",
         "value": "Ethereum mainnet",
-        "hint": "Le settlement de production est conçu pour Ethereum L1, pas pour une L2 applicative."
+        "hint": "Contrats chain 1, subgraph live et settlement réel en USDC sont actifs."
       },
       "campaigns": {
         "label": "Supply",
-        "value": "2 campagnes seed",
-        "hint": "Olive et vignoble sont actifs pour les walkthroughs investisseurs."
+        "value": "Campagnes live",
+        "valueWithCount": "{count, plural, =0 {Campagnes live} one {# campagne live} other {# campagnes live}}",
+        "hint": "Les campagnes de production sont indexées depuis mainnet et visibles dans l'app."
       },
       "treasury": {
         "label": "Trésorerie",
-        "value": "$GROW prêt",
-        "hint": "Vente directe, staking pool et allocation aux campagnes sont reliés à la boucle treasury $GROW."
+        "value": "$GROW live",
+        "hint": "Vente directe, staking pool et rails d'allocation sont connectés aux campagnes de production."
+      }
+    },
+    "proof": {
+      "kicker": "Preuve protocole live",
+      "network": {
+        "label": "Network",
+        "value": "Ethereum mainnet",
+        "hint": "Chain 1 est la cible de settlement de production."
+      },
+      "factory": {
+        "label": "Factory",
+        "hint": "Campaign factory actuelle pour les lancements mainnet."
+      },
+      "indexer": {
+        "label": "Indexer",
+        "value": "ugraph live",
+        "hint": "L'activité campagnes et treasury arrive du subgraph de production."
       }
     },
     "thesis": {
       "kicker": "Thèse d’investissement",
-      "title": "Le fonds de roulement agricole reste offline. GrowFi le rend lisible, liquide et programmable.",
+      "title": "Le fonds de roulement agricole reste offline. GrowFi rend investissables on-chain des actifs productifs réels.",
       "items": {
         "market": "Les petits et moyens producteurs ont besoin de capital saisonnier avant la récolte, tandis que les investisseurs cherchent une exposition transparente à des actifs productifs réels.",
-        "protocol": "GrowFi convertit chaque récolte en campagne on-chain vérifiable avec escrow, remboursements, staking yield et logique de règlement intégrée.",
-        "distribution": "Le premier wedge est la Sicile : cultures à forte valeur, marques territoriales fortes et réseau de producteurs activable campagne par campagne."
+        "protocol": "GrowFi convertit chaque récolte en campagne on-chain vérifiable avec escrow USDC, remboursements, staking yield, modules de repayment et settlement de récolte.",
+        "distribution": "Le premier wedge est la Sicile : cultures à forte valeur, marques territoriales fortes et réseau de producteurs capable de lancer des campagnes de production une par une."
       }
     },
     "milestones": {
+      "kicker": "Ce qui est live",
+      "title": "L'histoire investisseur est maintenant un rollout de production sur mainnet.",
       "product": {
         "phase": "Produit",
-        "title": "Protocole v4 déployé",
-        "body": "Campaign factory, modules, treasury $GROW, staking et comptabilité harvest sont alignés avec la trajectoire de production Ethereum mainnet."
+        "title": "Protocole mainnet live",
+        "body": "Campaign factory, modules, treasury $GROW, staking et comptabilité harvest sont déployés sur Ethereum mainnet."
       },
       "supply": {
         "phase": "Supply",
-        "title": "Campagnes démo live",
-        "body": "Olive IGP Sicily et Vineyard of Etna sont seedées avec métadonnées, état KYC producteur et activité indexée."
+        "title": "Première campagne de production active",
+        "body": "L'activité des campagnes est indexée par ugraph et de nouveaux producteurs peuvent lancer depuis l'app de production."
       },
       "seed": {
-        "phase": "Seed",
-        "title": "Le round finance la production sur Ethereum",
-        "body": "Le capital finance audits, compliance, onboarding producteurs, opérations de liquidité et les premières campagnes en production sur Ethereum."
+        "phase": "Scale",
+        "title": "Le round étend la supply réelle",
+        "body": "Le capital finance audits, compliance, onboarding producteurs, opérations de liquidité et une pipeline plus profonde de campagnes mainnet."
       }
     },
     "form": {
       "kicker": "Accès investisseurs",
-      "title": "Demandez le deck et un walkthrough.",
-      "body": "Dites-nous qui vous êtes et ce que vous souhaitez étudier. Nous répondrons avec les documents à jour et organiserons un appel s’il y a adéquation.",
+      "title": "Demandez le deck et le walkthrough mainnet.",
+      "body": "Dites-nous qui vous êtes et ce que vous souhaitez étudier. Nous partagerons les documents à jour, le contexte des contrats live et la pipeline campagnes.",
       "deck": "Télécharger le pitch deck",
       "name": "Nom",
       "email": "Email",
@@ -1657,7 +1678,7 @@
     "mainnet": {
       "kicker": "Pourquoi Ethereum mainnet",
       "title": "Nous construisons là où le settlement long terme est le plus difficile à compromettre.",
-      "body": "La finance agricole suit des cycles lents. Une récolte, une fenêtre buyback et une relation producteur ont besoin d’une infrastructure qui dépasse les narratifs de marché.",
+      "body": "GrowFi est déjà live sur Ethereum L1 parce que la finance agricole suit des cycles lents. Une récolte, une fenêtre buyback et une relation producteur ont besoin d’une infrastructure qui dépasse les narratifs de marché.",
       "items": {
         "security": "Ethereum L1 est la couche de settlement la plus éprouvée pour des actifs qui doivent rester vérifiables pendant des années, pas des semaines.",
         "settlement": "Claims de récolte, refunds et réserves treasury demandent une finalité forte et une liquidité native plus qu’une simple exécution bon marché.",
