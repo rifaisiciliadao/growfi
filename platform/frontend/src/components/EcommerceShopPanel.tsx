@@ -40,7 +40,6 @@ const DEMO_PRODUCT_NAME = "Campaign product";
 const DEMO_PRODUCT_DESCRIPTION = "Product reserved from this campaign shop.";
 const DEMO_PRODUCT_DESCRIPTION_ALT = "Product reserved from the campaign shop.";
 const DEFAULT_SKU_KEY = "tshirt";
-const ECOMMERCE_PROTOCOL_FEE_PLACEHOLDER_BPS = 0;
 const FAUCET_ENABLED =
   EXPECTED_CHAIN_ID === 31337 ||
   EXPECTED_CHAIN_ID === 84532 ||
@@ -1081,7 +1080,6 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
     contracts: isAttached
       ? [
           { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "catalogURI", chainId: EXPECTED_CHAIN_ID },
-          { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "protocolFeeBps", chainId: EXPECTED_CHAIN_ID },
           { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "repaymentAllocationBps", chainId: EXPECTED_CHAIN_ID },
           { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "grossSales", chainId: EXPECTED_CHAIN_ID },
           { address: campaignAddress, abi: ecommerceModuleAbi, functionName: "repaymentAllocated", chainId: EXPECTED_CHAIN_ID },
@@ -1105,10 +1103,9 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
     Boolean(repaymentSlot?.[4]) && (repaymentSlot?.[0] ?? zeroAddress) !== zeroAddress;
 
   const catalogURI = (reads?.[0]?.result as string | undefined) ?? "";
-  const currentProtocolFee = Number((reads?.[1]?.result as number | bigint | undefined) ?? 0);
-  const currentRepayment = Number((reads?.[2]?.result as number | bigint | undefined) ?? 0);
-  const grossSales = (reads?.[3]?.result as bigint | undefined) ?? 0n;
-  const repaymentAllocated = (reads?.[4]?.result as bigint | undefined) ?? 0n;
+  const currentRepayment = Number((reads?.[1]?.result as number | bigint | undefined) ?? 0);
+  const grossSales = (reads?.[2]?.result as bigint | undefined) ?? 0n;
+  const repaymentAllocated = (reads?.[3]?.result as bigint | undefined) ?? 0n;
 
   const { data: managerCatalog } = useQuery({
     queryKey: ["ecommerce-manager-catalog", catalogURI],
@@ -1229,7 +1226,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
           address: campaignAddress,
           abi: ecommerceModuleAbi,
           functionName: "initializeEcommerceByProducer",
-          args: [ECOMMERCE_PROTOCOL_FEE_PLACEHOLDER_BPS, catalog.url],
+          args: [0, catalog.url],
           chainId: EXPECTED_CHAIN_ID,
         });
         setPending(t("initializeChain"));
@@ -1436,17 +1433,6 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
             className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50"
           />
         </label>
-        <div className="block rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2">
-          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-            {t("protocolFee")}
-          </span>
-          <div className="text-sm font-semibold text-on-surface">
-            {formatBpsPercent(currentProtocolFee)}%
-          </div>
-          <span className="mt-1 block text-[11px] leading-4 text-on-surface-variant">
-            {t("protocolFeeHint")}
-          </span>
-        </div>
         <label className="block">
           <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
             {t("repaymentPct")}

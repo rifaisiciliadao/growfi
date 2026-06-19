@@ -23,13 +23,6 @@ export const ecommerceModuleAbi = [
   },
   {
     type: "function",
-    name: "setProtocolFeeBps",
-    stateMutability: "nonpayable",
-    inputs: [{ name: "newFeeBps", type: "uint16" }],
-    outputs: [],
-  },
-  {
-    type: "function",
     name: "setRepaymentAllocationBps",
     stateMutability: "nonpayable",
     inputs: [{ name: "newBps", type: "uint16" }],
@@ -89,13 +82,6 @@ export const ecommerceModuleAbi = [
     stateMutability: "view",
     inputs: [],
     outputs: [{ type: "string" }],
-  },
-  {
-    type: "function",
-    name: "protocolFeeBps",
-    stateMutability: "view",
-    inputs: [],
-    outputs: [{ type: "uint16" }],
   },
   {
     type: "function",
