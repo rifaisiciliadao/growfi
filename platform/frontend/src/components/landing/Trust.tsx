@@ -3,11 +3,23 @@
 import { useTranslations } from "next-intl";
 import { useInView } from "@/lib/landing/useInView";
 
-const ITEM_COUNT = 4;
+const ITEM_COUNT = 3;
 
 export function Trust() {
   const t = useTranslations("landing.trust");
   const { ref, inView } = useInView<HTMLDivElement>();
+  const feeRows = [
+    "campaignBuy",
+    "harvestDeposit",
+    "repayment",
+    "ecommerce",
+    "growDirect",
+  ].map((key) => ({
+    flow: t(`feeTable.rows.${key}.flow`),
+    percent: t(`feeTable.rows.${key}.percent`),
+    applies: t(`feeTable.rows.${key}.applies`),
+    route: t(`feeTable.rows.${key}.route`),
+  }));
 
   return (
     <section
@@ -116,6 +128,70 @@ export function Trust() {
                 );
               })}
             </dl>
+
+            <div
+              className={`reveal reveal-delay-4 ${inView ? "in-view" : ""} mt-10 overflow-hidden rounded-[8px] border`}
+              style={{
+                borderColor: "rgba(255,255,255,0.14)",
+                background: "rgba(255,255,255,0.045)",
+              }}
+            >
+              <div className="border-b border-white/10 px-5 py-4 md:px-6">
+                <p
+                  className="text-xs font-bold uppercase tracking-[0.18em]"
+                  style={{
+                    color: "rgba(255,255,255,0.7)",
+                    fontFamily: "var(--font-header)",
+                  }}
+                >
+                  {t("feeTable.kicker")}
+                </p>
+                <h3 className="font-display mt-2 text-2xl text-white">
+                  {t("feeTable.title")}
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[720px] border-collapse text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-white/10">
+                      <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/62 md:px-6">
+                        {t("feeTable.headers.flow")}
+                      </th>
+                      <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/62 md:px-6">
+                        {t("feeTable.headers.percent")}
+                      </th>
+                      <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/62 md:px-6">
+                        {t("feeTable.headers.applies")}
+                      </th>
+                      <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/62 md:px-6">
+                        {t("feeTable.headers.route")}
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {feeRows.map((row) => (
+                      <tr
+                        key={row.flow}
+                        className="border-b border-white/10 last:border-b-0"
+                      >
+                        <th className="px-5 py-4 font-semibold text-white md:px-6">
+                          {row.flow}
+                        </th>
+                        <td className="px-5 py-4 font-mono text-base font-semibold text-[#7ffc97] md:px-6">
+                          {row.percent}
+                        </td>
+                        <td className="px-5 py-4 leading-6 text-white/80 md:px-6">
+                          {row.applies}
+                        </td>
+                        <td className="px-5 py-4 leading-6 text-white/80 md:px-6">
+                          {row.route}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
             <div
               className={`reveal reveal-delay-5 ${inView ? "in-view" : ""} mt-10 rounded-2xl border p-8 transition-all duration-400 hover:border-white/25`}

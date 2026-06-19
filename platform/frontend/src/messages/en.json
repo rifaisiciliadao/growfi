@@ -849,7 +849,7 @@
         "price": "Price (USDC)",
         "inventory": "Inventory",
         "protocolFee": "Protocol fee",
-        "protocolFeeHint": "Set by the contract; producer module updates cannot change it.",
+        "protocolFeeHint": "Set globally by the protocol factory; producers cannot change it.",
         "repaymentPct": "Repayment allocation (%)",
         "currentBps": "Current: {value} bps",
         "currentPct": "Current: {value}%",
@@ -1506,13 +1506,50 @@
           "label": "Optional dMRV",
           "value": "via Silvi",
           "detail": "Satellite monitoring + ground-truth verification. Growers can plug in dMRV to raise campaign trust — public, subgraph-indexed."
-        },
-        {
-          "label": "Protocol fee",
-          "value": "2%",
-          "detail": "Single fee. Deducted at activation and at harvest. Never on the secondary market. No admin withdrawal, no rescue function."
         }
       ],
+      "feeTable": {
+        "kicker": "Fee schedule",
+        "title": "Each flow has its own percentage.",
+        "headers": {
+          "flow": "Flow",
+          "percent": "Rate",
+          "applies": "When it applies",
+          "route": "Destination / note"
+        },
+        "rows": {
+          "campaignBuy": {
+            "flow": "Campaign buy",
+            "percent": "3%",
+            "applies": "Every primary buy through Campaign.buy.",
+            "route": "Sent to the FeeSplitter; the campaign receives the net 97%."
+          },
+          "harvestDeposit": {
+            "flow": "Harvest USDC deposit",
+            "percent": "2%",
+            "applies": "Producer-funded harvest settlement deposits.",
+            "route": "2% to the FeeSplitter, 98% to the holder pool."
+          },
+          "repayment": {
+            "flow": "Repayment redeem",
+            "percent": "2%",
+            "applies": "Early-exit repayment payouts.",
+            "route": "Deducted from gross payout before the holder receives the net."
+          },
+          "ecommerce": {
+            "flow": "Shop / ecommerce",
+            "percent": "3%",
+            "applies": "Every on-chain SKU purchase.",
+            "route": "Global protocol setting from the factory; producers cannot change it."
+          },
+          "growDirect": {
+            "flow": "Direct $GROW buy",
+            "percent": "10% markup",
+            "applies": "Direct stablecoin purchase of $GROW.",
+            "route": "Price markup over floor/reference; it is not a protocol fee."
+          }
+        }
+      },
       "escrowTitle1": "Real escrow.",
       "escrowTitle2": "Automatic refund.",
       "escrowBody": "Funds sit in the Campaign contract until the soft cap is reached. If the deadline passes under-funded, any wallet can trigger buyback — every investor burns their $CAMPAIGN and withdraws the exact USDC they paid in. Zero discretion, one block, no DAO vote."
@@ -1632,16 +1669,59 @@
         "hint": "Campaign and treasury activity stream from the production subgraph."
       }
     },
-    "thesis": {
-      "kicker": "Investment thesis",
-      "title": "Agricultural working capital is still offline. GrowFi makes real productive assets investable onchain.",
-      "items": {
-        "market": "Small and medium growers need seasonal capital before harvest, while investors need transparent exposure to real productive assets.",
-        "protocol": "GrowFi converts each harvest into an auditable onchain campaign with USDC escrow, refunds, staking yield, repayment modules and harvest settlement.",
-        "distribution": "The first wedge is Sicily: high-value crops, strong territorial brands and a producer network that can launch production campaigns one by one."
-      }
-    },
-    "milestones": {
+      "thesis": {
+        "kicker": "Investment thesis",
+        "title": "Agricultural working capital is still offline. GrowFi makes real productive assets investable onchain.",
+        "items": {
+          "market": "Small and medium growers need seasonal capital before harvest, while investors need transparent exposure to real productive assets.",
+          "protocol": "GrowFi converts each harvest into an auditable onchain campaign with USDC escrow, refunds, staking yield, repayment modules and harvest settlement.",
+          "distribution": "The first wedge is Sicily: high-value crops, strong territorial brands and a producer network that can launch production campaigns one by one."
+        }
+      },
+      "fees": {
+        "kicker": "Protocol economics",
+        "title": "The fee schedule is explicit per flow.",
+        "body": "GrowFi does not have one generic 2% fee. Primary campaign buys, harvest settlement, repayment, ecommerce and $GROW direct buys are separate flows with separate mechanics.",
+        "headers": {
+          "flow": "Flow",
+          "percent": "Rate",
+          "applies": "When it applies",
+          "route": "Destination / note"
+        },
+        "rows": {
+          "campaignBuy": {
+            "flow": "Campaign buy",
+            "percent": "3%",
+            "applies": "Every primary buy through Campaign.buy.",
+            "route": "Sent to the FeeSplitter; the campaign receives the net 97%."
+          },
+          "harvestDeposit": {
+            "flow": "Harvest USDC deposit",
+            "percent": "2%",
+            "applies": "Producer-funded harvest settlement deposits.",
+            "route": "2% to the FeeSplitter, 98% to the holder pool."
+          },
+          "repayment": {
+            "flow": "Repayment redeem",
+            "percent": "2%",
+            "applies": "Early-exit repayment payouts.",
+            "route": "Deducted from gross payout before the holder receives the net."
+          },
+          "ecommerce": {
+            "flow": "Shop / ecommerce",
+            "percent": "3%",
+            "applies": "Every on-chain SKU purchase.",
+            "route": "Global protocol setting from the factory; producers cannot change it."
+          },
+          "growDirect": {
+            "flow": "Direct $GROW buy",
+            "percent": "10% markup",
+            "applies": "Direct stablecoin purchase of $GROW.",
+            "route": "Price markup over floor/reference; it is not a protocol fee."
+          }
+        }
+      },
+      "milestones": {
       "kicker": "What is live",
       "title": "The investor story is now a production mainnet rollout.",
       "product": {

@@ -33,7 +33,6 @@ contract CreateEcommerceCampaignSepolia is Script {
     uint256 internal constant REPAYMENT_POOL_USDC6 = 1_000e6;
     uint256 internal constant PRODUCT_PRICE_USDC6 = 18e6;
     uint256 internal constant PRODUCT_INVENTORY = 100;
-    uint16 internal constant ECOMMERCE_PROTOCOL_FEE_BPS = 0;
     uint16 internal constant ECOMMERCE_REPAYMENT_BPS = 1_000;
 
     function run() public {
@@ -103,8 +102,7 @@ contract CreateEcommerceCampaignSepolia is Script {
 
         GrowfiCampaign(payable(campaign))
             .attachModule(ECOMMERCE_TYPE, ECOMMERCE_KIND, ecommerceImpl, "growfi://ecommerce/v1");
-        EcommerceModule(payable(campaign))
-            .initializeEcommerceByProducer(ECOMMERCE_PROTOCOL_FEE_BPS, "growfi://pending-ecommerce-catalog");
+        EcommerceModule(payable(campaign)).initializeEcommerceByProducer(0, "growfi://pending-ecommerce-catalog");
         EcommerceModule(payable(campaign)).setRepaymentAllocationBps(ECOMMERCE_REPAYMENT_BPS);
         EcommerceModule(payable(campaign)).setSku(SKU_OLIVE_OIL_500ML, PRODUCT_PRICE_USDC6, PRODUCT_INVENTORY, true);
 

@@ -849,7 +849,7 @@
         "price": "Prezzo (USDC)",
         "inventory": "Inventario",
         "protocolFee": "Commissione protocollo",
-        "protocolFeeHint": "Impostata dal contratto; non si modifica dal modulo produttore.",
+        "protocolFeeHint": "Impostata globalmente dalla factory del protocollo; il produttore non può modificarla.",
         "repaymentPct": "Quota rimborso (%)",
         "currentBps": "Attuale: {value} bps",
         "currentPct": "Attuale: {value}%",
@@ -1506,13 +1506,50 @@
           "label": "dMRV opzionale",
           "value": "via Silvi",
           "detail": "Monitoraggio satellitare e verifica sul campo. Il coltivatore può collegare dMRV per elevare la fiducia della campagna — trasparenza pubblica, subgraph-indexed."
-        },
-        {
-          "label": "Fee protocollo",
-          "value": "2%",
-          "detail": "Singola fee. Trattenuta all'attivazione e al raccolto. Mai sul secondario. Nessun withdrawal admin, nessuna rescue function."
         }
       ],
+      "feeTable": {
+        "kicker": "Tabella fee",
+        "title": "Ogni flusso ha la sua percentuale.",
+        "headers": {
+          "flow": "Flusso",
+          "percent": "Aliquota",
+          "applies": "Quando si applica",
+          "route": "Destinazione / nota"
+        },
+        "rows": {
+          "campaignBuy": {
+            "flow": "Acquisto campagna",
+            "percent": "3%",
+            "applies": "Ogni acquisto primario via Campaign.buy.",
+            "route": "Va al FeeSplitter; la campagna riceve il 97% netto."
+          },
+          "harvestDeposit": {
+            "flow": "Deposito USDC harvest",
+            "percent": "2%",
+            "applies": "Depositi del produttore per il settlement del raccolto.",
+            "route": "2% al FeeSplitter, 98% al pool holder."
+          },
+          "repayment": {
+            "flow": "Rimborso repayment",
+            "percent": "2%",
+            "applies": "Payout di uscita anticipata dal modulo repayment.",
+            "route": "Dedotta dal payout lordo prima del netto all'holder."
+          },
+          "ecommerce": {
+            "flow": "Shop / ecommerce",
+            "percent": "3%",
+            "applies": "Ogni acquisto SKU on-chain.",
+            "route": "Impostazione globale dalla factory; il produttore non può modificarla."
+          },
+          "growDirect": {
+            "flow": "Acquisto diretto $GROW",
+            "percent": "10% markup",
+            "applies": "Acquisto diretto di $GROW con stablecoin.",
+            "route": "Markup sul floor/reference price; non è una fee protocollo."
+          }
+        }
+      },
       "escrowTitle1": "Escrow reale.",
       "escrowTitle2": "Rimborso automatico.",
       "escrowBody": "I fondi stanno nel contratto Campaign finché non si raggiunge il soft cap. Se la deadline passa sotto il cap, qualsiasi wallet può triggherare il buyback — ogni investitore brucia il $CAMPAIGN e ritira gli USDC esatti versati. Zero discrezionalità, un blocco, niente voto DAO."
@@ -1632,16 +1669,59 @@
         "hint": "Attività di campagne e treasury arrivano dal subgraph di produzione."
       }
     },
-    "thesis": {
-      "kicker": "Tesi d’investimento",
-      "title": "Il capitale circolante agricolo è ancora offline. GrowFi rende investibili on-chain asset produttivi reali.",
-      "items": {
-        "market": "I piccoli e medi produttori hanno bisogno di capitale stagionale prima del raccolto, mentre gli investitori cercano esposizione trasparente ad asset produttivi reali.",
-        "protocol": "GrowFi trasforma ogni raccolto in una campagna on-chain verificabile con escrow USDC, refund, staking yield, moduli di repayment e settlement del raccolto.",
-        "distribution": "Il primo wedge è la Sicilia: colture ad alto valore, brand territoriali forti e una rete di produttori che può lanciare campagne di produzione una alla volta."
-      }
-    },
-    "milestones": {
+      "thesis": {
+        "kicker": "Tesi d’investimento",
+        "title": "Il capitale circolante agricolo è ancora offline. GrowFi rende investibili on-chain asset produttivi reali.",
+        "items": {
+          "market": "I piccoli e medi produttori hanno bisogno di capitale stagionale prima del raccolto, mentre gli investitori cercano esposizione trasparente ad asset produttivi reali.",
+          "protocol": "GrowFi trasforma ogni raccolto in una campagna on-chain verificabile con escrow USDC, refund, staking yield, moduli di repayment e settlement del raccolto.",
+          "distribution": "Il primo wedge è la Sicilia: colture ad alto valore, brand territoriali forti e una rete di produttori che può lanciare campagne di produzione una alla volta."
+        }
+      },
+      "fees": {
+        "kicker": "Economics protocollo",
+        "title": "La tabella fee è esplicita per flusso.",
+        "body": "GrowFi non ha una fee generica unica al 2%. Acquisti primari di campagna, settlement harvest, repayment, ecommerce e acquisti diretti $GROW sono flussi separati con meccaniche separate.",
+        "headers": {
+          "flow": "Flusso",
+          "percent": "Aliquota",
+          "applies": "Quando si applica",
+          "route": "Destinazione / nota"
+        },
+        "rows": {
+          "campaignBuy": {
+            "flow": "Acquisto campagna",
+            "percent": "3%",
+            "applies": "Ogni acquisto primario via Campaign.buy.",
+            "route": "Va al FeeSplitter; la campagna riceve il 97% netto."
+          },
+          "harvestDeposit": {
+            "flow": "Deposito USDC harvest",
+            "percent": "2%",
+            "applies": "Depositi del produttore per il settlement del raccolto.",
+            "route": "2% al FeeSplitter, 98% al pool holder."
+          },
+          "repayment": {
+            "flow": "Rimborso repayment",
+            "percent": "2%",
+            "applies": "Payout di uscita anticipata dal modulo repayment.",
+            "route": "Dedotta dal payout lordo prima del netto all'holder."
+          },
+          "ecommerce": {
+            "flow": "Shop / ecommerce",
+            "percent": "3%",
+            "applies": "Ogni acquisto SKU on-chain.",
+            "route": "Impostazione globale dalla factory; il produttore non può modificarla."
+          },
+          "growDirect": {
+            "flow": "Acquisto diretto $GROW",
+            "percent": "10% markup",
+            "applies": "Acquisto diretto di $GROW con stablecoin.",
+            "route": "Markup sul floor/reference price; non è una fee protocollo."
+          }
+        }
+      },
+      "milestones": {
       "kicker": "Cosa è live",
       "title": "La storia investitori ora è un rollout di produzione su mainnet.",
       "product": {

@@ -10,6 +10,10 @@ interface IRepaymentModuleCredit {
     function creditPoolFromCampaign(uint256 amount) external;
 }
 
+interface IEcommerceProtocolFeeConfig {
+    function ecommerceProtocolFeeBps() external view returns (uint16);
+}
+
 /// @title  EcommerceModule
 /// @notice Producer-managed product checkout module for a Campaign.
 ///
@@ -66,6 +70,7 @@ contract EcommerceModule {
 
     uint256 private constant _NOT_ENTERED = 1;
     uint256 private constant _ENTERED = 2;
+    uint16 public constant DEFAULT_PROTOCOL_FEE_BPS = 300; // 3%
     uint16 public constant MAX_PROTOCOL_FEE_BPS = 1_000; // 10%
     uint16 public constant MAX_TOTAL_SPLIT_BPS = 10_000;
 
@@ -78,6 +83,7 @@ contract EcommerceModule {
     error InvalidState();
     error InvalidFee();
     error InvalidRepaymentAllocation();
+    error ProtocolFeeFixed();
     error RepaymentModuleInactive();
     error Reentrant();
     error SkuInactive();
@@ -125,7 +131,7 @@ contract EcommerceModule {
     }
 
     struct InitParams {
-        uint16 protocolFeeBps;
+        uint16 protocolFeeBps; // deprecated: fee is read from the protocol factory
         string catalogURI;
     }
 
@@ -134,26 +140,25 @@ contract EcommerceModule {
         CampaignStorage.Layout storage cs = CampaignStorage.layout();
         if (s.initialized) revert AlreadyInitialized();
         if (msg.sender != cs.factory || !cs.factoryBootstrap) revert OnlyFactoryBootstrap();
-        _initialize(s, p.protocolFeeBps, p.catalogURI);
+        _initialize(s, cs, p.catalogURI);
     }
 
-    function initializeEcommerceByProducer(uint16 initialProtocolFeeBps, string calldata initialCatalogURI)
-        external
-        onlyProducer
-    {
+    function initializeEcommerceByProducer(uint16, string calldata initialCatalogURI) external onlyProducer {
         Layout storage s = _s();
         if (s.initialized) revert AlreadyInitialized();
-        _initialize(s, initialProtocolFeeBps, initialCatalogURI);
+        _initialize(s, CampaignStorage.layout(), initialCatalogURI);
     }
 
-    function _initialize(Layout storage s, uint16 initialProtocolFeeBps, string calldata initialCatalogURI) internal {
-        if (initialProtocolFeeBps > MAX_PROTOCOL_FEE_BPS) revert InvalidFee();
-        s.protocolFeeBps = initialProtocolFeeBps;
+    function _initialize(Layout storage s, CampaignStorage.Layout storage cs, string calldata initialCatalogURI)
+        internal
+    {
+        uint16 protocolFeeBps_ = _protocolFeeBps(cs);
+        s.protocolFeeBps = protocolFeeBps_;
         s.catalogURI = initialCatalogURI;
         s.nextOrderId = 1;
         s.reentrancyStatus = _NOT_ENTERED;
         s.initialized = true;
-        emit EcommerceInitialized(initialProtocolFeeBps, 0, initialCatalogURI);
+        emit EcommerceInitialized(protocolFeeBps_, 0, initialCatalogURI);
     }
 
     function setCatalogURI(string calldata newCatalogURI) external onlyProducer {
@@ -164,22 +169,14 @@ contract EcommerceModule {
         emit EcommerceCatalogURISet(old, newCatalogURI);
     }
 
-    function setProtocolFeeBps(uint16 newFeeBps) external onlyProducer {
-        if (newFeeBps > MAX_PROTOCOL_FEE_BPS) revert InvalidFee();
-        Layout storage s = _s();
-        if (!s.initialized) revert NotInitialized();
-        if (uint256(newFeeBps) + uint256(s.repaymentAllocationBps) > MAX_TOTAL_SPLIT_BPS) {
-            revert InvalidFee();
-        }
-        uint16 old = s.protocolFeeBps;
-        s.protocolFeeBps = newFeeBps;
-        emit EcommerceProtocolFeeSet(old, newFeeBps);
+    function setProtocolFeeBps(uint16) external pure {
+        revert ProtocolFeeFixed();
     }
 
     function setRepaymentAllocationBps(uint16 newBps) external onlyProducer {
         Layout storage s = _s();
         if (!s.initialized) revert NotInitialized();
-        if (uint256(s.protocolFeeBps) + uint256(newBps) > MAX_TOTAL_SPLIT_BPS) {
+        if (uint256(_protocolFeeBps(CampaignStorage.layout())) + uint256(newBps) > MAX_TOTAL_SPLIT_BPS) {
             revert InvalidRepaymentAllocation();
         }
         uint16 old = s.repaymentAllocationBps;
@@ -230,7 +227,7 @@ contract EcommerceModule {
         if (quantity > item.inventory) revert InsufficientInventory();
 
         uint256 gross = item.priceUsdc * quantity;
-        uint256 fee = (gross * s.protocolFeeBps) / 10_000;
+        uint256 fee = (gross * _protocolFeeBps(cs)) / 10_000;
         uint256 repaymentAllocation = (gross * s.repaymentAllocationBps) / 10_000;
         if (repaymentAllocation > 0 && !_repaymentModuleActive(cs)) {
             revert RepaymentModuleInactive();
@@ -276,12 +273,22 @@ contract EcommerceModule {
         returns (uint256 gross, uint256 protocolFee, uint256 repaymentAllocation, uint256 producerNet)
     {
         Layout storage s = _s();
+        CampaignStorage.Layout storage cs = CampaignStorage.layout();
         Sku storage item = s.skus[skuId];
         if (!item.exists) revert SkuMissing();
         gross = item.priceUsdc * quantity;
-        protocolFee = (gross * s.protocolFeeBps) / 10_000;
+        protocolFee = (gross * _protocolFeeBps(cs)) / 10_000;
         repaymentAllocation = (gross * s.repaymentAllocationBps) / 10_000;
         producerNet = gross - protocolFee - repaymentAllocation;
+    }
+
+    function _protocolFeeBps(CampaignStorage.Layout storage cs) internal view returns (uint16) {
+        try IEcommerceProtocolFeeConfig(cs.factory).ecommerceProtocolFeeBps() returns (uint16 feeBps) {
+            if (feeBps > MAX_PROTOCOL_FEE_BPS) revert InvalidFee();
+            return feeBps;
+        } catch {
+            return DEFAULT_PROTOCOL_FEE_BPS;
+        }
     }
 
     function _repaymentModuleActive(CampaignStorage.Layout storage cs) internal view returns (bool) {
@@ -294,7 +301,7 @@ contract EcommerceModule {
     }
 
     function protocolFeeBps() external view returns (uint16) {
-        return _s().protocolFeeBps;
+        return _protocolFeeBps(CampaignStorage.layout());
     }
 
     function repaymentAllocationBps() external view returns (uint16) {

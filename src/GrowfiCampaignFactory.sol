@@ -46,6 +46,8 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
     bytes32 public constant KIND_COLLATERAL_V1 = keccak256("growfi.collateral.v1");
     uint256 public constant FUNDING_FEE_BPS = 300; // 3%
     uint256 public constant HARVEST_PROTOCOL_FEE_BPS = 200; // 2%
+    uint16 public constant DEFAULT_ECOMMERCE_PROTOCOL_FEE_BPS = 300; // 3%
+    uint16 public constant MAX_ECOMMERCE_PROTOCOL_FEE_BPS = 1_000; // 10%
 
     // ------------------------------------------------------------------
     // Storage
@@ -90,6 +92,8 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
     mapping(bytes32 => bool) public nameTaken;
     mapping(address => bool) public hiddenCampaigns;
     mapping(address => CampaignPaymentTokenPolicy) private _campaignPaymentTokenPolicies;
+    uint16 private _ecommerceProtocolFeeBps;
+    bool private _ecommerceProtocolFeeBpsSet;
 
     // ------------------------------------------------------------------
     // Events / errors
@@ -131,6 +135,7 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
     event CampaignPaymentTokenPolicySet(
         address indexed token, bool allowed, bool fixedPricingAllowed, bool oraclePricingAllowed, address oracleFeed
     );
+    event EcommerceProtocolFeeBpsSet(uint16 oldFeeBps, uint16 newFeeBps);
 
     error ImplsNotSet();
     error NameTakenError();
@@ -139,6 +144,7 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
     error ProducerMismatch();
     error UnknownCampaign();
     error InvalidPaymentTokenPolicy();
+    error InvalidEcommerceProtocolFee();
 
     // ------------------------------------------------------------------
     // Initializer
@@ -167,6 +173,8 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         stakingVaultImpl = impls[2];
         yieldTokenImpl = impls[3];
         harvestManagerImpl = impls[4];
+        _ecommerceProtocolFeeBps = DEFAULT_ECOMMERCE_PROTOCOL_FEE_BPS;
+        _ecommerceProtocolFeeBpsSet = true;
         minSeasonDuration = 30 days;
         proxyAdminOwner = owner;
 
@@ -216,6 +224,14 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         require(recipient != address(0), "Zero address");
         protocolFeeRecipient = recipient;
         emit ProtocolFeeRecipientSet(recipient);
+    }
+
+    function setEcommerceProtocolFeeBps(uint16 newFeeBps) external onlyOwner {
+        if (newFeeBps > MAX_ECOMMERCE_PROTOCOL_FEE_BPS) revert InvalidEcommerceProtocolFee();
+        uint16 oldFeeBps = ecommerceProtocolFeeBps();
+        _ecommerceProtocolFeeBps = newFeeBps;
+        _ecommerceProtocolFeeBpsSet = true;
+        emit EcommerceProtocolFeeBpsSet(oldFeeBps, newFeeBps);
     }
 
     function setGrowfiMinter(address minter) external onlyOwner {
@@ -422,6 +438,11 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
     {
         CampaignPaymentTokenPolicy memory policy = _campaignPaymentTokenPolicies[token];
         return (policy.allowed, policy.fixedPricingAllowed, policy.oraclePricingAllowed, policy.oracleFeed);
+    }
+
+    function ecommerceProtocolFeeBps() public view returns (uint16) {
+        if (!_ecommerceProtocolFeeBpsSet) return DEFAULT_ECOMMERCE_PROTOCOL_FEE_BPS;
+        return _ecommerceProtocolFeeBps;
     }
 
     // ------------------------------------------------------------------

@@ -169,7 +169,7 @@ export const addresses: Record<number, ChainAddresses> = {
       "0x34326058FD53c773Fd7E67a20af17d73ae4d793A",
     ecommerceImpl:
       (process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined) ||
-      "0x881883a9fd1c296D198EE9937603E8Eec1AE5E70",
+      "0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c",
     debtRestructuringImpl:
       (process.env.NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL as Address | undefined) ||
       "0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a",

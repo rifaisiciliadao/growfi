@@ -113,7 +113,7 @@ contract EcommerceModuleTest is Test {
     }
 
     function test_initializes() public view {
-        assertEq(_e().protocolFeeBps(), 250);
+        assertEq(_e().protocolFeeBps(), 300);
         assertEq(_e().repaymentAllocationBps(), 0);
         assertEq(_e().catalogURI(), "https://cdn.growfi.dev/ecommerce/catalog.json");
         assertEq(_e().nextOrderId(), 1);
@@ -131,10 +131,29 @@ contract EcommerceModuleTest is Test {
         assertEq(_e().catalogURI(), "https://cdn.example/catalog-v2.json");
     }
 
-    function test_setProtocolFee_rejectsTooHigh() public {
+    function test_setProtocolFee_revertsBecauseFeeIsProtocolFixed() public {
         vm.prank(producer);
-        vm.expectRevert(EcommerceModule.InvalidFee.selector);
-        _e().setProtocolFeeBps(1_001);
+        vm.expectRevert(EcommerceModule.ProtocolFeeFixed.selector);
+        _e().setProtocolFeeBps(0);
+    }
+
+    function test_protocolOwnerCanUpdateGlobalEcommerceFee() public {
+        vm.prank(protocolOwner);
+        registry.setEcommerceProtocolFeeBps(450);
+
+        assertEq(_e().protocolFeeBps(), 450);
+
+        _setSku(25e6, 10, true);
+        (uint256 gross, uint256 fee,, uint256 net) = _e().quoteSku(SKU, 2);
+        assertEq(gross, 50e6);
+        assertEq(fee, 2_250_000);
+        assertEq(net, 47_750_000);
+    }
+
+    function test_protocolOwnerCannotSetGlobalEcommerceFeeAboveCap() public {
+        vm.prank(protocolOwner);
+        vm.expectRevert(TestModuleRegistry.InvalidEcommerceProtocolFee.selector);
+        registry.setEcommerceProtocolFeeBps(1_001);
     }
 
     function test_setRepaymentAllocation_works() public {
@@ -146,7 +165,7 @@ contract EcommerceModuleTest is Test {
     function test_setRepaymentAllocation_rejectsTotalAbove100Percent() public {
         vm.prank(producer);
         vm.expectRevert(EcommerceModule.InvalidRepaymentAllocation.selector);
-        _e().setRepaymentAllocationBps(9_751);
+        _e().setRepaymentAllocationBps(9_701);
     }
 
     function test_setSku_works() public {
@@ -183,7 +202,7 @@ contract EcommerceModuleTest is Test {
         vm.stopPrank();
 
         uint256 gross = 75e6;
-        uint256 fee = 1_875_000;
+        uint256 fee = 2_250_000;
         uint256 net = gross - fee;
 
         assertEq(usdc.balanceOf(alice), 1_000e6 - gross);
@@ -240,9 +259,9 @@ contract EcommerceModuleTest is Test {
         vm.stopPrank();
 
         uint256 gross = 50e6;
-        uint256 fee = 1_250_000;
+        uint256 fee = 1_500_000;
         uint256 repayment = 25e6;
-        uint256 net = 23_750_000;
+        uint256 net = 23_500_000;
 
         assertEq(usdc.balanceOf(alice), 1_000e6 - gross);
         assertEq(usdc.balanceOf(feeRecipient), fee);
@@ -317,8 +336,8 @@ contract EcommerceModuleTest is Test {
         _setSku(25e6, 10, true);
         (uint256 gross, uint256 fee, uint256 repayment, uint256 net) = _e().quoteSku(SKU, 3);
         assertEq(gross, 75e6);
-        assertEq(fee, 1_875_000);
+        assertEq(fee, 2_250_000);
         assertEq(repayment, 0);
-        assertEq(net, 73_125_000);
+        assertEq(net, 72_750_000);
     }
 }

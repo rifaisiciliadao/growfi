@@ -16,6 +16,9 @@ contract TestModuleRegistry is ModuleRegistry {
     }
 
     mapping(address => CampaignPaymentTokenPolicy) private _campaignPaymentTokenPolicies;
+    uint16 public ecommerceProtocolFeeBps;
+
+    error InvalidEcommerceProtocolFee();
 
     constructor() {
         _disableInitializers();
@@ -23,6 +26,12 @@ contract TestModuleRegistry is ModuleRegistry {
 
     function initialize(address owner_) external initializer {
         __ModuleRegistry_init(owner_);
+        ecommerceProtocolFeeBps = 300;
+    }
+
+    function setEcommerceProtocolFeeBps(uint16 newFeeBps) external onlyOwner {
+        if (newFeeBps > 1_000) revert InvalidEcommerceProtocolFee();
+        ecommerceProtocolFeeBps = newFeeBps;
     }
 
     function setCampaignPaymentTokenPolicy(

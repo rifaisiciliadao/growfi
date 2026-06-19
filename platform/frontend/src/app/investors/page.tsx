@@ -117,6 +117,19 @@ export default function InvestorsPage() {
     },
   ];
 
+  const feeRows = [
+    "campaignBuy",
+    "harvestDeposit",
+    "repayment",
+    "ecommerce",
+    "growDirect",
+  ].map((key) => ({
+    flow: t(`fees.rows.${key}.flow`),
+    percent: t(`fees.rows.${key}.percent`),
+    applies: t(`fees.rows.${key}.applies`),
+    route: t(`fees.rows.${key}.route`),
+  }));
+
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setState("submitting");
@@ -286,6 +299,65 @@ export default function InvestorsPage() {
               <p className="text-base leading-7 text-[#273951]">{item}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="bg-white">
+        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-16 md:grid-cols-[0.72fr_1.28fr] md:px-8 md:py-20">
+          <div>
+            <p className="text-xs font-semibold uppercase text-emerald-700">
+              {t("fees.kicker")}
+            </p>
+            <h2 className="mt-3 text-3xl font-semibold leading-tight text-[#061b31] md:text-5xl">
+              {t("fees.title")}
+            </h2>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#64748d]">
+              {t("fees.body")}
+            </p>
+          </div>
+          <div className="overflow-hidden rounded-[8px] border border-[#e5edf5] shadow-[0_30px_45px_-34px_rgba(50,50,93,0.34),0_18px_36px_-30px_rgba(0,0,0,0.14)]">
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-collapse bg-white text-left text-sm">
+                <thead className="bg-[#061b31] text-white">
+                  <tr>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase">
+                      {t("fees.headers.flow")}
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase">
+                      {t("fees.headers.percent")}
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase">
+                      {t("fees.headers.applies")}
+                    </th>
+                    <th className="px-4 py-3 text-xs font-semibold uppercase">
+                      {t("fees.headers.route")}
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {feeRows.map((row) => (
+                    <tr
+                      key={row.flow}
+                      className="border-t border-[#e5edf5] align-top"
+                    >
+                      <th className="px-4 py-4 text-sm font-semibold text-[#061b31]">
+                        {row.flow}
+                      </th>
+                      <td className="px-4 py-4 font-mono text-base font-semibold text-emerald-800">
+                        {row.percent}
+                      </td>
+                      <td className="px-4 py-4 leading-6 text-[#42556e]">
+                        {row.applies}
+                      </td>
+                      <td className="px-4 py-4 leading-6 text-[#42556e]">
+                        {row.route}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </section>
 

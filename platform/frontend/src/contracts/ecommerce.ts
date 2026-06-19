@@ -9,7 +9,7 @@ export const ecommerceModuleAbi = [
     name: "initializeEcommerceByProducer",
     stateMutability: "nonpayable",
     inputs: [
-      { name: "initialProtocolFeeBps", type: "uint16" },
+      { name: "deprecatedProtocolFeeBps", type: "uint16" },
       { name: "initialCatalogURI", type: "string" },
     ],
     outputs: [],

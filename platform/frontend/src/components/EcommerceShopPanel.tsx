@@ -40,7 +40,7 @@ const DEMO_PRODUCT_NAME = "Campaign product";
 const DEMO_PRODUCT_DESCRIPTION = "Product reserved from this campaign shop.";
 const DEMO_PRODUCT_DESCRIPTION_ALT = "Product reserved from the campaign shop.";
 const DEFAULT_SKU_KEY = "tshirt";
-const ECOMMERCE_PROTOCOL_FEE_BPS = 0;
+const ECOMMERCE_PROTOCOL_FEE_PLACEHOLDER_BPS = 0;
 const FAUCET_ENABLED =
   EXPECTED_CHAIN_ID === 31337 ||
   EXPECTED_CHAIN_ID === 84532 ||
@@ -1229,7 +1229,7 @@ export function EcommerceModuleManager({ campaignAddress }: { campaignAddress: A
           address: campaignAddress,
           abi: ecommerceModuleAbi,
           functionName: "initializeEcommerceByProducer",
-          args: [ECOMMERCE_PROTOCOL_FEE_BPS, catalog.url],
+          args: [ECOMMERCE_PROTOCOL_FEE_PLACEHOLDER_BPS, catalog.url],
           chainId: EXPECTED_CHAIN_ID,
         });
         setPending(t("initializeChain"));
