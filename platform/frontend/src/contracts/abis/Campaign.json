@@ -1712,13 +1712,7 @@
   {
     "type": "function",
     "name": "startSeason",
-    "inputs": [
-      {
-        "name": "seasonId",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
+    "inputs": [],
     "outputs": [],
     "stateMutability": "nonpayable"
   },

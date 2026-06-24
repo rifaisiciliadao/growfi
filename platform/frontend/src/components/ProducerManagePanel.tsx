@@ -1445,7 +1445,6 @@ function LifecycleSection({
         address: campaignAddress,
         abi: campaignAbi,
         functionName: "startSeason",
-        args: [nextSeasonId],
       },
     },
     {
