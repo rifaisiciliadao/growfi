@@ -19,6 +19,7 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { KNOWN_TOKENS } from "@/contracts/tokens";
 import { getAddresses } from "@/contracts";
 import { txUrl } from "@/lib/explorer";
+import { getProtocolLabel } from "@/lib/protocolLabels";
 
 const FEED_LIMIT = 30;
 const LEADERBOARD_LIMIT = 20;
@@ -52,17 +53,23 @@ function useProtocolLabels(): Map<string, { label: string; emoji: string }> {
     const a = getAddresses();
     const m = new Map<string, { label: string; emoji: string }>();
     if (a.growTreasury)
-      m.set(a.growTreasury.toLowerCase(), { label: "GROW Treasury", emoji: "🏦" });
+      m.set(a.growTreasury.toLowerCase(), {
+        label: getProtocolLabel(a.growTreasury) ?? "GrowFi Treasury",
+        emoji: "🏦",
+      });
     if (a.growMinter)
-      m.set(a.growMinter.toLowerCase(), { label: "GROW Minter", emoji: "⚙️" });
+      m.set(a.growMinter.toLowerCase(), {
+        label: getProtocolLabel(a.growMinter) ?? "GROW Minter",
+        emoji: "⚙️",
+      });
     if (a.growFeeSplitter)
       m.set(a.growFeeSplitter.toLowerCase(), {
-        label: "Fee Splitter",
+        label: getProtocolLabel(a.growFeeSplitter) ?? "Fee Splitter",
         emoji: "🔀",
       });
     if (a.growStakingPool)
       m.set(a.growStakingPool.toLowerCase(), {
-        label: "Staking Pool",
+        label: getProtocolLabel(a.growStakingPool) ?? "Staking Pool",
         emoji: "🪴",
       });
     return m;

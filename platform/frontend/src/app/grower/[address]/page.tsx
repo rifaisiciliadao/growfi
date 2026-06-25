@@ -25,6 +25,7 @@ import { NotificationsSection } from "@/components/NotificationsSection";
 import { KycBadge } from "@/components/KycBadge";
 import { useEnsName } from "@/lib/ens";
 import { waitForTx } from "@/lib/waitForTx";
+import { getProtocolLabel, protocolInitials } from "@/lib/protocolLabels";
 
 export default function ProducerPage({
   params,
@@ -39,6 +40,7 @@ export default function ProducerPage({
   const isValid = /^0x[a-fA-F0-9]{40}$/.test(producerAddress);
   const isOwner =
     !!connected && connected.toLowerCase() === producerAddress.toLowerCase();
+  const protocolLabel = getProtocolLabel(producerAddress);
 
   const { data: producer, isLoading: producerLoading } = useSubgraphProducer(
     isValid ? producerAddress : undefined,
@@ -63,6 +65,8 @@ export default function ProducerPage({
    */
   const profileLoadingCombined =
     producerLoading || (!!producer?.profileURI && profileLoading);
+  const displayName =
+    protocolLabel || profile?.name || ensName || t("anonymous");
 
   const [editing, setEditing] = useState(false);
 
@@ -97,7 +101,9 @@ export default function ProducerPage({
             />
           ) : (
             <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed-variant font-bold text-2xl shrink-0">
-              {(profile?.name ?? producerAddress).slice(2, 4).toUpperCase()}
+              {protocolLabel
+                ? protocolInitials(protocolLabel)
+                : (profile?.name ?? producerAddress).slice(2, 4).toUpperCase()}
             </div>
           )}
           <div className="min-w-0 flex-1">
@@ -107,9 +113,12 @@ export default function ProducerPage({
               ) : (
                 <>
                   <span className="break-words">
-                    {profile?.name || ensName || t("anonymous")}
+                    {displayName}
                   </span>
-                  <KycBadge kyced={producer?.kyced} size={20} />
+                  <KycBadge
+                    kyced={protocolLabel ? false : producer?.kyced}
+                    size={20}
+                  />
                 </>
               )}
             </h1>
@@ -161,6 +170,7 @@ export default function ProducerPage({
         </div>
       ) : (
         !profile &&
+        !protocolLabel &&
         !editing && (
           <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 mb-10 text-center text-sm text-on-surface-variant">
             {t("noProfileYet")}

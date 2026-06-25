@@ -11,6 +11,7 @@ import {
 import { useBatchEnsNames } from "@/lib/ens";
 import { KycBadge } from "@/components/KycBadge";
 import { erc20Abi } from "@/contracts/erc20";
+import { getProtocolLabel, protocolInitials } from "@/lib/protocolLabels";
 
 /**
  * Social-recognition widget for the Invest tab: lists all wallets that
@@ -99,14 +100,11 @@ export function InvestorList({
         {top.map((inv, i) => {
           const profile = profiles?.get(inv.buyer.toLowerCase());
           const ensName = ensNames?.get(inv.buyer.toLowerCase()) ?? null;
-          // Display name priority: internal profile > ENS reverse name >
-          // anon fallback. Internal profile is the strongest claim because
-          // it's gated by the producer's own signature; ENS is a strong
-          // public identity but not domain-specific. Anon fallback is the
-          // softest — "Anon grower" rather than the raw address so the
-          // row reads as a person not a hash.
+          const protocolLabel = getProtocolLabel(inv.buyer);
+          // Display name priority: protocol labels > internal profile > ENS
+          // reverse name > anon fallback.
           const displayName =
-            profile?.name || ensName || tProducer("anonymous");
+            protocolLabel || profile?.name || ensName || tProducer("anonymous");
           const sharePct =
             currentSupply > 0n
               ? Number((inv.totalTokens * 10000n) / currentSupply) / 100
@@ -132,13 +130,18 @@ export function InvestorList({
                   />
                 ) : (
                   <div className="w-9 h-9 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center text-[11px] font-bold shrink-0">
-                    {inv.buyer.slice(2, 4).toUpperCase()}
+                    {protocolLabel
+                      ? protocolInitials(protocolLabel)
+                      : inv.buyer.slice(2, 4).toUpperCase()}
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-on-surface truncate flex items-center gap-1">
                     <span className="truncate">{displayName}</span>
-                    <KycBadge kyced={profile?.kyced} size={12} />
+                    <KycBadge
+                      kyced={protocolLabel ? false : profile?.kyced}
+                      size={12}
+                    />
                   </div>
                   <div className="text-[11px] text-on-surface-variant">
                     {t("sharePct", {
