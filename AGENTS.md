@@ -45,6 +45,9 @@ subgraph `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`. Testnet app
 env must keep `APP_URL`, `NEXT_PUBLIC_BACKEND_URL`, and `NEXT_PUBLIC_SITE_URL`
 pointed at `https://testnet.growfi.dev`, and must use isolated object prefixes
 for mutable backend data (`invites-testnet`, `notifications-testnet`).
+On Sepolia testnet, campaign creation is intentionally open: the frontend sets
+the invite gate to approved for `NEXT_PUBLIC_CHAIN_ID=11155111`, while mainnet
+keeps the normal invite lookup and `/create` gate.
 
 ### 2026-06 audit hardening (live in the mainnet build)
 - `SaleClassicModule.buy` **no longer auto-activates** — reaching minCap leaves

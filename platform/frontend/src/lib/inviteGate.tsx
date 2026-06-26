@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { useAccount } from "wagmi";
+import { CHAIN_ID } from "@/contracts";
 import { checkInvite, type InviteCheckStatus } from "./api";
 
 export type GateState =
@@ -30,6 +31,7 @@ interface InviteGateValue {
 }
 
 const InviteGateContext = createContext<InviteGateValue | null>(null);
+export const INVITE_GATE_DISABLED = CHAIN_ID === 11155111;
 
 export function InviteGateProvider({
   children,
@@ -37,7 +39,9 @@ export function InviteGateProvider({
   children: React.ReactNode;
 }) {
   const { address, isConnecting, isReconnecting } = useAccount();
-  const [state, setState] = useState<GateState>("loading");
+  const [state, setState] = useState<GateState>(
+    INVITE_GATE_DISABLED ? "approved" : "loading",
+  );
   const [email, setEmail] = useState<string | null>(null);
   const [telegram, setTelegram] = useState<string | null>(null);
   const inFlight = useRef<string | null>(null);
@@ -45,6 +49,12 @@ export function InviteGateProvider({
   const lower = address ? address.toLowerCase() : null;
 
   const runCheck = useCallback(async (addr: string | null) => {
+    if (INVITE_GATE_DISABLED) {
+      setState("approved");
+      setEmail(null);
+      setTelegram(null);
+      return;
+    }
     if (!addr) {
       setState("no-wallet");
       setEmail(null);
@@ -68,6 +78,7 @@ export function InviteGateProvider({
   }, []);
 
   useEffect(() => {
+    if (INVITE_GATE_DISABLED) return;
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
