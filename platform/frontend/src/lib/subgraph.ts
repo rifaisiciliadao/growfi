@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-const SUBGRAPH_URL =
+export const SUBGRAPH_URL =
   process.env.NEXT_PUBLIC_SUBGRAPH_URL ||
   "https://ugraph.growfi.dev/subgraphs/growfi/latest/gn";
 

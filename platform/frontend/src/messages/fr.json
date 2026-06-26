@@ -1625,8 +1625,10 @@
   "investors": {
     "hero": {
       "kicker": "Live sur Ethereum mainnet",
+      "kickerTestnet": "Live sur Ethereum Sepolia",
       "title": "GrowFi construit le marché de capitaux des récoltes réelles.",
       "body": "Le protocole est live sur Ethereum mainnet : création de campagnes, funding en USDC, automatisation treasury $GROW, staking, vérification producteurs et settlement de récolte tournent sur des contrats de production, pas sur des rails de test.",
+      "bodyTestnet": "La plateforme de test exécute les mêmes fonctionnalités GrowFi sur Ethereum Sepolia : création de campagnes, funding type USDC, automatisation treasury $GROW, staking, vérification producteurs et settlement de récolte sur contrats testnet.",
       "requestCta": "Demander l'accès investisseur",
       "campaignCta": "Explorer les campagnes live",
       "deckCta": "Télécharger le pitch deck"
@@ -1635,18 +1637,22 @@
       "protocol": {
         "label": "Protocole",
         "value": "Ethereum mainnet",
-        "hint": "Contrats chain 1, subgraph live et settlement réel en USDC sont actifs."
+        "valueTestnet": "Ethereum Sepolia",
+        "hint": "Contrats chain 1, subgraph live et settlement réel en USDC sont actifs.",
+        "hintTestnet": "Contrats chain 11155111, subgraph Sepolia et rails de settlement testnet sont actifs."
       },
       "campaigns": {
         "label": "Supply",
         "value": "Campagnes live",
         "valueWithCount": "{count, plural, =0 {Campagnes live} one {# campagne live} other {# campagnes live}}",
-        "hint": "Les campagnes de production sont indexées depuis mainnet et visibles dans l'app."
+        "hint": "Les campagnes de production sont indexées depuis mainnet et visibles dans l'app.",
+        "hintTestnet": "Les campagnes testnet sont indexées depuis Ethereum Sepolia et visibles dans l'app."
       },
       "treasury": {
         "label": "Trésorerie",
         "value": "$GROW live",
-        "hint": "Vente directe, staking pool et rails d'allocation sont connectés aux campagnes de production."
+        "hint": "Vente directe, staking pool et rails d'allocation sont connectés aux campagnes de production.",
+        "hintTestnet": "Vente directe, staking pool et rails d'allocation sont connectés aux campagnes Sepolia."
       }
     },
     "proof": {
@@ -1654,16 +1660,20 @@
       "network": {
         "label": "Network",
         "value": "Ethereum mainnet",
-        "hint": "Chain 1 est la cible de settlement de production."
+        "valueTestnet": "Ethereum Sepolia",
+        "hint": "Chain 1 est la cible de settlement de production.",
+        "hintTestnet": "Chain 11155111 est la cible de settlement testnet."
       },
       "factory": {
         "label": "Factory",
-        "hint": "Campaign factory actuelle pour les lancements mainnet."
+        "hint": "Campaign factory actuelle pour les lancements mainnet.",
+        "hintTestnet": "Campaign factory actuelle pour les lancements Sepolia."
       },
       "indexer": {
         "label": "Indexer",
         "value": "ugraph live",
-        "hint": "L'activité campagnes et treasury arrive du subgraph de production."
+        "hint": "L'activité campagnes et treasury arrive du subgraph de production.",
+        "hintTestnet": "L'activité campagnes et treasury arrive du subgraph Sepolia."
       }
     },
       "thesis": {

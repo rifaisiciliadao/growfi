@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { CHAIN_ID, getAddresses } from "@/contracts";
 import { requestInvestorDemo } from "@/lib/api";
 import { addressUrl } from "@/lib/explorer";
-import { useGlobalStats } from "@/lib/subgraph";
+import { SUBGRAPH_URL, useGlobalStats } from "@/lib/subgraph";
 
 type FormState = "idle" | "submitting" | "ok" | "error";
 
@@ -17,6 +17,7 @@ export default function InvestorsPage() {
   const t = useTranslations("investors");
   const addresses = getAddresses(CHAIN_ID);
   const { data: globalStats } = useGlobalStats();
+  const isMainnet = CHAIN_ID === 1;
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -37,38 +38,38 @@ export default function InvestorsPage() {
   const stats = [
     {
       label: t("stats.protocol.label"),
-      value: t("stats.protocol.value"),
-      hint: t("stats.protocol.hint"),
+      value: t(isMainnet ? "stats.protocol.value" : "stats.protocol.valueTestnet"),
+      hint: t(isMainnet ? "stats.protocol.hint" : "stats.protocol.hintTestnet"),
     },
     {
       label: t("stats.campaigns.label"),
       value: campaignValue,
-      hint: t("stats.campaigns.hint"),
+      hint: t(isMainnet ? "stats.campaigns.hint" : "stats.campaigns.hintTestnet"),
     },
     {
       label: t("stats.treasury.label"),
       value: t("stats.treasury.value"),
-      hint: t("stats.treasury.hint"),
+      hint: t(isMainnet ? "stats.treasury.hint" : "stats.treasury.hintTestnet"),
     },
   ];
 
   const proofCards = [
     {
       label: t("proof.network.label"),
-      value: t("proof.network.value"),
-      hint: t("proof.network.hint"),
+      value: t(isMainnet ? "proof.network.value" : "proof.network.valueTestnet"),
+      hint: t(isMainnet ? "proof.network.hint" : "proof.network.hintTestnet"),
     },
     {
       label: t("proof.factory.label"),
       value: shortAddress(addresses.factory),
-      hint: t("proof.factory.hint"),
+      hint: t(isMainnet ? "proof.factory.hint" : "proof.factory.hintTestnet"),
       href: addressUrl(addresses.factory, CHAIN_ID),
     },
     {
       label: t("proof.indexer.label"),
       value: t("proof.indexer.value"),
-      hint: t("proof.indexer.hint"),
-      href: "https://ugraph.growfi.dev/subgraphs/growfi/latest/gn",
+      hint: t(isMainnet ? "proof.indexer.hint" : "proof.indexer.hintTestnet"),
+      href: SUBGRAPH_URL,
     },
   ];
 
@@ -166,13 +167,13 @@ export default function InvestorsPage() {
           <div className="max-w-4xl pb-4 md:pb-8">
             <p className="inline-flex items-center gap-2 rounded-[4px] border border-white/20 bg-white/12 px-3 py-1 text-xs font-semibold uppercase text-emerald-100 backdrop-blur-md">
               <span className="h-1.5 w-1.5 rounded-full bg-[#7ffc97] shadow-[0_0_0_5px_rgba(127,252,151,0.16)]" />
-              {t("hero.kicker")}
+              {t(isMainnet ? "hero.kicker" : "hero.kickerTestnet")}
             </p>
             <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[1.02] text-white md:text-7xl">
               {t("hero.title")}
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-emerald-50/88 md:text-lg">
-              {t("hero.body")}
+              {t(isMainnet ? "hero.body" : "hero.bodyTestnet")}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a

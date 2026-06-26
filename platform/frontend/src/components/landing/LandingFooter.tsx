@@ -6,6 +6,7 @@ import { LandingLogo } from "./LandingLogo";
 import { useInView } from "@/lib/landing/useInView";
 import { getAddresses } from "@/contracts";
 import { addressUrl } from "@/lib/explorer";
+import { SUBGRAPH_URL } from "@/lib/subgraph";
 
 export function LandingFooter() {
   const t = useTranslations("landing.footer");
@@ -38,7 +39,7 @@ export function LandingFooter() {
         },
         {
           label: t("linkSubgraph"),
-          href: "https://ugraph.growfi.dev/subgraphs/growfi/latest/gn",
+          href: SUBGRAPH_URL,
           external: true,
         },
       ],
