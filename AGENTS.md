@@ -30,6 +30,22 @@ The earlier **Base Sepolia** audit-hardened build (chain 84532), **Ethereum
 Sepolia** v4 deploy (chain 11155111), and legacy Base Sepolia v3.3 deploy are
 kept in `CONTRACTS.md` for reference.
 
+### Parallel Ethereum Sepolia testnet
+
+`https://testnet.growfi.dev` is a separate DigitalOcean App Platform app
+(`growfi-testnet`, id `55b83281-7dda-44fd-9fef-94a585856e2f`) deployed from
+the same GitHub `main` branch as production. It runs concurrently with
+`https://growfi.dev` but uses Ethereum Sepolia (`NEXT_PUBLIC_CHAIN_ID=11155111`)
+and the Sepolia ugraph endpoint:
+`https://ugraph.growfi.dev/subgraphs/growfi-sepolia/latest/gn`.
+
+Keep production and testnet specs separate. Production remains app
+`9e4019f4-8dbc-4170-8546-ce7d8579e3a4` on `growfi.dev` with the mainnet
+subgraph `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`. Testnet app
+env must keep `APP_URL`, `NEXT_PUBLIC_BACKEND_URL`, and `NEXT_PUBLIC_SITE_URL`
+pointed at `https://testnet.growfi.dev`, and must use isolated object prefixes
+for mutable backend data (`invites-testnet`, `notifications-testnet`).
+
 ### 2026-06 audit hardening (live in the mainnet build)
 - `SaleClassicModule.buy` **no longer auto-activates** — reaching minCap leaves
   the campaign in `Funding`; the producer must call `activateCampaign()`
