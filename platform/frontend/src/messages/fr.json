@@ -1781,7 +1781,7 @@
         "security": "Ethereum L1 est la couche de settlement la plus éprouvée pour des actifs qui doivent rester vérifiables pendant des années, pas des semaines.",
         "securityTestnet": "Sepolia garde la surface de test alignée sur la cible de production Ethereum L1.",
         "settlement": "Claims de récolte, refunds et réserves treasury demandent une finalité forte et une liquidité native plus qu’une simple exécution bon marché.",
-        "settlementTestnet": "Les mêmes hypothèses wallet, RPC, explorer et contrats peuvent être testées avant l'exécution mainnet.",
+        "settlementTestnet": "Les mêmes hypothèses wallet, RPC, explorer et contrats peuvent être testées avant l'exécution en production.",
         "credibility": "Pour cultivateurs, investisseurs et partenaires institutionnels, Ethereum mainnet simplifie custody, audits et due diligence.",
         "credibilityTestnet": "Pour opérateurs et producteurs, Sepolia permet une QA end-to-end sans toucher aux fonds de production."
       }
