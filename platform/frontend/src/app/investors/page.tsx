@@ -18,6 +18,7 @@ export default function InvestorsPage() {
   const addresses = getAddresses(CHAIN_ID);
   const { data: globalStats } = useGlobalStats();
   const isMainnet = CHAIN_ID === 1;
+  const chainText = (key: string) => t(isMainnet ? key : `${key}Testnet`);
   const [form, setForm] = useState({
     name: "",
     email: "",
@@ -38,37 +39,37 @@ export default function InvestorsPage() {
   const stats = [
     {
       label: t("stats.protocol.label"),
-      value: t(isMainnet ? "stats.protocol.value" : "stats.protocol.valueTestnet"),
-      hint: t(isMainnet ? "stats.protocol.hint" : "stats.protocol.hintTestnet"),
+      value: chainText("stats.protocol.value"),
+      hint: chainText("stats.protocol.hint"),
     },
     {
       label: t("stats.campaigns.label"),
       value: campaignValue,
-      hint: t(isMainnet ? "stats.campaigns.hint" : "stats.campaigns.hintTestnet"),
+      hint: chainText("stats.campaigns.hint"),
     },
     {
       label: t("stats.treasury.label"),
       value: t("stats.treasury.value"),
-      hint: t(isMainnet ? "stats.treasury.hint" : "stats.treasury.hintTestnet"),
+      hint: chainText("stats.treasury.hint"),
     },
   ];
 
   const proofCards = [
     {
       label: t("proof.network.label"),
-      value: t(isMainnet ? "proof.network.value" : "proof.network.valueTestnet"),
-      hint: t(isMainnet ? "proof.network.hint" : "proof.network.hintTestnet"),
+      value: chainText("proof.network.value"),
+      hint: chainText("proof.network.hint"),
     },
     {
       label: t("proof.factory.label"),
       value: shortAddress(addresses.factory),
-      hint: t(isMainnet ? "proof.factory.hint" : "proof.factory.hintTestnet"),
+      hint: chainText("proof.factory.hint"),
       href: addressUrl(addresses.factory, CHAIN_ID),
     },
     {
       label: t("proof.indexer.label"),
       value: t("proof.indexer.value"),
-      hint: t(isMainnet ? "proof.indexer.hint" : "proof.indexer.hintTestnet"),
+      hint: chainText("proof.indexer.hint"),
       href: SUBGRAPH_URL,
     },
   ];
@@ -80,26 +81,26 @@ export default function InvestorsPage() {
   ];
 
   const mainnetReasons = [
-    t("mainnet.items.security"),
-    t("mainnet.items.settlement"),
-    t("mainnet.items.credibility"),
+    chainText("mainnet.items.security"),
+    chainText("mainnet.items.settlement"),
+    chainText("mainnet.items.credibility"),
   ];
 
   const milestones = [
     {
       phase: t("milestones.product.phase"),
-      title: t("milestones.product.title"),
-      body: t("milestones.product.body"),
+      title: chainText("milestones.product.title"),
+      body: chainText("milestones.product.body"),
     },
     {
       phase: t("milestones.supply.phase"),
-      title: t("milestones.supply.title"),
-      body: t("milestones.supply.body"),
+      title: chainText("milestones.supply.title"),
+      body: chainText("milestones.supply.body"),
     },
     {
       phase: t("milestones.seed.phase"),
-      title: t("milestones.seed.title"),
-      body: t("milestones.seed.body"),
+      title: chainText("milestones.seed.title"),
+      body: chainText("milestones.seed.body"),
     },
   ];
 
@@ -167,13 +168,13 @@ export default function InvestorsPage() {
           <div className="max-w-4xl pb-4 md:pb-8">
             <p className="inline-flex items-center gap-2 rounded-[4px] border border-white/20 bg-white/12 px-3 py-1 text-xs font-semibold uppercase text-emerald-100 backdrop-blur-md">
               <span className="h-1.5 w-1.5 rounded-full bg-[#7ffc97] shadow-[0_0_0_5px_rgba(127,252,151,0.16)]" />
-              {t(isMainnet ? "hero.kicker" : "hero.kickerTestnet")}
+              {chainText("hero.kicker")}
             </p>
             <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[1.02] text-white md:text-7xl">
               {t("hero.title")}
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-emerald-50/88 md:text-lg">
-              {t(isMainnet ? "hero.body" : "hero.bodyTestnet")}
+              {chainText("hero.body")}
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
               <a
@@ -254,13 +255,13 @@ export default function InvestorsPage() {
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-16 md:grid-cols-[0.82fr_1fr] md:px-8 md:py-24">
           <div>
             <p className="text-xs font-semibold uppercase text-emerald-200">
-              {t("mainnet.kicker")}
+              {chainText("mainnet.kicker")}
             </p>
             <h2 className="mt-3 text-3xl font-semibold leading-tight md:text-5xl">
-              {t("mainnet.title")}
+              {chainText("mainnet.title")}
             </h2>
             <p className="mt-5 max-w-xl text-base leading-7 text-slate-300">
-              {t("mainnet.body")}
+              {chainText("mainnet.body")}
             </p>
           </div>
           <div className="border-y border-white/12">
@@ -369,7 +370,7 @@ export default function InvestorsPage() {
               {t("milestones.kicker")}
             </p>
             <h2 className="mt-3 max-w-3xl text-3xl font-semibold leading-tight md:text-5xl">
-              {t("milestones.title")}
+              {chainText("milestones.title")}
             </h2>
           </div>
           <div className="mx-auto grid max-w-7xl gap-8 md:grid-cols-3">
@@ -436,7 +437,7 @@ export default function InvestorsPage() {
             {t("form.kicker")}
           </p>
           <h2 className="mt-3 text-3xl font-semibold leading-tight text-[#061b31] md:text-5xl">
-            {t("form.title")}
+            {chainText("form.title")}
           </h2>
           <p className="mt-5 max-w-xl text-base leading-7 text-[#64748d]">
             {t("form.body")}

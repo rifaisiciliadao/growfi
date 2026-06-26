@@ -1731,25 +1731,33 @@
       "milestones": {
       "kicker": "What is live",
       "title": "The investor story is now a production mainnet rollout.",
+      "titleTestnet": "The investor story can be tested end-to-end on Sepolia.",
       "product": {
         "phase": "Product",
         "title": "Mainnet protocol is live",
-        "body": "Campaign factory, modules, $GROW treasury, staking and harvest accounting are deployed on Ethereum mainnet."
+        "titleTestnet": "Sepolia protocol is live",
+        "body": "Campaign factory, modules, $GROW treasury, staking and harvest accounting are deployed on Ethereum mainnet.",
+        "bodyTestnet": "Campaign factory, modules, $GROW treasury, staking and harvest accounting are deployed on Ethereum Sepolia."
       },
       "supply": {
         "phase": "Supply",
         "title": "First production campaign is running",
-        "body": "Campaign activity is indexed from ugraph and new producers can launch through the production app."
+        "titleTestnet": "Test campaigns are running",
+        "body": "Campaign activity is indexed from ugraph and new producers can launch through the production app.",
+        "bodyTestnet": "Sepolia campaign activity is indexed from ugraph and new producers can test-launch through the testnet app."
       },
       "seed": {
         "phase": "Scale",
         "title": "The round expands real supply",
-        "body": "Capital goes into audits, compliance, producer onboarding, liquidity operations and a deeper pipeline of mainnet campaigns."
+        "titleTestnet": "The testnet mirrors production flows",
+        "body": "Capital goes into audits, compliance, producer onboarding, liquidity operations and a deeper pipeline of mainnet campaigns.",
+        "bodyTestnet": "The testnet validates campaign, staking, treasury and settlement flows before production changes."
       }
     },
     "form": {
       "kicker": "Investor access",
       "title": "Request the deck and mainnet walkthrough.",
+      "titleTestnet": "Request the deck and Sepolia walkthrough.",
       "body": "Tell us who you are and what you want to review. We will share the current materials, live contract context and campaign pipeline.",
       "deck": "Download pitch deck",
       "name": "Name",
@@ -1764,12 +1772,18 @@
     },
     "mainnet": {
       "kicker": "Why Ethereum mainnet",
+      "kickerTestnet": "Why Ethereum Sepolia",
       "title": "We are building where long-term settlement is hardest to compromise.",
+      "titleTestnet": "We test the full protocol on Ethereum's L1 testnet.",
       "body": "GrowFi is already live on Ethereum L1 because agricultural finance is slow-cycle finance. A harvest, a buyback window and a producer relationship need infrastructure that can outlive market narratives.",
+      "bodyTestnet": "GrowFi testnet runs on Ethereum Sepolia so campaigns, staking, treasury allocation and settlement can be rehearsed against the same L1 assumptions before production.",
       "items": {
         "security": "Ethereum L1 is the most battle-tested settlement layer for assets that must remain verifiable over years, not weeks.",
+        "securityTestnet": "Sepolia keeps the test surface aligned with the Ethereum L1 production target.",
         "settlement": "Harvest claims, refunds and treasury reserves need strong finality and native liquidity more than cheap execution alone.",
-        "credibility": "For growers, investors and institutional partners, Ethereum mainnet makes custody, audits and due diligence easier to verify."
+        "settlementTestnet": "The same wallet, RPC, explorer and contract assumptions can be tested before mainnet execution.",
+        "credibility": "For growers, investors and institutional partners, Ethereum mainnet makes custody, audits and due diligence easier to verify.",
+        "credibilityTestnet": "For operators and producers, Sepolia makes end-to-end QA possible without touching production funds."
       }
     },
     "grow": {

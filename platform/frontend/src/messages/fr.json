@@ -1731,25 +1731,33 @@
       "milestones": {
       "kicker": "Ce qui est live",
       "title": "L'histoire investisseur est maintenant un rollout de production sur mainnet.",
+      "titleTestnet": "L'histoire investisseur peut être testée end-to-end sur Sepolia.",
       "product": {
         "phase": "Produit",
         "title": "Protocole mainnet live",
-        "body": "Campaign factory, modules, treasury $GROW, staking et comptabilité harvest sont déployés sur Ethereum mainnet."
+        "titleTestnet": "Protocole Sepolia live",
+        "body": "Campaign factory, modules, treasury $GROW, staking et comptabilité harvest sont déployés sur Ethereum mainnet.",
+        "bodyTestnet": "Campaign factory, modules, treasury $GROW, staking et comptabilité harvest sont déployés sur Ethereum Sepolia."
       },
       "supply": {
         "phase": "Supply",
         "title": "Première campagne de production active",
-        "body": "L'activité des campagnes est indexée par ugraph et de nouveaux producteurs peuvent lancer depuis l'app de production."
+        "titleTestnet": "Campagnes test actives",
+        "body": "L'activité des campagnes est indexée par ugraph et de nouveaux producteurs peuvent lancer depuis l'app de production.",
+        "bodyTestnet": "L'activité des campagnes Sepolia est indexée par ugraph et de nouveaux producteurs peuvent tester le lancement depuis l'app testnet."
       },
       "seed": {
         "phase": "Scale",
         "title": "Le round étend la supply réelle",
-        "body": "Le capital finance audits, compliance, onboarding producteurs, opérations de liquidité et une pipeline plus profonde de campagnes mainnet."
+        "titleTestnet": "La testnet reflète les flux production",
+        "body": "Le capital finance audits, compliance, onboarding producteurs, opérations de liquidité et une pipeline plus profonde de campagnes mainnet.",
+        "bodyTestnet": "La testnet valide les flux campagnes, staking, treasury et settlement avant les changements production."
       }
     },
     "form": {
       "kicker": "Accès investisseurs",
       "title": "Demandez le deck et le walkthrough mainnet.",
+      "titleTestnet": "Demandez le deck et le walkthrough Sepolia.",
       "body": "Dites-nous qui vous êtes et ce que vous souhaitez étudier. Nous partagerons les documents à jour, le contexte des contrats live et la pipeline campagnes.",
       "deck": "Télécharger le pitch deck",
       "name": "Nom",
@@ -1764,12 +1772,18 @@
     },
     "mainnet": {
       "kicker": "Pourquoi Ethereum mainnet",
+      "kickerTestnet": "Pourquoi Ethereum Sepolia",
       "title": "Nous construisons là où le settlement long terme est le plus difficile à compromettre.",
+      "titleTestnet": "Nous testons tout le protocole sur la testnet L1 d'Ethereum.",
       "body": "GrowFi est déjà live sur Ethereum L1 parce que la finance agricole suit des cycles lents. Une récolte, une fenêtre buyback et une relation producteur ont besoin d’une infrastructure qui dépasse les narratifs de marché.",
+      "bodyTestnet": "La testnet GrowFi tourne sur Ethereum Sepolia afin que campagnes, staking, allocation treasury et settlement puissent être répétés avec les mêmes hypothèses L1 avant la production.",
       "items": {
         "security": "Ethereum L1 est la couche de settlement la plus éprouvée pour des actifs qui doivent rester vérifiables pendant des années, pas des semaines.",
+        "securityTestnet": "Sepolia garde la surface de test alignée sur la cible de production Ethereum L1.",
         "settlement": "Claims de récolte, refunds et réserves treasury demandent une finalité forte et une liquidité native plus qu’une simple exécution bon marché.",
-        "credibility": "Pour cultivateurs, investisseurs et partenaires institutionnels, Ethereum mainnet simplifie custody, audits et due diligence."
+        "settlementTestnet": "Les mêmes hypothèses wallet, RPC, explorer et contrats peuvent être testées avant l'exécution mainnet.",
+        "credibility": "Pour cultivateurs, investisseurs et partenaires institutionnels, Ethereum mainnet simplifie custody, audits et due diligence.",
+        "credibilityTestnet": "Pour opérateurs et producteurs, Sepolia permet une QA end-to-end sans toucher aux fonds de production."
       }
     },
     "grow": {

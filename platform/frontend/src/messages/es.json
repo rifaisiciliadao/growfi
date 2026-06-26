@@ -1731,25 +1731,33 @@
       "milestones": {
       "kicker": "Qué está live",
       "title": "La historia para inversores ahora es un rollout de producción en mainnet.",
+      "titleTestnet": "La historia para inversores puede probarse end-to-end en Sepolia.",
       "product": {
         "phase": "Producto",
         "title": "Protocolo mainnet live",
-        "body": "Campaign factory, módulos, treasury $GROW, staking y contabilidad de harvest están desplegados en Ethereum mainnet."
+        "titleTestnet": "Protocolo Sepolia live",
+        "body": "Campaign factory, módulos, treasury $GROW, staking y contabilidad de harvest están desplegados en Ethereum mainnet.",
+        "bodyTestnet": "Campaign factory, módulos, treasury $GROW, staking y contabilidad de harvest están desplegados en Ethereum Sepolia."
       },
       "supply": {
         "phase": "Supply",
         "title": "Primera campaña de producción activa",
-        "body": "La actividad de campañas se indexa desde ugraph y nuevos productores pueden lanzar desde la app de producción."
+        "titleTestnet": "Campañas test activas",
+        "body": "La actividad de campañas se indexa desde ugraph y nuevos productores pueden lanzar desde la app de producción.",
+        "bodyTestnet": "La actividad de campañas Sepolia se indexa desde ugraph y nuevos productores pueden testear lanzamientos desde la app testnet."
       },
       "seed": {
         "phase": "Scale",
         "title": "El round amplía supply real",
-        "body": "El capital va a auditorías, compliance, onboarding de productores, operaciones de liquidez y una pipeline más profunda de campañas mainnet."
+        "titleTestnet": "La testnet replica los flujos de producción",
+        "body": "El capital va a auditorías, compliance, onboarding de productores, operaciones de liquidez y una pipeline más profunda de campañas mainnet.",
+        "bodyTestnet": "La testnet valida flujos de campañas, staking, treasury y settlement antes de cambios en producción."
       }
     },
     "form": {
       "kicker": "Acceso inversores",
       "title": "Solicita el deck y el walkthrough mainnet.",
+      "titleTestnet": "Solicita el deck y el walkthrough Sepolia.",
       "body": "Cuéntanos quién eres y qué quieres revisar. Compartiremos materiales actuales, contexto de contratos live y pipeline de campañas.",
       "deck": "Descargar pitch deck",
       "name": "Nombre",
@@ -1764,12 +1772,18 @@
     },
     "mainnet": {
       "kicker": "Por qué Ethereum mainnet",
+      "kickerTestnet": "Por qué Ethereum Sepolia",
       "title": "Construimos donde el settlement de largo plazo es más difícil de comprometer.",
+      "titleTestnet": "Testeamos todo el protocolo en la testnet L1 de Ethereum.",
       "body": "GrowFi ya está live en Ethereum L1 porque la financiación agrícola tiene ciclos lentos. Una cosecha, una ventana buyback y una relación con el productor necesitan infraestructura que sobreviva a narrativas de mercado.",
+      "bodyTestnet": "La testnet GrowFi corre en Ethereum Sepolia para que campañas, staking, asignación treasury y settlement puedan ensayarse con las mismas premisas L1 antes de producción.",
       "items": {
         "security": "Ethereum L1 es la capa de settlement más probada para activos que deben ser verificables por años, no semanas.",
+        "securityTestnet": "Sepolia mantiene la superficie de test alineada con el target de producción Ethereum L1.",
         "settlement": "Claims de cosecha, refunds y reservas treasury necesitan fuerte finalidad y liquidez nativa más que solo ejecución barata.",
-        "credibility": "Para cultivadores, inversores y partners institucionales, Ethereum mainnet simplifica custodia, auditorías y due diligence."
+        "settlementTestnet": "Las mismas premisas de wallet, RPC, explorer y contratos pueden probarse antes de ejecutar en mainnet.",
+        "credibility": "Para cultivadores, inversores y partners institucionales, Ethereum mainnet simplifica custodia, auditorías y due diligence.",
+        "credibilityTestnet": "Para operadores y productores, Sepolia permite QA end-to-end sin tocar fondos de producción."
       }
     },
     "grow": {

@@ -1731,25 +1731,33 @@
       "milestones": {
       "kicker": "Cosa è live",
       "title": "La storia investitori ora è un rollout di produzione su mainnet.",
+      "titleTestnet": "La storia investitori si può testare end-to-end su Sepolia.",
       "product": {
         "phase": "Prodotto",
         "title": "Protocollo mainnet live",
-        "body": "Campaign factory, moduli, treasury $GROW, staking e contabilità harvest sono deployati su Ethereum mainnet."
+        "titleTestnet": "Protocollo Sepolia live",
+        "body": "Campaign factory, moduli, treasury $GROW, staking e contabilità harvest sono deployati su Ethereum mainnet.",
+        "bodyTestnet": "Campaign factory, moduli, treasury $GROW, staking e contabilità harvest sono deployati su Ethereum Sepolia."
       },
       "supply": {
         "phase": "Supply",
         "title": "Prima campagna di produzione attiva",
-        "body": "L'attività delle campagne è indicizzata da ugraph e nuovi produttori possono lanciare dall'app di produzione."
+        "titleTestnet": "Campagne test attive",
+        "body": "L'attività delle campagne è indicizzata da ugraph e nuovi produttori possono lanciare dall'app di produzione.",
+        "bodyTestnet": "L'attività delle campagne Sepolia è indicizzata da ugraph e nuovi produttori possono testare il lancio dall'app testnet."
       },
       "seed": {
         "phase": "Scale",
         "title": "Il round espande supply reale",
-        "body": "Il capitale va su audit, compliance, onboarding produttori, operazioni di liquidità e una pipeline più profonda di campagne mainnet."
+        "titleTestnet": "La testnet replica i flussi produzione",
+        "body": "Il capitale va su audit, compliance, onboarding produttori, operazioni di liquidità e una pipeline più profonda di campagne mainnet.",
+        "bodyTestnet": "La testnet valida flussi di campagne, staking, treasury e settlement prima delle modifiche produzione."
       }
     },
     "form": {
       "kicker": "Accesso investitori",
       "title": "Richiedi il deck e il walkthrough mainnet.",
+      "titleTestnet": "Richiedi il deck e il walkthrough Sepolia.",
       "body": "Dicci chi sei e cosa vuoi approfondire. Condivideremo materiali aggiornati, contesto contratti live e pipeline campagne.",
       "deck": "Scarica pitch deck",
       "name": "Nome",
@@ -1764,12 +1772,18 @@
     },
     "mainnet": {
       "kicker": "Perché Ethereum mainnet",
+      "kickerTestnet": "Perché Ethereum Sepolia",
       "title": "Costruiamo dove la settlement di lungo periodo è più difficile da compromettere.",
+      "titleTestnet": "Testiamo l'intero protocollo sulla testnet L1 di Ethereum.",
       "body": "GrowFi è già live su Ethereum L1 perché la finanza agricola ha cicli lenti. Un raccolto, una finestra buyback e una relazione con il produttore hanno bisogno di infrastruttura che sopravviva alle narrative di mercato.",
+      "bodyTestnet": "La testnet GrowFi gira su Ethereum Sepolia così campagne, staking, allocazione treasury e settlement possono essere provati con le stesse assunzioni L1 prima della produzione.",
       "items": {
         "security": "Ethereum L1 è il settlement layer più testato per asset che devono restare verificabili per anni, non settimane.",
+        "securityTestnet": "Sepolia mantiene la superficie di test allineata al target di produzione Ethereum L1.",
         "settlement": "Claim sui raccolti, refund e riserve treasury richiedono finalità forte e liquidità nativa più della sola execution economica.",
-        "credibility": "Per coltivatori, investitori e partner istituzionali, Ethereum mainnet rende custodia, audit e due diligence più facili da verificare."
+        "settlementTestnet": "Le stesse assunzioni wallet, RPC, explorer e contratti possono essere testate prima dell'esecuzione mainnet.",
+        "credibility": "Per coltivatori, investitori e partner istituzionali, Ethereum mainnet rende custodia, audit e due diligence più facili da verificare.",
+        "credibilityTestnet": "Per operatori e produttori, Sepolia abilita QA end-to-end senza toccare fondi di produzione."
       }
     },
     "grow": {
