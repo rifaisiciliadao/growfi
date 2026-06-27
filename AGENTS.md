@@ -4,7 +4,7 @@ Permissionless RegenFi protocol: farmers/cooperatives tokenise a future harvest 
 
 ## Frontend i18n rule
 
-Every frontend-visible string must be localized in all supported locales: English, Italian, Spanish, and French (`platform/frontend/src/messages/{en,it,es,fr}.json`). Do not add hardcoded UI copy in React components, hooks, toasts, banners, tabs, forms, or seeded demo catalog text without adding/using matching i18n keys for every locale. Off-chain user-authored content can remain as authored, but protocol/demo defaults and static catalog seeds must either carry localized fields or be mapped to localized UI fallbacks.
+Every frontend-visible string must be localized in all supported locales: English, Italian, Spanish, French, and Portuguese (`platform/frontend/src/messages/{en,it,es,fr,pt}.json`). Do not add hardcoded UI copy in React components, hooks, toasts, banners, tabs, forms, or seeded demo catalog text without adding/using matching i18n keys for every locale. Off-chain user-authored content can remain as authored, but protocol/demo defaults and static catalog seeds must either carry localized fields or be mapped to localized UI fallbacks.
 
 ## Current target chain — Ethereum Mainnet (chain 1), audit-hardened build
 

@@ -12,10 +12,11 @@ import en from "@/messages/en.json";
 import it from "@/messages/it.json";
 import es from "@/messages/es.json";
 import fr from "@/messages/fr.json";
+import pt from "@/messages/pt.json";
 
-export type Locale = "en" | "it" | "es" | "fr";
+export type Locale = "en" | "it" | "es" | "fr" | "pt";
 
-export const LOCALES: Locale[] = ["en", "it", "es", "fr"];
+export const LOCALES: Locale[] = ["en", "it", "es", "fr", "pt"];
 export const DEFAULT_LOCALE: Locale = "en";
 
 export const LOCALE_META: Record<
@@ -26,9 +27,16 @@ export const LOCALE_META: Record<
   it: { name: "Italian", flag: "🇮🇹", native: "Italiano" },
   es: { name: "Spanish", flag: "🇪🇸", native: "Español" },
   fr: { name: "French", flag: "🇫🇷", native: "Français" },
+  pt: { name: "Portuguese", flag: "🇵🇹", native: "Português" },
 };
 
-const MESSAGES: Record<Locale, Record<string, unknown>> = { en, it, es, fr };
+const MESSAGES: Record<Locale, Record<string, unknown>> = {
+  en,
+  it,
+  es,
+  fr,
+  pt,
+};
 
 const STORAGE_KEY = "growfi:locale";
 
