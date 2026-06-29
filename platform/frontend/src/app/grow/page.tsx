@@ -46,6 +46,12 @@ export default function GrowDashboard() {
         chainId: WAGMI_CHAIN_ID,
         functionName: "markupBps",
       },
+      {
+        abi: tokenAbi,
+        address: a.growToken as Address,
+        chainId: WAGMI_CHAIN_ID,
+        functionName: "effectiveReferencePrice",
+      },
     ],
   });
 
@@ -53,13 +59,16 @@ export default function GrowDashboard() {
   const totalSupply = (reads?.[1]?.result as bigint | undefined) ?? 0n;
   const treasuryGrow = (reads?.[2]?.result as bigint | undefined) ?? 0n;
   const markupBps = (reads?.[3]?.result as bigint | undefined) ?? 1_000n;
+  const effectiveReferencePrice =
+    (reads?.[4]?.result as bigint | undefined) ?? 0n;
+  const displayFloor = floor > 0n ? floor : effectiveReferencePrice;
   const circulating = totalSupply > treasuryGrow ? totalSupply - treasuryGrow : 0n;
   const salePrice =
-    floor > 0n ? (floor * (10_000n + markupBps)) / 10_000n : 0n;
+    displayFloor > 0n ? (displayFloor * (10_000n + markupBps)) / 10_000n : 0n;
   const stats = [
     {
       label: t("floorPrice"),
-      value: floor === 0n ? "—" : formatUsd18(floor),
+      value: displayFloor === 0n ? "—" : formatUsd18(displayFloor),
       hint: t("floorHint"),
     },
     {
@@ -121,7 +130,7 @@ export default function GrowDashboard() {
           <div className="space-y-6">
             <DirectBuyGrowPanel />
             <BondingCurve
-              floor={floor}
+              floor={displayFloor}
               salePrice={salePrice}
               markupBps={markupBps}
               circulating={circulating}

@@ -340,6 +340,7 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     ///        or malformed, that stablecoin is silently excluded from the backing valuation
     ///        (conservative: floor goes DOWN, not up — protects against "fake $1" inflation).
     ///      • CampaignTokens: only count if the owning campaign is in Active state.
+    ///        Both idle Treasury-held CT and active Treasury staking positions count.
     ///        Buyback / Funding / Ended → excluded. Buyback CTs are recovered separately
     ///        via `buybackFromCampaign`; Ended/Funding shouldn't normally hold Treasury CT.
     function intrinsicFloorPrice() external view returns (uint256) {
@@ -368,7 +369,7 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
             }
             if (cState != 1) continue; // 1 = Active. Funding/Buyback/Ended → excluded.
 
-            uint256 bal = IERC20(c.campaignToken()).balanceOf(address(this));
+            uint256 bal = _treasuryCampaignTokenBalance(c);
             if (bal == 0) continue;
 
             try c.pricePerToken() returns (uint256 price) {
@@ -386,6 +387,38 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
         uint256 circulating = totalSupply_ - treasuryGrow;
 
         return (totalValue * 1e18) / circulating;
+    }
+
+    function _treasuryCampaignTokenBalance(IGrowfiCampaignView c) internal view returns (uint256 bal) {
+        bal = IERC20(c.campaignToken()).balanceOf(address(this));
+
+        address vault;
+        try c.stakingVault() returns (address v) {
+            vault = v;
+        } catch {
+            return bal;
+        }
+        if (vault == address(0)) return bal;
+
+        uint256[] memory positionIds;
+        try IGrowfiStakingVaultMin(vault).getPositions(address(this)) returns (uint256[] memory ids) {
+            positionIds = ids;
+        } catch {
+            return bal;
+        }
+
+        uint256 n = positionIds.length;
+        for (uint256 i; i < n; ++i) {
+            try IGrowfiStakingVaultMin(vault).positions(positionIds[i]) returns (
+                address owner, uint256 amount, uint256, uint256, uint256, bool active
+            ) {
+                if (active && owner == address(this)) {
+                    bal += amount;
+                }
+            } catch {
+                continue;
+            }
+        }
     }
 
     // ---------- allocation (factory admin) ----------

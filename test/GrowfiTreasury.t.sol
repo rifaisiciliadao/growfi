@@ -12,6 +12,7 @@ import {MockOracle} from "./helpers/MockOracle.sol";
 /// @dev Mock campaign for the Treasury tests. `buy()` pulls payment, mints CampaignToken at price.
 contract MockGrowfiCampaign {
     address public campaignToken;
+    address public stakingVault;
     uint256 public pricePerToken;
     /// @dev 0 = Funding, 1 = Active, 2 = Buyback, 3 = Ended. Defaults to Active so the
     ///      floor calc counts Treasury holdings of this campaign's token by default.
@@ -28,6 +29,10 @@ contract MockGrowfiCampaign {
         state = newState;
     }
 
+    function setStakingVault(address newVault) external {
+        stakingVault = newVault;
+    }
+
     /// @dev Accepts any ERC20. Computes USD value at price assuming the payer feeds something
     ///      with `decimals()` properly scaled by the caller — for these tests we just use
     ///      6-dec USDC-style payments and scale up by 1e12 to USD-18-dec internally.
@@ -35,6 +40,33 @@ contract MockGrowfiCampaign {
         IERC20(paymentToken).transferFrom(msg.sender, address(this), paymentAmount);
         uint256 tokensOut = (paymentAmount * 1e30) / pricePerToken;
         MockERC20(campaignToken).mint(msg.sender, tokensOut);
+    }
+}
+
+contract MockGrowfiStakingVault {
+    struct Position {
+        address owner;
+        uint256 amount;
+        uint256 startTime;
+        uint256 rewardPerTokenPaid;
+        uint256 seasonId;
+        bool active;
+    }
+
+    uint256 public nextPositionId;
+    mapping(uint256 => Position) public positions;
+    mapping(address => uint256[]) private _userPositionIds;
+
+    function addPosition(address owner, uint256 amount, bool active) external returns (uint256 positionId) {
+        positionId = nextPositionId++;
+        positions[positionId] = Position({
+            owner: owner, amount: amount, startTime: block.timestamp, rewardPerTokenPaid: 0, seasonId: 1, active: active
+        });
+        _userPositionIds[owner].push(positionId);
+    }
+
+    function getPositions(address user) external view returns (uint256[] memory) {
+        return _userPositionIds[user];
     }
 }
 
@@ -235,6 +267,33 @@ contract GrowfiTreasuryTest is Test {
         // Total = $50 + $50 + $144 = $244
         uint256 expected = ((50e18 + 50e18 + 144e18) * 1e18) / GENESIS_AMOUNT;
         assertEq(treasury.intrinsicFloorPrice(), expected);
+    }
+
+    function test_floor_countsTreasuryStakedCampaignTokens() public {
+        vm.prank(FACTORY);
+        treasury.addTrackedCampaign(address(campaignA));
+
+        MockGrowfiStakingVault vault = new MockGrowfiStakingVault();
+        campaignA.setStakingVault(address(vault));
+
+        campaignTokenA.mint(address(treasury), 500e18);
+        vault.addPosition(address(treasury), 1000e18, true);
+
+        uint256 expected = ((1500e18 * PRICE_A) / 1e18 * 1e18) / GENESIS_AMOUNT;
+        assertEq(treasury.intrinsicFloorPrice(), expected);
+    }
+
+    function test_floor_ignoresInactiveAndForeignStakedCampaignTokens() public {
+        vm.prank(FACTORY);
+        treasury.addTrackedCampaign(address(campaignA));
+
+        MockGrowfiStakingVault vault = new MockGrowfiStakingVault();
+        campaignA.setStakingVault(address(vault));
+
+        vault.addPosition(address(treasury), 1000e18, false);
+        vault.addPosition(ALICE, 1000e18, true);
+
+        assertEq(treasury.intrinsicFloorPrice(), 0);
     }
 
     function test_floor_excludesTreasuryHeldGrow() public {
