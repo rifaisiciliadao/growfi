@@ -145,6 +145,13 @@ export default function ProducerPage({
             <p className="text-xs md:text-sm text-on-surface-variant font-mono break-all">
               {producerAddress}
             </p>
+            <SocialProfileLinks
+              producer={producer}
+              active={
+                !protocolLabel &&
+                (isSocialVerificationActive(producer) || Boolean(onchainSocialActive))
+              }
+            />
             {profile?.location && (
               <p className="text-sm text-on-surface-variant mt-1">
                 📍 {profile.location}
@@ -258,6 +265,125 @@ export default function ProducerPage({
         )}
       </section>
     </div>
+  );
+}
+
+function SocialProfileLinks({
+  producer,
+  active,
+}: {
+  producer: SubgraphProducer | null | undefined;
+  active: boolean;
+}) {
+  const t = useTranslations("grower.social");
+  if (!active || !producer) return null;
+
+  const link = socialProfileLink(producer);
+  if (!link) return null;
+
+  return (
+    <div className="mt-2 flex flex-wrap items-center gap-2">
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noreferrer"
+        title={t("verifiedProfileLink", { handle: link.label })}
+        aria-label={t("verifiedProfileLink", { handle: link.label })}
+        className="inline-flex h-8 max-w-full items-center gap-2 rounded-full border border-primary/[0.15] bg-primary/[0.08] px-3 text-xs font-semibold text-primary transition hover:border-primary/[0.3] hover:bg-primary/[0.12] focus:outline-none focus:ring-2 focus:ring-primary/[0.3]"
+      >
+        <SocialPlatformIcon platform={producer.socialPlatform} />
+        <span className="truncate">{link.label}</span>
+        <ExternalIcon />
+      </a>
+    </div>
+  );
+}
+
+function socialProfileLink(producer: SubgraphProducer): { href: string; label: string } | null {
+  const rawHandle = producer.socialHandle?.trim();
+  const cleanHandle = rawHandle?.replace(/^@+/, "");
+  const label = cleanHandle ? `@${cleanHandle}` : producer.socialPlatform?.trim();
+  if (!label) return null;
+
+  const profileUrl = normalizeSocialUrl(producer.socialProfileUrl);
+  if (profileUrl) return { href: profileUrl, label };
+
+  const platform = producer.socialPlatform?.toLowerCase().trim();
+  if ((platform === "x" || platform === "twitter") && cleanHandle) {
+    return {
+      href: `https://x.com/${encodeURIComponent(cleanHandle)}`,
+      label,
+    };
+  }
+
+  const proofUrl = normalizeSocialUrl(producer.socialProofUrl);
+  return proofUrl ? { href: proofUrl, label } : null;
+}
+
+function normalizeSocialUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === "https:" || parsed.protocol === "http:" ? parsed.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function SocialPlatformIcon({ platform }: { platform: string | null | undefined }) {
+  const normalized = platform?.toLowerCase().trim();
+  if (normalized === "x" || normalized === "twitter") {
+    return (
+      <svg
+        width="14"
+        height="14"
+        viewBox="0 0 24 24"
+        fill="currentColor"
+        aria-hidden="true"
+        className="shrink-0"
+      >
+        <path d="M17.53 3h3.31l-7.24 8.27L22.12 21h-6.67l-5.22-6.82L4.25 21H.94l7.74-8.85L.5 3h6.84l4.72 6.24L17.53 3Zm-1.16 16.28h1.83L6.34 4.63H4.37l12 14.65Z" />
+      </svg>
+    );
+  }
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="shrink-0"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18" />
+      <path d="M12 3c2.5 2.8 3.8 5.8 3.8 9S14.5 18.2 12 21" />
+      <path d="M12 3C9.5 5.8 8.2 8.8 8.2 12S9.5 18.2 12 21" />
+    </svg>
+  );
+}
+
+function ExternalIcon() {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className="shrink-0 opacity-70"
+    >
+      <path d="M7 17 17 7" />
+      <path d="M9 7h8v8" />
+    </svg>
   );
 }
 

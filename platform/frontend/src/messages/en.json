@@ -1203,6 +1203,7 @@
       "createChallenge": "Create verification code",
       "message": "Post this message",
       "proofUrl": "Post URL",
+      "verifiedProfileLink": "Open verified social profile {handle}",
       "verifyAndClaim": "Verify and claim badge",
       "verifying": "Verifying post…",
       "awaitingSignature": "Awaiting wallet…",

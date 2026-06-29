@@ -1203,6 +1203,7 @@
       "createChallenge": "Créer le code de vérification",
       "message": "Publie ce message",
       "proofUrl": "URL du post",
+      "verifiedProfileLink": "Ouvrir le profil social vérifié {handle}",
       "verifyAndClaim": "Vérifier et réclamer le badge",
       "verifying": "Vérification du post…",
       "awaitingSignature": "En attente du wallet…",

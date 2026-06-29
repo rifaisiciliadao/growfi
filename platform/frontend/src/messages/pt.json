@@ -1203,6 +1203,7 @@
       "createChallenge": "Criar código de verificação",
       "message": "Publique esta mensagem",
       "proofUrl": "URL do post",
+      "verifiedProfileLink": "Abrir perfil social verificado {handle}",
       "verifyAndClaim": "Verificar e registrar selo",
       "verifying": "Verificando post…",
       "awaitingSignature": "Aguardando carteira…",

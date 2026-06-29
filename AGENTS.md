@@ -6,6 +6,15 @@ Permissionless RegenFi protocol: farmers/cooperatives tokenise a future harvest 
 
 Every frontend-visible string must be localized in all supported locales: English, Italian, Spanish, French, and Portuguese (`platform/frontend/src/messages/{en,it,es,fr,pt}.json`). Do not add hardcoded UI copy in React components, hooks, toasts, banners, tabs, forms, or seeded demo catalog text without adding/using matching i18n keys for every locale. Off-chain user-authored content can remain as authored, but protocol/demo defaults and static catalog seeds must either carry localized fields or be mapped to localized UI fallbacks.
 
+## Frontend social verification UI
+
+The public grower profile (`/grower/[address]`) renders active social
+attestations in the header as a clickable handle pill with the platform icon.
+The link must prefer `Producer.socialProfileUrl`, then fall back to the known
+platform handle URL (currently X/Twitter), then `socialProofUrl`. Keep this UI
+behind `NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION=true`; mainnet must not query or
+render social fields until its contracts and subgraph support them.
+
 ## Current target chain — Ethereum Mainnet (chain 1), audit-hardened build
 
 **As of 2026-06-16 the live production app runs on Ethereum Mainnet** (chain 1):
