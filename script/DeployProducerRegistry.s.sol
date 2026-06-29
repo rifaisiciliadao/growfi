@@ -5,14 +5,14 @@ import {Script, console} from "forge-std/Script.sol";
 import {GrowfiProducerRegistry} from "../src/GrowfiProducerRegistry.sol";
 
 /// @notice Deploys GrowfiProducerRegistry. Constructor takes the initial owner,
-///         which controls the KYC admin set (default: the deployer). The
-///         self-served profile surface remains zero-admin.
+///         which controls verifier roles (default: the deployer). The
+///         self-served profile surface remains producer-owned.
 ///
 /// Usage:
 ///   PRIVATE_KEY=0x... \
 ///   OWNER=0x... (optional; defaults to deployer) \
 ///   forge script script/DeployProducerRegistry.s.sol \
-///     --rpc-url https://sepolia.base.org --broadcast --verify
+///     --rpc-url $SEPOLIA_RPC_URL --broadcast --verify
 contract DeployProducerRegistryScript is Script {
     function run() external {
         uint256 pk = vm.envUint("PRIVATE_KEY");

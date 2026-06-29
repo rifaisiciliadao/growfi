@@ -156,7 +156,7 @@ NEXT_PUBLIC_SUBGRAPH_URL=https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
 | **RepaymentModule** impl | [`0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6`](https://sepolia.etherscan.io/address/0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6) | Whitelisted but NOT default. Producer attaches post-create. Refund = principal (from on-chain `pricePerToken`) + producer-set `bonusPerCt`. |
 | **EcommerceModule** impl | [`0x4921f38F3D0de21057Ef202629D501E8b99d8616`](https://sepolia.etherscan.io/address/0x4921f38F3D0de21057Ef202629D501E8b99d8616) | Whitelisted but NOT default. Producer attaches post-create for SKU checkout. |
 | CampaignRegistry | [`0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE`](https://sepolia.etherscan.io/address/0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE) | `(campaign → metadataURI)` + monotonic version. |
-| ProducerRegistry | [`0x8DDc90F40Bf8847672EA5B256d93607F42Fd540E`](https://sepolia.etherscan.io/address/0x8DDc90F40Bf8847672EA5B256d93607F42Fd540E) | KYC role + producer-self-served profile. |
+| ProducerRegistry | [`0x52b30540174057756052F676Ed5Fd978E02b939b`](https://sepolia.etherscan.io/address/0x52b30540174057756052F676Ed5Fd978E02b939b) | Social attestation + producer-self-served profile. Deploy block `11163979`. |
 
 ### Stablecoins (testnet mocks, public mint)
 
@@ -196,7 +196,7 @@ NEXT_PUBLIC_USDC_ADDRESS=0x32C344Dc9713d904442d0E5B0d2b7994E52B0d4E
 NEXT_PUBLIC_USDT_ADDRESS=0x7c47aa550061117f8440128c6b829da5bf88de06
 NEXT_PUBLIC_DAI_ADDRESS=0x3540ea8a6fa084a31321e790b89a6fbe677ae00e
 NEXT_PUBLIC_REGISTRY_ADDRESS=0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE
-NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x8DDc90F40Bf8847672EA5B256d93607F42Fd540E
+NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x52b30540174057756052F676Ed5Fd978E02b939b
 NEXT_PUBLIC_REPAYMENT_IMPL=0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6
 NEXT_PUBLIC_ECOMMERCE_IMPL=0x4921f38F3D0de21057Ef202629D501E8b99d8616
 NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL=

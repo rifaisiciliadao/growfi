@@ -302,9 +302,21 @@ type Producer @entity(immutable: false) {
   version: BigInt!
   updatedAt: BigInt
 
-  # v3 — KYC verdict from a KYC_ADMIN_ROLE-holder. Defaults to false.
+  # Legacy KYC verdict from a KYC admin. Kept for backward compatibility.
   kyced: Boolean!
   kycSetAt: BigInt
+
+  # v5 — social verification from a trusted social verifier.
+  socialVerified: Boolean!
+  socialVerifiedAt: BigInt
+  socialExpiresAt: BigInt
+  socialPlatform: String
+  socialHandle: String
+  socialProfileUrl: String
+  socialProofUrl: String
+  socialProofHash: Bytes
+  socialAttestationUID: Bytes
+  socialVerifier: Bytes
 }
 
 type GlobalStats @entity(immutable: false) {

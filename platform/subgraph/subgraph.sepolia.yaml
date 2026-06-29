@@ -1,5 +1,5 @@
 specVersion: 1.0.0
-description: GrowFi — Regenerative Finance Subgraph (Ethereum Mainnet)
+description: GrowFi — Regenerative Finance Subgraph (Ethereum Sepolia)
 repository: https://github.com/growfi/growfi
 schema:
   file: ./schema.graphql
@@ -7,11 +7,11 @@ schema:
 dataSources:
   - kind: ethereum/contract
     name: CampaignFactory
-    network: mainnet
+    network: sepolia
     source:
-      address: "0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2"
+      address: "0xa4DEd8Ab35e89bCAF1f7DFeb7aB2c1ED533b3f05"
       abi: CampaignFactory
-      startBlock: 25328624
+      startBlock: 10838711
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -40,11 +40,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: CampaignRegistry
-    network: mainnet
+    network: sepolia
     source:
-      address: "0xA3AEb95Ff4555E266aa1366000204a75FaD4142B"
+      address: "0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE"
       abi: CampaignRegistry
-      startBlock: 25328624
+      startBlock: 10838711
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -61,11 +61,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: ProducerRegistry
-    network: mainnet
+    network: sepolia
     source:
-      address: "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5"
+      address: "0x52b30540174057756052F676Ed5Fd978E02b939b"
       abi: ProducerRegistry
-      startBlock: 25328624
+      startBlock: 11163979
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -86,15 +86,15 @@ dataSources:
         - event: SocialAttestationRevoked(indexed address,indexed address)
           handler: handleSocialAttestationRevoked
 
-  # ---------- GROW system (deployed 2026-06-16, block 25328624) ----------
+  # ---------- GROW system (deployed 2026-05-12, block 10838846) ----------
 
   - kind: ethereum/contract
     name: GrowfiToken
-    network: mainnet
+    network: sepolia
     source:
-      address: "0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725"
+      address: "0x9bB4f9C41ed922282C181f2f3e01d8384c960b44"
       abi: GrowfiToken
-      startBlock: 25328624
+      startBlock: 10838846
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -127,11 +127,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: GrowfiTreasury
-    network: mainnet
+    network: sepolia
     source:
-      address: "0x47ea5710ea674f5D653A59c96836E2d20288813a"
+      address: "0xB71D13F80ceAed17A179B4e0D9eb1e8410DeaDDd"
       abi: GrowfiTreasury
-      startBlock: 25328624
+      startBlock: 10838846
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -164,11 +164,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: GrowfiMinter
-    network: mainnet
+    network: sepolia
     source:
-      address: "0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B"
+      address: "0xD99c1985B257a4A55bA8D0836Fab536389cdd24C"
       abi: GrowfiMinter
-      startBlock: 25328624
+      startBlock: 10838846
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -202,11 +202,11 @@ dataSources:
 
   - kind: ethereum/contract
     name: GrowfiFeeSplitter
-    network: mainnet
+    network: sepolia
     source:
-      address: "0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f"
+      address: "0xF1a8527E00916588f4Bb137cE450E8459b6BD436"
       abi: GrowfiFeeSplitter
-      startBlock: 25328624
+      startBlock: 10838846
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.9
@@ -224,7 +224,7 @@ dataSources:
 templates:
   - kind: ethereum/contract
     name: Campaign
-    network: mainnet
+    network: sepolia
     source:
       abi: Campaign
     mapping:
@@ -318,7 +318,7 @@ templates:
 
   - kind: ethereum/contract
     name: StakingVault
-    network: mainnet
+    network: sepolia
     source:
       abi: StakingVault
     mapping:
@@ -352,7 +352,7 @@ templates:
 
   - kind: ethereum/contract
     name: HarvestManager
-    network: mainnet
+    network: sepolia
     source:
       abi: HarvestManager
     mapping:

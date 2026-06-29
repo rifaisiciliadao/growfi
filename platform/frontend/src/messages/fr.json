@@ -933,7 +933,10 @@
     }
   },
   "kyc": {
-    "verified": "KYC vérifié — identité attestée onchain par un admin du registry"
+    "verified": "Profil social vérifié on-chain"
+  },
+  "socialVerification": {
+    "verified": "Profil social vérifié on-chain"
   },
   "grow": {
     "title": "$GROW",
@@ -1186,6 +1189,25 @@
       "confirmingTx": "Confirmation on-chain…",
       "indexing": "Synchronisation avec l'indexeur…"
     },
+    "social": {
+      "title": "Vérification sociale",
+      "inactive": "Connecte un profil social public pour recevoir le badge on-chain.",
+      "activeUntil": "Vérifié jusqu'au {date}",
+      "statusVerified": "Vérifié",
+      "statusMissing": "Non vérifié",
+      "platform": "Plateforme",
+      "handle": "Identifiant",
+      "profileUrl": "URL du profil",
+      "createChallenge": "Créer le code de vérification",
+      "message": "Publie ce message",
+      "proofUrl": "URL du post",
+      "verifyAndClaim": "Vérifier et réclamer le badge",
+      "verifying": "Vérification du post…",
+      "awaitingSignature": "En attente du wallet…",
+      "confirmingTx": "Confirmation on-chain…",
+      "nonceUnavailable": "Le nonce on-chain n'est pas encore chargé. Réessaie dans un instant.",
+      "verifierNotConfigured": "Le vérificateur a accepté la preuve mais n'est pas configuré pour signer des attestations on-chain."
+    },
     "notifications": {
       "title": "Recevoir des notifications",
       "description": "Reçois un email quand quelque chose se passe sur tes campagnes ou positions — nouveaux achats, fin de saison, récoltes, engagements en USDC. Hors chaîne uniquement, jamais publié on-chain.",
@@ -1303,6 +1325,8 @@
     "activateConfirmed": "Campagne activée",
     "activateFailed": "Activation échouée",
     "startSeasonConfirmed": "Saison lancée",
+    "socialVerificationConfirmed": "Vérification sociale enregistrée",
+    "socialVerificationFailed": "Vérification sociale échouée",
     "startSeasonFailed": "Lancement de saison échoué",
     "endSeasonConfirmed": "Saison terminée",
     "endSeasonFailed": "Fin de saison échouée",

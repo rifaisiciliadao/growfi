@@ -1,7 +1,7 @@
 import { describe, it, beforeEach } from "node:test";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
-import { getAddress } from "viem";
+import { getAddress, verifyTypedData } from "viem";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { buildApp, type AppDeps } from "./app.js";
 import type { EmailPayload } from "./email.js";
@@ -63,6 +63,19 @@ async function makeApp(overrides: Partial<AppDeps> = {}): Promise<TestHarness> {
       return new Response(JSON.stringify(hit.body), {
         status: hit.status,
         headers: { "content-type": "application/json" },
+      });
+    },
+    fetchText: async (url) => {
+      fetchCalls.push(url);
+      const hit = fetchStub.get(url);
+      if (!hit) {
+        return new Response(null, { status: 404 });
+      }
+      const body =
+        typeof hit.body === "string" ? hit.body : JSON.stringify(hit.body);
+      return new Response(body, {
+        status: hit.status,
+        headers: { "content-type": "text/plain" },
       });
     },
     ...overrides,
@@ -662,6 +675,123 @@ describe("GET /api/snapshot/:campaign/:seasonId", () => {
     assert.equal(body.holders[0].yieldAmount, (30n * 10n ** 18n).toString());
     assert.deepEqual(body.notes, ["ok"]);
     assert.deepEqual(h.snapshotCalls, [{ campaign: CAMPAIGN, seasonId: 7n }]);
+  });
+});
+
+describe("POST /api/social-verification", () => {
+  const verifierPrivateKey =
+    "0x59c6995e998f97a5a0044966f0945382e6d6f042d134929a5ea15a438b41f26a" as const;
+  const registryAddress = getAddress("0x4444444444444444444444444444444444444444");
+
+  it("503 when social verification secret is missing", async () => {
+    const { app } = await makeApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: { wallet: ALICE, platform: "x" },
+    });
+    assert.equal(res.statusCode, 503);
+  });
+
+  it("verifies a posted proof and returns a verifier signature", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+      socialAttestationTtlSeconds: 3600,
+    });
+
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: ALICE.toLowerCase(),
+        platform: "X",
+        handle: "@alice",
+        profileUrl: "https://x.com/alice",
+      },
+    });
+    assert.equal(challengeRes.statusCode, 200);
+    const challenge = challengeRes.json();
+    assert.equal(challenge.wallet, ALICE);
+    assert.equal(challenge.platform, "x");
+    assert.equal(challenge.handle, "alice");
+    assert.match(challenge.code, /^GROWFI-SOCIAL-/);
+
+    const proofUrl = "https://x.com/alice/status/1";
+    h.fetchStub.set(proofUrl, {
+      status: 200,
+      body: `GrowFi social verification post ${challenge.code}`,
+    });
+
+    const verifyRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload: {
+        ...challenge,
+        wallet: ALICE,
+        proofUrl,
+        onchainNonce: "7",
+      },
+    });
+    assert.equal(verifyRes.statusCode, 200);
+    const body = verifyRes.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.authorizationReady, true);
+    assert.equal(body.attestation.producer, ALICE);
+    assert.equal(body.attestation.platform, "x");
+    assert.equal(body.attestation.handle, "alice");
+    assert.equal(body.attestation.proofUrl, proofUrl);
+    assert.equal(body.attestation.nonce, "7");
+    assert.equal(body.typedData.domain.verifyingContract, registryAddress);
+    assert.match(body.signature, /^0x[0-9a-f]+$/i);
+
+    const validSignature = await verifyTypedData({
+      address: body.verifier,
+      domain: body.typedData.domain,
+      types: body.typedData.types,
+      primaryType: "SocialAttestation",
+      message: {
+        ...body.attestation,
+        nonce: BigInt(body.attestation.nonce),
+      },
+      signature: body.signature,
+    });
+    assert.equal(validSignature, true);
+  });
+
+  it("400 when the proof URL does not contain the challenge code", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+    });
+
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: { wallet: ALICE, platform: "instagram" },
+    });
+    const challenge = challengeRes.json();
+    const proofUrl = "https://instagram.com/p/1";
+    h.fetchStub.set(proofUrl, {
+      status: 200,
+      body: "no verification code here",
+    });
+
+    const verifyRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload: {
+        ...challenge,
+        proofUrl,
+        onchainNonce: "0",
+      },
+    });
+    assert.equal(verifyRes.statusCode, 400);
+    assert.match(verifyRes.json().error, /verification code/);
   });
 });
 

@@ -933,7 +933,10 @@
     }
   },
   "kyc": {
-    "verified": "KYC verificado — identidad atestiguada onchain por un admin del registry"
+    "verified": "Perfil social verificado on-chain"
+  },
+  "socialVerification": {
+    "verified": "Perfil social verificado on-chain"
   },
   "grow": {
     "title": "$GROW",
@@ -1186,6 +1189,25 @@
       "confirmingTx": "Confirmando on-chain…",
       "indexing": "Sincronizando con el indexador…"
     },
+    "social": {
+      "title": "Verificación social",
+      "inactive": "Conecta un perfil social público para recibir la insignia on-chain.",
+      "activeUntil": "Verificado hasta {date}",
+      "statusVerified": "Verificado",
+      "statusMissing": "No verificado",
+      "platform": "Plataforma",
+      "handle": "Usuario",
+      "profileUrl": "URL del perfil",
+      "createChallenge": "Crear código de verificación",
+      "message": "Publica este mensaje",
+      "proofUrl": "URL del post",
+      "verifyAndClaim": "Verificar y reclamar insignia",
+      "verifying": "Verificando post…",
+      "awaitingSignature": "Esperando wallet…",
+      "confirmingTx": "Confirmando on-chain…",
+      "nonceUnavailable": "El nonce on-chain aún no cargó. Intenta de nuevo en un momento.",
+      "verifierNotConfigured": "El verificador aceptó la prueba pero no está configurado para firmar attestations on-chain."
+    },
     "notifications": {
       "title": "Recibir notificaciones",
       "description": "Recibe un email cuando ocurra algo en tus campañas o posiciones — nuevas compras, fin de temporada, cosechas, compromisos en USDC. Solo off-chain, nunca publicado en blockchain.",
@@ -1303,6 +1325,8 @@
     "activateConfirmed": "Campaña activada",
     "activateFailed": "Activación fallida",
     "startSeasonConfirmed": "Temporada iniciada",
+    "socialVerificationConfirmed": "Verificación social registrada",
+    "socialVerificationFailed": "Verificación social fallida",
     "startSeasonFailed": "Inicio de temporada fallido",
     "endSeasonConfirmed": "Temporada cerrada",
     "endSeasonFailed": "Cierre de temporada fallido",

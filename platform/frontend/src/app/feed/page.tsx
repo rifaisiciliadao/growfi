@@ -8,13 +8,14 @@ import {
   useFeed,
   useLeaderboard,
   useBatchProducerProfiles,
+  isSocialVerificationActive,
   type FeedItem,
   type LeaderboardEntry,
   type BatchProducerProfile,
 } from "@/lib/subgraph";
 import { useBatchEnsNames } from "@/lib/ens";
 import { useResolvedCampaignMetadata } from "@/lib/metadata";
-import { KycBadge } from "@/components/KycBadge";
+import { SocialVerificationBadge } from "@/components/SocialVerificationBadge";
 import { RefreshButton } from "@/components/RefreshButton";
 import { KNOWN_TOKENS } from "@/contracts/tokens";
 import { getAddresses } from "@/contracts";
@@ -259,7 +260,10 @@ function FeedRow({
                 />
               ) : null}
               <span className="truncate">{displayName}</span>
-              <KycBadge kyced={profile?.kyced} size={11} />
+              <SocialVerificationBadge
+                verified={isSocialVerificationActive(profile)}
+                size={11}
+              />
             </Link>
           )}{" "}
           {description.verb}{" "}
@@ -462,7 +466,12 @@ function LeaderboardRow({
       <div className="flex-1 min-w-0">
         <div className="text-sm font-semibold text-on-surface truncate flex items-center gap-1">
           <span className="truncate">{displayName}</span>
-          {!isProtocol && <KycBadge kyced={profile?.kyced} size={11} />}
+          {!isProtocol && (
+            <SocialVerificationBadge
+              verified={isSocialVerificationActive(profile)}
+              size={11}
+            />
+          )}
         </div>
         <div className="text-[11px] text-on-surface-variant">
           {entry.purchasesCount}× buy

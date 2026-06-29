@@ -277,6 +277,8 @@ export interface BatchProducerProfile {
   profileURI: string;
   version: string;
   kyced: boolean;
+  socialVerified: boolean;
+  socialExpiresAt: string | null;
   name?: string;
   avatar?: string;
 }
@@ -298,6 +300,8 @@ export function useBatchProducerProfiles(
         profileURI: string;
         version: string;
         kyced: boolean;
+        socialVerified: boolean;
+        socialExpiresAt: string | null;
       }> }>(
         `
         query BatchProducers($ids: [ID!]!) {
@@ -306,6 +310,8 @@ export function useBatchProducerProfiles(
             profileURI
             version
             kyced
+            socialVerified
+            socialExpiresAt
           }
         }
         `,
@@ -522,6 +528,16 @@ export interface SubgraphProducer {
   updatedAt: string | null;
   kyced: boolean;
   kycSetAt: string | null;
+  socialVerified: boolean;
+  socialVerifiedAt: string | null;
+  socialExpiresAt: string | null;
+  socialPlatform: string | null;
+  socialHandle: string | null;
+  socialProfileUrl: string | null;
+  socialProofUrl: string | null;
+  socialProofHash: string | null;
+  socialAttestationUID: string | null;
+  socialVerifier: string | null;
 }
 
 /**
@@ -578,6 +594,16 @@ export function useSubgraphProducer(address: string | undefined) {
             updatedAt
             kyced
             kycSetAt
+            socialVerified
+            socialVerifiedAt
+            socialExpiresAt
+            socialPlatform
+            socialHandle
+            socialProfileUrl
+            socialProofUrl
+            socialProofHash
+            socialAttestationUID
+            socialVerifier
           }
         }
         `,
@@ -587,6 +613,17 @@ export function useSubgraphProducer(address: string | undefined) {
     },
     refetchInterval: 20_000,
   });
+}
+
+export function isSocialVerificationActive(
+  producer:
+    | Pick<SubgraphProducer, "socialVerified" | "socialExpiresAt">
+    | Pick<BatchProducerProfile, "socialVerified" | "socialExpiresAt">
+    | null
+    | undefined,
+): boolean {
+  if (!producer?.socialVerified || !producer.socialExpiresAt) return false;
+  return BigInt(producer.socialExpiresAt) > BigInt(Math.floor(Date.now() / 1000));
 }
 
 /**

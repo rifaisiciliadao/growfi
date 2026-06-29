@@ -4,21 +4,26 @@ pragma solidity ^0.8.24;
 import {Test} from "forge-std/Test.sol";
 import {GrowfiProducerRegistry} from "../src/GrowfiProducerRegistry.sol";
 
-/// @title ProducerRegistryKyc — adversarial coverage for KYC role + setKyc.
-/// @notice Pins the trust model: producers self-write profile, but the KYC
-///         bit is role-gated. A malicious producer cannot self-attest KYC;
-///         a non-admin cannot set anyone's KYC.
+/// @title ProducerRegistryKyc — adversarial coverage for producer trust flags.
+/// @notice Pins the trust model: producers self-write profile, but legacy KYC
+///         and social attestations are role-gated. A malicious producer cannot
+///         self-attest trust status without a verifier authorization.
 contract ProducerRegistryKycTest is Test {
     GrowfiProducerRegistry registry;
 
     address owner = makeAddr("owner");
     address kycAdmin = makeAddr("kycAdmin");
     address otherAdmin = makeAddr("otherAdmin");
+    uint256 socialVerifierPk = 0xA11CE;
+    uint256 attackerPk = 0xB0B;
+    address socialVerifier;
     address producer = makeAddr("producer");
     address bob = makeAddr("bob");
     address attacker = makeAddr("attacker");
 
     function setUp() public {
+        vm.warp(1_700_000_000);
+        socialVerifier = vm.addr(socialVerifierPk);
         registry = new GrowfiProducerRegistry(owner);
     }
 
@@ -230,5 +235,164 @@ contract ProducerRegistryKycTest is Test {
         vm.prank(kycAdmin);
         vm.expectRevert(GrowfiProducerRegistry.NotKycAdmin.selector);
         registry.setKyc(producer, false);
+    }
+
+    // ========================================================================
+    // Social attestation: verifier-signed, producer-claimed
+    // ========================================================================
+
+    function test_grantSocialVerifier_byOwner() public {
+        vm.prank(owner);
+        registry.grantSocialVerifier(socialVerifier);
+        assertTrue(registry.isSocialVerifier(socialVerifier));
+    }
+
+    function test_attack_grantSocialVerifier_byNonOwner() public {
+        vm.prank(attacker);
+        vm.expectRevert(GrowfiProducerRegistry.NotOwner.selector);
+        registry.grantSocialVerifier(socialVerifier);
+    }
+
+    function test_claimSocialAttestation_byProducerWithVerifierSignature() public {
+        vm.prank(owner);
+        registry.grantSocialVerifier(socialVerifier);
+
+        GrowfiProducerRegistry.SocialAttestation memory attestation = _attestation(producer);
+        bytes memory signature = _signSocialAttestation(socialVerifierPk, attestation);
+
+        vm.prank(producer);
+        registry.claimSocialAttestation(attestation, signature);
+
+        assertTrue(registry.socialVerified(producer));
+        assertEq(registry.socialVerifiedAt(producer), block.timestamp);
+        assertEq(registry.socialExpiresAt(producer), attestation.expiresAt);
+        assertEq(registry.socialProofHash(producer), attestation.proofHash);
+        assertEq(registry.socialAttestationUID(producer), attestation.attestationUID);
+        assertEq(registry.socialNonce(producer), 1);
+        assertTrue(registry.hasActiveSocialAttestation(producer));
+    }
+
+    function test_setSocialAttestation_byVerifier() public {
+        vm.prank(owner);
+        registry.grantSocialVerifier(socialVerifier);
+
+        GrowfiProducerRegistry.SocialAttestation memory attestation = _attestation(producer);
+
+        vm.prank(socialVerifier);
+        registry.setSocialAttestation(attestation);
+
+        assertTrue(registry.socialVerified(producer));
+        assertEq(registry.socialNonce(producer), 1);
+    }
+
+    function test_attack_claimSocialAttestation_rejectsNonVerifierSignature() public {
+        vm.prank(owner);
+        registry.grantSocialVerifier(socialVerifier);
+
+        GrowfiProducerRegistry.SocialAttestation memory attestation = _attestation(producer);
+        bytes memory signature = _signSocialAttestation(attackerPk, attestation);
+
+        vm.prank(producer);
+        vm.expectRevert(GrowfiProducerRegistry.InvalidSocialVerifierSignature.selector);
+        registry.claimSocialAttestation(attestation, signature);
+    }
+
+    function test_attack_claimSocialAttestation_rejectsForeignProducer() public {
+        vm.prank(owner);
+        registry.grantSocialVerifier(socialVerifier);
+
+        GrowfiProducerRegistry.SocialAttestation memory attestation = _attestation(producer);
+        bytes memory signature = _signSocialAttestation(socialVerifierPk, attestation);
+
+        vm.prank(attacker);
+        vm.expectRevert(GrowfiProducerRegistry.InvalidAttestationProducer.selector);
+        registry.claimSocialAttestation(attestation, signature);
+    }
+
+    function test_attack_claimSocialAttestation_rejectsReplay() public {
+        vm.prank(owner);
+        registry.grantSocialVerifier(socialVerifier);
+
+        GrowfiProducerRegistry.SocialAttestation memory attestation = _attestation(producer);
+        bytes memory signature = _signSocialAttestation(socialVerifierPk, attestation);
+
+        vm.prank(producer);
+        registry.claimSocialAttestation(attestation, signature);
+
+        vm.prank(producer);
+        vm.expectRevert(GrowfiProducerRegistry.InvalidAttestationNonce.selector);
+        registry.claimSocialAttestation(attestation, signature);
+    }
+
+    function test_attack_claimSocialAttestation_rejectsExpiredAttestation() public {
+        vm.prank(owner);
+        registry.grantSocialVerifier(socialVerifier);
+
+        GrowfiProducerRegistry.SocialAttestation memory attestation = _attestation(producer);
+        attestation.issuedAt = uint64(block.timestamp - 2 days);
+        attestation.expiresAt = uint64(block.timestamp - 1 days);
+        bytes memory signature = _signSocialAttestation(socialVerifierPk, attestation);
+
+        vm.prank(producer);
+        vm.expectRevert(GrowfiProducerRegistry.ExpiredSocialAttestation.selector);
+        registry.claimSocialAttestation(attestation, signature);
+    }
+
+    function test_revokeSocialAttestation_byProducer_invalidatesNonce() public {
+        vm.prank(owner);
+        registry.grantSocialVerifier(socialVerifier);
+
+        GrowfiProducerRegistry.SocialAttestation memory attestation = _attestation(producer);
+        bytes memory signature = _signSocialAttestation(socialVerifierPk, attestation);
+
+        vm.prank(producer);
+        registry.claimSocialAttestation(attestation, signature);
+
+        vm.prank(producer);
+        registry.revokeSocialAttestation(producer);
+
+        assertFalse(registry.socialVerified(producer));
+        assertEq(registry.socialExpiresAt(producer), 0);
+        assertEq(registry.socialProofHash(producer), bytes32(0));
+        assertEq(registry.socialNonce(producer), 2);
+    }
+
+    function test_attack_revokeSocialAttestation_byUntrustedAddress() public {
+        vm.prank(owner);
+        registry.grantSocialVerifier(socialVerifier);
+
+        GrowfiProducerRegistry.SocialAttestation memory attestation = _attestation(producer);
+        bytes memory signature = _signSocialAttestation(socialVerifierPk, attestation);
+
+        vm.prank(producer);
+        registry.claimSocialAttestation(attestation, signature);
+
+        vm.prank(attacker);
+        vm.expectRevert(GrowfiProducerRegistry.NotSocialVerifier.selector);
+        registry.revokeSocialAttestation(producer);
+    }
+
+    function _attestation(address producer_) internal view returns (GrowfiProducerRegistry.SocialAttestation memory) {
+        return GrowfiProducerRegistry.SocialAttestation({
+            producer: producer_,
+            platform: "x",
+            handle: "grower",
+            profileUrl: "https://x.com/grower",
+            proofUrl: "https://x.com/grower/status/1",
+            proofHash: keccak256("growfi-proof"),
+            issuedAt: uint64(block.timestamp),
+            expiresAt: uint64(block.timestamp + 90 days),
+            nonce: registry.socialNonce(producer_),
+            attestationUID: keccak256("optional-eas-uid")
+        });
+    }
+
+    function _signSocialAttestation(
+        uint256 signerPk,
+        GrowfiProducerRegistry.SocialAttestation memory attestation
+    ) internal view returns (bytes memory) {
+        bytes32 digest = registry.socialAttestationDigest(attestation);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
+        return abi.encodePacked(r, s, v);
     }
 }

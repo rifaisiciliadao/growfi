@@ -49,6 +49,23 @@ On Sepolia testnet, campaign creation is intentionally open: the frontend sets
 the invite gate to approved for `NEXT_PUBLIC_CHAIN_ID=11155111`, while mainnet
 keeps the normal invite lookup and `/create` gate.
 
+### Mainnet/testnet isolation rule
+
+Production and testnet must always have two independent configuration surfaces.
+Never edit a mainnet manifest/spec/env into Sepolia, and never edit a Sepolia
+manifest/spec/env into mainnet. If a network needs a change, create or update
+that network's dedicated file (`subgraph.yaml` for Ethereum Mainnet,
+`subgraph.sepolia.yaml` for Ethereum Sepolia; separate DigitalOcean app
+specs/env for `growfi.dev` and `testnet.growfi.dev`) and leave the other
+surface intact.
+
+Before any push, subgraph deploy, or App Platform env update, explicitly verify
+and state the target network and app/subgraph (`mainnet`, `growfi`, `growfi.dev`
+vs `sepolia`, `growfi-sepolia`, `testnet.growfi.dev`). Check that chain id, RPC,
+addresses, `startBlock`, subgraph URL, DigitalOcean app id, and mutable storage
+prefixes all belong to that same target. Do not continue if any value belongs
+to the other network.
+
 ### 2026-06 audit hardening (live in the mainnet build)
 - `SaleClassicModule.buy` **no longer auto-activates** — reaching minCap leaves
   the campaign in `Funding`; the producer must call `activateCampaign()`

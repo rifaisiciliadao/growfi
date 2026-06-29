@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { useAccount, useDisconnect, useWriteContract } from "wagmi";
+import { useAccount, useDisconnect, useReadContract, useWriteContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Address } from "viem";
 import { useTxNotify } from "@/lib/useTxNotify";
@@ -11,6 +11,7 @@ import {
   useSubgraphProducer,
   useProducerCampaigns,
   useProducerIndexed,
+  isSocialVerificationActive,
   type SubgraphCampaign,
 } from "@/lib/subgraph";
 import {
@@ -22,7 +23,8 @@ import { abis, getAddresses } from "@/contracts";
 import { Spinner } from "@/components/Spinner";
 import { ProducerAggregateDashboard } from "@/components/ProducerAggregateDashboard";
 import { NotificationsSection } from "@/components/NotificationsSection";
-import { KycBadge } from "@/components/KycBadge";
+import { SocialVerificationBadge } from "@/components/SocialVerificationBadge";
+import { SocialVerificationPanel } from "@/components/SocialVerificationPanel";
 import { useEnsName } from "@/lib/ens";
 import { waitForTx } from "@/lib/waitForTx";
 import { getProtocolLabel, protocolInitials } from "@/lib/protocolLabels";
@@ -35,6 +37,7 @@ export default function ProducerPage({
   const { address: raw } = use(params);
   const t = useTranslations("grower");
   const { address: connected } = useAccount();
+  const { producerRegistry } = getAddresses();
 
   const producerAddress = (raw?.toLowerCase() ?? "") as Address;
   const isValid = /^0x[a-fA-F0-9]{40}$/.test(producerAddress);
@@ -53,9 +56,16 @@ export default function ProducerPage({
     useProducerCampaigns(isValid ? producerAddress : undefined);
   // ENS reverse-lookup against mainnet — cheap, cached. Used as the
   // display name when there's no internal profile but the wallet has a
-  // public ENS identity (e.g. turinglabs.eth). KYC badge is NOT promoted
-  // by ENS — only the on-chain `producer.kyced` flag triggers the badge.
+  // public ENS identity (e.g. turinglabs.eth). Social verification is NOT
+  // promoted by ENS; only the on-chain social attestation triggers the badge.
   const { data: ensName } = useEnsName(isValid ? producerAddress : undefined);
+  const { data: onchainSocialActive } = useReadContract({
+    address: producerRegistry,
+    abi: abis.ProducerRegistry as never,
+    functionName: "hasActiveSocialAttestation",
+    args: [producerAddress],
+    query: { enabled: isValid && !protocolLabel, refetchInterval: 20_000 },
+  }) as { data: boolean | undefined };
 
   /**
    * While the subgraph+JSON is loading we don't know yet whether the
@@ -115,8 +125,13 @@ export default function ProducerPage({
                   <span className="break-words">
                     {displayName}
                   </span>
-                  <KycBadge
-                    kyced={protocolLabel ? false : producer?.kyced}
+                  <SocialVerificationBadge
+                    verified={
+                      protocolLabel
+                        ? false
+                        : isSocialVerificationActive(producer) ||
+                          Boolean(onchainSocialActive)
+                    }
                     size={20}
                   />
                 </>
@@ -184,6 +199,13 @@ export default function ProducerPage({
           current={profile}
           producerAddress={producerAddress}
           previousVersion={producer?.version}
+        />
+      )}
+
+      {isOwner && !protocolLabel && (
+        <SocialVerificationPanel
+          producerAddress={producerAddress}
+          producer={producer}
         />
       )}
 

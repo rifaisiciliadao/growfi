@@ -20,6 +20,7 @@ import {
 } from "./notifications-store.js";
 import { registerNotificationRoutes } from "./notifications.js";
 import { registerEcommerceRoutes } from "./ecommerce.js";
+import { registerSocialVerificationRoutes } from "./social-verification.js";
 
 export interface AppConfig {
   spacesBucket: string;
@@ -43,6 +44,13 @@ export interface AppDeps {
   notificationsUnsubSecret?: string;
   /** Override the signed-message max age (default 10 min). */
   signatureMaxAgeMs?: number;
+  fetchText?: (url: string) => Promise<Response>;
+  socialChallengeSecret?: string | null;
+  socialVerifierPrivateKey?: `0x${string}` | null;
+  socialRegistryAddress?: Address | null;
+  socialChainId?: number;
+  socialChallengeTtlMs?: number;
+  socialAttestationTtlSeconds?: number;
 }
 
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
@@ -123,6 +131,15 @@ export function buildDefaultDeps(): AppDeps {
       // Dev-only fallback so local boots work without env. Logs a warning at
       // build time. NEVER rely on this in prod — set the env explicitly.
       "growfi-dev-unsub-secret-do-not-use-in-prod",
+    socialChallengeSecret: process.env.SOCIAL_CHALLENGE_SECRET || null,
+    socialVerifierPrivateKey:
+      (process.env.SOCIAL_VERIFIER_PRIVATE_KEY as `0x${string}` | undefined) ||
+      null,
+    socialRegistryAddress:
+      (process.env.PRODUCER_REGISTRY_ADDRESS as Address | undefined) ||
+      (process.env.NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS as Address | undefined) ||
+      null,
+    socialChainId: Number(process.env.CHAIN_ID || process.env.NEXT_PUBLIC_CHAIN_ID || 1),
   };
 }
 
@@ -130,6 +147,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const { config, putObject } = deps;
   const snapshot = deps.snapshot ?? snapshotSeasonYield;
   const fetchJson = deps.fetchJson ?? ((url: string) => fetch(url));
+  const fetchText = deps.fetchText ?? ((url: string) => fetch(url));
 
   const app = Fastify({
     logger: process.env.NODE_ENV === "test"
@@ -182,6 +200,16 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     putObject,
     email: deps.email,
     appUrl: deps.appUrl ?? "https://growfi.app",
+  });
+
+  registerSocialVerificationRoutes(app, {
+    secret: deps.socialChallengeSecret,
+    verifierPrivateKey: deps.socialVerifierPrivateKey,
+    registryAddress: deps.socialRegistryAddress,
+    chainId: deps.socialChainId,
+    challengeTtlMs: deps.socialChallengeTtlMs,
+    attestationTtlSeconds: deps.socialAttestationTtlSeconds,
+    fetchText,
   });
 
   app.post("/api/upload", async (req, reply) => {

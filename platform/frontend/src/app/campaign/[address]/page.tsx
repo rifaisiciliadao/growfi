@@ -21,7 +21,11 @@ import {
 } from "@/contracts/campaign";
 import { getEnabledTokens, resolveTokenAddress } from "@/contracts/tokens";
 import { erc20Abi } from "@/contracts/erc20";
-import { useSubgraphCampaign, useSubgraphProducer } from "@/lib/subgraph";
+import {
+  isSocialVerificationActive,
+  useSubgraphCampaign,
+  useSubgraphProducer,
+} from "@/lib/subgraph";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { useProducerProfile, useResolvedCampaignMetadata } from "@/lib/metadata";
 import { productUnitLabel } from "@/lib/productUnit";
@@ -38,7 +42,7 @@ import { RepaymentPanel } from "@/components/RepaymentPanel";
 import { EcommerceShopPanel } from "@/components/EcommerceShopPanel";
 import { InvestorList } from "@/components/InvestorList";
 import { ActivateCtaBanner } from "@/components/ActivateCtaBanner";
-import { KycBadge } from "@/components/KycBadge";
+import { SocialVerificationBadge } from "@/components/SocialVerificationBadge";
 import { Spinner } from "@/components/Spinner";
 import { waitForTx } from "@/lib/waitForTx";
 import { ECOMMERCE_MODULE_TYPE } from "@/contracts/ecommerce";
@@ -1405,7 +1409,10 @@ function ProducerCard({ producer }: { producer?: Address }) {
             <span className="font-semibold text-on-surface truncate">
               {name ?? short}
             </span>
-            <KycBadge kyced={sgProducer?.kyced} size={16} />
+            <SocialVerificationBadge
+              verified={isSocialVerificationActive(sgProducer)}
+              size={16}
+            />
           </div>
           {location && (
             <div className="text-sm text-on-surface-variant mt-0.5 truncate">

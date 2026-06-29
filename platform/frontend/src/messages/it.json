@@ -933,7 +933,10 @@
     }
   },
   "kyc": {
-    "verified": "KYC verificato — identità attestata onchain da un admin del registry"
+    "verified": "Profilo social verificato on-chain"
+  },
+  "socialVerification": {
+    "verified": "Profilo social verificato on-chain"
   },
   "grow": {
     "title": "$GROW",
@@ -1186,6 +1189,25 @@
       "confirmingTx": "Confermo on-chain…",
       "indexing": "Sincronizzazione con l'indexer…"
     },
+    "social": {
+      "title": "Verifica social",
+      "inactive": "Collega un profilo social pubblico per ricevere la spunta on-chain.",
+      "activeUntil": "Verificato fino al {date}",
+      "statusVerified": "Verificato",
+      "statusMissing": "Non verificato",
+      "platform": "Piattaforma",
+      "handle": "Handle",
+      "profileUrl": "URL profilo",
+      "createChallenge": "Crea codice di verifica",
+      "message": "Pubblica questo messaggio",
+      "proofUrl": "URL del post",
+      "verifyAndClaim": "Verifica e registra spunta",
+      "verifying": "Verifica post…",
+      "awaitingSignature": "In attesa del wallet…",
+      "confirmingTx": "Conferma on-chain…",
+      "nonceUnavailable": "Nonce on-chain non ancora caricato. Riprova tra poco.",
+      "verifierNotConfigured": "Il verifier ha accettato il proof ma non è configurato per firmare attestazioni on-chain."
+    },
     "notifications": {
       "title": "Ricevi notifiche",
       "description": "Ricevi un'email quando succede qualcosa sulle tue campagne o posizioni — nuovi acquisti, fine stagione, raccolti, impegni in USDC. Solo off-chain, mai pubblicate sulla blockchain.",
@@ -1303,6 +1325,8 @@
     "activateConfirmed": "Campagna attivata",
     "activateFailed": "Attivazione fallita",
     "startSeasonConfirmed": "Stagione avviata",
+    "socialVerificationConfirmed": "Verifica social registrata",
+    "socialVerificationFailed": "Verifica social fallita",
     "startSeasonFailed": "Avvio stagione fallito",
     "endSeasonConfirmed": "Stagione chiusa",
     "endSeasonFailed": "Chiusura stagione fallita",

@@ -1,13 +1,19 @@
 {
   "name": "growfi-subgraph",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "GrowFi subgraph — indexes CampaignFactory + dynamic Campaign/StakingVault/HarvestManager templates",
   "private": true,
   "scripts": {
-    "codegen": "graph codegen",
-    "build": "graph build",
+    "codegen": "graph codegen subgraph.yaml",
+    "codegen:mainnet": "graph codegen subgraph.yaml",
+    "codegen:sepolia": "graph codegen subgraph.sepolia.yaml",
+    "build": "graph build subgraph.yaml",
+    "build:mainnet": "graph build subgraph.yaml",
+    "build:sepolia": "graph build subgraph.sepolia.yaml",
     "clean": "rm -rf build generated",
     "prepare": "npm run codegen && npm run build",
+    "prepare:mainnet": "npm run codegen:mainnet && npm run build:mainnet",
+    "prepare:sepolia": "npm run codegen:sepolia && npm run build:sepolia",
     "deploy:studio": "graph deploy --studio growfi",
     "deploy:local": "graph deploy --node http://localhost:8020 --ipfs http://localhost:5001 growfi",
     "create:local": "graph create --node http://localhost:8020 growfi"

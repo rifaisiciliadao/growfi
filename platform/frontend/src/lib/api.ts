@@ -436,3 +436,93 @@ export async function uploadProducerProfile(input: {
 
   return res.json();
 }
+
+export interface SocialVerificationChallenge {
+  wallet: string;
+  platform: string;
+  handle: string;
+  profileUrl: string;
+  nonce: string;
+  issuedAt: number;
+  expiresAt: number;
+  code: string;
+  message: string;
+  challenge: string;
+}
+
+export interface SocialAttestationPayload {
+  producer: `0x${string}`;
+  platform: string;
+  handle: string;
+  profileUrl: string;
+  proofUrl: string;
+  proofHash: `0x${string}`;
+  issuedAt: number;
+  expiresAt: number;
+  nonce: string;
+  attestationUID: `0x${string}`;
+}
+
+export interface SocialVerificationResult {
+  ok: boolean;
+  authorizationReady: boolean;
+  verifier: `0x${string}` | null;
+  signature: `0x${string}` | null;
+  attestation: SocialAttestationPayload;
+  eas: {
+    schema: string;
+    attestationUID: `0x${string}`;
+  };
+}
+
+export async function requestSocialVerificationChallenge(input: {
+  wallet: string;
+  platform: string;
+  handle?: string;
+  profileUrl?: string;
+}): Promise<SocialVerificationChallenge> {
+  const res = await fetch(`${BACKEND_URL}/api/social-verification/challenge`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ error: "Social verification challenge failed" }));
+    throw new Error(err.error || "Social verification challenge failed");
+  }
+
+  return res.json();
+}
+
+export async function verifySocialPost(input: {
+  wallet: string;
+  platform: string;
+  handle?: string;
+  profileUrl?: string;
+  proofUrl: string;
+  nonce: string;
+  issuedAt: number;
+  expiresAt: number;
+  code: string;
+  message: string;
+  challenge: string;
+  onchainNonce: string;
+}): Promise<SocialVerificationResult> {
+  const res = await fetch(`${BACKEND_URL}/api/social-verification/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ error: "Social verification failed" }));
+    throw new Error(err.error || "Social verification failed");
+  }
+
+  return res.json();
+}

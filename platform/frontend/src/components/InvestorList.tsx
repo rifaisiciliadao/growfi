@@ -7,9 +7,10 @@ import { useReadContract } from "wagmi";
 import {
   useCampaignInvestors,
   useBatchProducerProfiles,
+  isSocialVerificationActive,
 } from "@/lib/subgraph";
 import { useBatchEnsNames } from "@/lib/ens";
-import { KycBadge } from "@/components/KycBadge";
+import { SocialVerificationBadge } from "@/components/SocialVerificationBadge";
 import { erc20Abi } from "@/contracts/erc20";
 import { getProtocolLabel, protocolInitials } from "@/lib/protocolLabels";
 
@@ -138,8 +139,10 @@ export function InvestorList({
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-semibold text-on-surface truncate flex items-center gap-1">
                     <span className="truncate">{displayName}</span>
-                    <KycBadge
-                      kyced={protocolLabel ? false : profile?.kyced}
+                    <SocialVerificationBadge
+                      verified={
+                        protocolLabel ? false : isSocialVerificationActive(profile)
+                      }
                       size={12}
                     />
                   </div>

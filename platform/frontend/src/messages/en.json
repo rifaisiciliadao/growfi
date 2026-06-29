@@ -933,7 +933,10 @@
     }
   },
   "kyc": {
-    "verified": "KYC verified — identity attested onchain by a registry admin"
+    "verified": "Social profile verified onchain"
+  },
+  "socialVerification": {
+    "verified": "Social profile verified onchain"
   },
   "grow": {
     "title": "$GROW",
@@ -1186,6 +1189,25 @@
       "confirmingTx": "Confirming on-chain…",
       "indexing": "Syncing with indexer…"
     },
+    "social": {
+      "title": "Social verification",
+      "inactive": "Connect a public social profile to receive the onchain badge.",
+      "activeUntil": "Verified until {date}",
+      "statusVerified": "Verified",
+      "statusMissing": "Not verified",
+      "platform": "Platform",
+      "handle": "Handle",
+      "profileUrl": "Profile URL",
+      "createChallenge": "Create verification code",
+      "message": "Post this message",
+      "proofUrl": "Post URL",
+      "verifyAndClaim": "Verify and claim badge",
+      "verifying": "Verifying post…",
+      "awaitingSignature": "Awaiting wallet…",
+      "confirmingTx": "Confirming on-chain…",
+      "nonceUnavailable": "On-chain nonce not loaded yet. Try again in a moment.",
+      "verifierNotConfigured": "The verifier accepted the proof but is not configured to sign on-chain attestations."
+    },
     "notifications": {
       "title": "Receive notifications",
       "description": "Get an email when something happens on your campaigns or positions — new buys, season ends, harvests, USDC commitments. Off-chain only, never published to the blockchain.",
@@ -1303,6 +1325,8 @@
     "activateConfirmed": "Campaign activated",
     "activateFailed": "Activation failed",
     "startSeasonConfirmed": "Season started",
+    "socialVerificationConfirmed": "Social verification claimed",
+    "socialVerificationFailed": "Social verification failed",
     "startSeasonFailed": "Start season failed",
     "endSeasonConfirmed": "Season ended",
     "endSeasonFailed": "End season failed",
