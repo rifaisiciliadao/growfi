@@ -4,6 +4,31 @@ export const SUBGRAPH_URL =
   process.env.NEXT_PUBLIC_SUBGRAPH_URL ||
   "https://ugraph.growfi.dev/subgraphs/growfi/latest/gn";
 
+export const SOCIAL_VERIFICATION_ENABLED =
+  process.env.NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION === "true";
+
+const BATCH_PRODUCER_SOCIAL_FIELDS = SOCIAL_VERIFICATION_ENABLED
+  ? `
+            socialVerified
+            socialExpiresAt
+  `
+  : "";
+
+const PRODUCER_SOCIAL_FIELDS = SOCIAL_VERIFICATION_ENABLED
+  ? `
+            socialVerified
+            socialVerifiedAt
+            socialExpiresAt
+            socialPlatform
+            socialHandle
+            socialProfileUrl
+            socialProofUrl
+            socialProofHash
+            socialAttestationUID
+            socialVerifier
+  `
+  : "";
+
 async function gql<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
   const res = await fetch(SUBGRAPH_URL, {
     method: "POST",
@@ -300,8 +325,8 @@ export function useBatchProducerProfiles(
         profileURI: string;
         version: string;
         kyced: boolean;
-        socialVerified: boolean;
-        socialExpiresAt: string | null;
+        socialVerified?: boolean;
+        socialExpiresAt?: string | null;
       }> }>(
         `
         query BatchProducers($ids: [ID!]!) {
@@ -310,8 +335,7 @@ export function useBatchProducerProfiles(
             profileURI
             version
             kyced
-            socialVerified
-            socialExpiresAt
+${BATCH_PRODUCER_SOCIAL_FIELDS}
           }
         }
         `,
@@ -322,17 +346,24 @@ export function useBatchProducerProfiles(
       // to address-only fallback.
       const rows = await Promise.all(
         data.producers.map(async (p) => {
-          if (!p.profileURI) return { ...p, name: undefined, avatar: undefined };
+          if (!p.profileURI) {
+            return {
+              ...withBatchProducerSocialDefaults(p),
+              name: undefined,
+              avatar: undefined,
+            };
+          }
           try {
+            const base = withBatchProducerSocialDefaults(p);
             const res = await fetch(p.profileURI, { cache: "force-cache" });
-            if (!res.ok) return { ...p };
+            if (!res.ok) return { ...base };
             const j = (await res.json()) as {
               name?: string;
               avatar?: string;
             };
-            return { ...p, name: j.name, avatar: j.avatar };
+            return { ...base, name: j.name, avatar: j.avatar };
           } catch {
-            return { ...p };
+            return { ...withBatchProducerSocialDefaults(p) };
           }
         }),
       );
@@ -594,22 +625,13 @@ export function useSubgraphProducer(address: string | undefined) {
             updatedAt
             kyced
             kycSetAt
-            socialVerified
-            socialVerifiedAt
-            socialExpiresAt
-            socialPlatform
-            socialHandle
-            socialProfileUrl
-            socialProofUrl
-            socialProofHash
-            socialAttestationUID
-            socialVerifier
+${PRODUCER_SOCIAL_FIELDS}
           }
         }
         `,
         { id: address.toLowerCase() },
       );
-      return data.producer;
+      return data.producer ? withProducerSocialDefaults(data.producer) : null;
     },
     refetchInterval: 20_000,
   });
@@ -622,8 +644,67 @@ export function isSocialVerificationActive(
     | null
     | undefined,
 ): boolean {
+  if (!SOCIAL_VERIFICATION_ENABLED) return false;
   if (!producer?.socialVerified || !producer.socialExpiresAt) return false;
   return BigInt(producer.socialExpiresAt) > BigInt(Math.floor(Date.now() / 1000));
+}
+
+function withBatchProducerSocialDefaults(
+  producer: Omit<BatchProducerProfile, "socialVerified" | "socialExpiresAt"> & {
+    socialVerified?: boolean;
+    socialExpiresAt?: string | null;
+  },
+): BatchProducerProfile {
+  return {
+    ...producer,
+    socialVerified: producer.socialVerified ?? false,
+    socialExpiresAt: producer.socialExpiresAt ?? null,
+  };
+}
+
+function withProducerSocialDefaults(
+  producer: Omit<
+    SubgraphProducer,
+    | "socialVerified"
+    | "socialVerifiedAt"
+    | "socialExpiresAt"
+    | "socialPlatform"
+    | "socialHandle"
+    | "socialProfileUrl"
+    | "socialProofUrl"
+    | "socialProofHash"
+    | "socialAttestationUID"
+    | "socialVerifier"
+  > &
+    Partial<
+      Pick<
+        SubgraphProducer,
+        | "socialVerified"
+        | "socialVerifiedAt"
+        | "socialExpiresAt"
+        | "socialPlatform"
+        | "socialHandle"
+        | "socialProfileUrl"
+        | "socialProofUrl"
+        | "socialProofHash"
+        | "socialAttestationUID"
+        | "socialVerifier"
+      >
+    >,
+): SubgraphProducer {
+  return {
+    ...producer,
+    socialVerified: producer.socialVerified ?? false,
+    socialVerifiedAt: producer.socialVerifiedAt ?? null,
+    socialExpiresAt: producer.socialExpiresAt ?? null,
+    socialPlatform: producer.socialPlatform ?? null,
+    socialHandle: producer.socialHandle ?? null,
+    socialProfileUrl: producer.socialProfileUrl ?? null,
+    socialProofUrl: producer.socialProofUrl ?? null,
+    socialProofHash: producer.socialProofHash ?? null,
+    socialAttestationUID: producer.socialAttestationUID ?? null,
+    socialVerifier: producer.socialVerifier ?? null,
+  };
 }
 
 /**

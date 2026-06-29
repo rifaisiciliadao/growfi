@@ -12,6 +12,7 @@ import {
   useProducerCampaigns,
   useProducerIndexed,
   isSocialVerificationActive,
+  SOCIAL_VERIFICATION_ENABLED,
   type SubgraphCampaign,
 } from "@/lib/subgraph";
 import {
@@ -64,7 +65,10 @@ export default function ProducerPage({
     abi: abis.ProducerRegistry as never,
     functionName: "hasActiveSocialAttestation",
     args: [producerAddress],
-    query: { enabled: isValid && !protocolLabel, refetchInterval: 20_000 },
+    query: {
+      enabled: SOCIAL_VERIFICATION_ENABLED && isValid && !protocolLabel,
+      refetchInterval: 20_000,
+    },
   }) as { data: boolean | undefined };
 
   /**
@@ -202,7 +206,7 @@ export default function ProducerPage({
         />
       )}
 
-      {isOwner && !protocolLabel && (
+      {SOCIAL_VERIFICATION_ENABLED && isOwner && !protocolLabel && (
         <SocialVerificationPanel
           producerAddress={producerAddress}
           producer={producer}
