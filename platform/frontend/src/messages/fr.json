@@ -1153,6 +1153,8 @@
     "editProfile": "Modifier le profil",
     "createProfile": "Créer un profil",
     "noProfileYet": "Ce wallet n'a pas encore publié de profil.",
+    "profileSelfHint": "Tu es connecté avec ce wallet. Crée le profil pour le rendre reconnaissable sur GrowFi.",
+    "profileConnectHint": "Pour créer ou modifier ce profil, connecte-toi avec ce wallet exact.",
     "campaignsTitle": "Campagnes",
     "noCampaigns": "Pas encore de campagnes pour ce cultivateur.",
     "dashboard": {

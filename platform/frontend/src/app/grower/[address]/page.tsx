@@ -14,6 +14,7 @@ import {
   isSocialVerificationActive,
   SOCIAL_VERIFICATION_ENABLED,
   type SubgraphCampaign,
+  type SubgraphProducer,
 } from "@/lib/subgraph";
 import {
   useProducerProfile,
@@ -42,7 +43,7 @@ export default function ProducerPage({
 
   const producerAddress = (raw?.toLowerCase() ?? "") as Address;
   const isValid = /^0x[a-fA-F0-9]{40}$/.test(producerAddress);
-  const isOwner =
+  const isSelfProfile =
     !!connected && connected.toLowerCase() === producerAddress.toLowerCase();
   const protocolLabel = getProtocolLabel(producerAddress);
 
@@ -94,7 +95,7 @@ export default function ProducerPage({
 
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-8 pt-28 pb-20">
-      {isOwner && (
+      {isSelfProfile && (
         <ProducerAggregateDashboard producerAddress={producerAddress} />
       )}
 
@@ -152,12 +153,12 @@ export default function ProducerPage({
           </div>
         </div>
 
-        {isOwner && !editing && !profileLoadingCombined && (
+        {isSelfProfile && profile && !editing && !profileLoadingCombined && (
           <button
             onClick={() => setEditing(true)}
             className="bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition"
           >
-            {profile ? t("editProfile") : t("createProfile")}
+            {t("editProfile")}
           </button>
         )}
       </div>
@@ -191,8 +192,21 @@ export default function ProducerPage({
         !profile &&
         !protocolLabel &&
         !editing && (
-          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 mb-10 text-center text-sm text-on-surface-variant">
-            {t("noProfileYet")}
+          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 mb-10 text-center">
+            <p className="text-sm font-semibold text-on-surface">
+              {t("noProfileYet")}
+            </p>
+            <p className="mt-2 text-sm text-on-surface-variant">
+              {isSelfProfile ? t("profileSelfHint") : t("profileConnectHint")}
+            </p>
+            {isSelfProfile && (
+              <button
+                onClick={() => setEditing(true)}
+                className="mt-5 inline-flex items-center justify-center bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition"
+              >
+                {t("createProfile")}
+              </button>
+            )}
           </div>
         )
       )}
@@ -203,19 +217,14 @@ export default function ProducerPage({
           current={profile}
           producerAddress={producerAddress}
           previousVersion={producer?.version}
-        />
-      )}
-
-      {SOCIAL_VERIFICATION_ENABLED && isOwner && !protocolLabel && (
-        <SocialVerificationPanel
-          producerAddress={producerAddress}
           producer={producer}
+          showSocialVerification={SOCIAL_VERIFICATION_ENABLED && !protocolLabel}
         />
       )}
 
-      {isOwner && <NotificationsSection address={producerAddress} />}
+      {isSelfProfile && <NotificationsSection address={producerAddress} />}
 
-      {isOwner && <DisconnectLink />}
+      {isSelfProfile && <DisconnectLink />}
 
       <section>
         <h2 className="text-xl font-bold text-on-surface mb-4">
@@ -301,12 +310,16 @@ function ProfileForm({
   onDone,
   producerAddress,
   previousVersion,
+  producer,
+  showSocialVerification,
 }: {
   current?: { name?: string; bio?: string; avatar?: string | null; cover?: string | null; website?: string | null; location?: string | null } | null;
   onDone: () => void;
   producerAddress: Address;
   /** Subgraph version at the moment the form opened. Undefined if the producer has no profile yet. */
   previousVersion: string | undefined;
+  producer: SubgraphProducer | null | undefined;
+  showSocialVerification: boolean;
 }) {
   const t = useTranslations("grower.form");
   const { producerRegistry } = getAddresses();
@@ -398,116 +411,125 @@ function ProfileForm({
   };
 
   return (
-    <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-6 mb-10 space-y-4">
-      <h3 className="font-semibold text-on-surface mb-2">{t("title")}</h3>
+    <>
+      <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-6 mb-6 space-y-4">
+        <h3 className="font-semibold text-on-surface mb-2">{t("title")}</h3>
 
-      <Field label={t("name")}>
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="input"
-          placeholder={t("namePlaceholder")}
-        />
-      </Field>
-
-      <Field label={t("bio")}>
-        <textarea
-          rows={4}
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
-          className="input"
-          placeholder={t("bioPlaceholder")}
-        />
-      </Field>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field label={t("avatar")}>
-          {avatarUrl && (
-            <img src={avatarUrl} alt="" className="w-16 h-16 rounded-full object-cover mb-2" />
-          )}
-          <input type="file" accept="image/*" onChange={(e) => handleImage(e, setAvatarUrl)} className="text-sm" />
-        </Field>
-        <Field label={t("cover")}>
-          {coverUrl && (
-            <img src={coverUrl} alt="" className="w-full h-20 rounded-lg object-cover mb-2" />
-          )}
-          <input type="file" accept="image/*" onChange={(e) => handleImage(e, setCoverUrl)} className="text-sm" />
-        </Field>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Field label={t("location")}>
+        <Field label={t("name")}>
           <input
             type="text"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
             className="input"
-            placeholder={t("locationPlaceholder")}
+            placeholder={t("namePlaceholder")}
           />
         </Field>
-        <Field label={t("website")}>
-          <input
-            type="url"
-            value={website}
-            onChange={(e) => setWebsite(e.target.value)}
-            className="input"
-            placeholder="https://"
-          />
-        </Field>
-      </div>
 
-      {error && (
-        <div className="bg-red-50 text-error border border-red-200 rounded-lg p-3 text-sm">
-          {error}
+        <Field label={t("bio")}>
+          <textarea
+            rows={4}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            className="input"
+            placeholder={t("bioPlaceholder")}
+          />
+        </Field>
+
+        <div className="grid grid-cols-2 gap-4">
+          <Field label={t("avatar")}>
+            {avatarUrl && (
+              <img src={avatarUrl} alt="" className="w-16 h-16 rounded-full object-cover mb-2" />
+            )}
+            <input type="file" accept="image/*" onChange={(e) => handleImage(e, setAvatarUrl)} className="text-sm" />
+          </Field>
+          <Field label={t("cover")}>
+            {coverUrl && (
+              <img src={coverUrl} alt="" className="w-full h-20 rounded-lg object-cover mb-2" />
+            )}
+            <input type="file" accept="image/*" onChange={(e) => handleImage(e, setCoverUrl)} className="text-sm" />
+          </Field>
         </div>
-      )}
 
-      <div className="flex justify-end gap-2 pt-2">
-        <button
-          onClick={onDone}
-          disabled={busy !== null}
-          className="px-4 py-2 text-sm text-on-surface-variant hover:text-on-surface transition"
-        >
-          {t("cancel")}
-        </button>
-        <button
-          onClick={handleSave}
-          disabled={!name || busy !== null}
-          className="regen-gradient text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2"
-        >
-          {busy !== null && <Spinner size={14} />}
-          {busy === "uploading"
-            ? t("uploading")
-            : busy === "profile"
-              ? t("savingJson")
-              : busy === "sig"
-                ? t("awaitingSignature")
-                : busy === "chain"
-                  ? t("confirmingTx")
-                  : busy === "indexing"
-                    ? t("indexing")
-                    : t("save")}
-        </button>
+        <div className="grid grid-cols-2 gap-4">
+          <Field label={t("location")}>
+            <input
+              type="text"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              className="input"
+              placeholder={t("locationPlaceholder")}
+            />
+          </Field>
+          <Field label={t("website")}>
+            <input
+              type="url"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              className="input"
+              placeholder="https://"
+            />
+          </Field>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 text-error border border-red-200 rounded-lg p-3 text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-2 pt-2">
+          <button
+            onClick={onDone}
+            disabled={busy !== null}
+            className="px-4 py-2 text-sm text-on-surface-variant hover:text-on-surface transition"
+          >
+            {t("cancel")}
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={!name || busy !== null}
+            className="regen-gradient text-white px-6 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 flex items-center gap-2"
+          >
+            {busy !== null && <Spinner size={14} />}
+            {busy === "uploading"
+              ? t("uploading")
+              : busy === "profile"
+                ? t("savingJson")
+                : busy === "sig"
+                  ? t("awaitingSignature")
+                  : busy === "chain"
+                    ? t("confirmingTx")
+                    : busy === "indexing"
+                      ? t("indexing")
+                      : t("save")}
+          </button>
+        </div>
+
+        <style jsx global>{`
+          .input {
+            width: 100%;
+            padding: 0.625rem 0.875rem;
+            background: var(--color-surface-container-low);
+            border: 1px solid rgb(189 202 186 / 0.15);
+            border-radius: 0.625rem;
+            color: var(--color-on-surface);
+            font-size: 0.875rem;
+            outline: none;
+            transition: all 0.15s;
+          }
+          .input:focus {
+            border-color: var(--color-primary);
+          }
+        `}</style>
       </div>
 
-      <style jsx global>{`
-        .input {
-          width: 100%;
-          padding: 0.625rem 0.875rem;
-          background: var(--color-surface-container-low);
-          border: 1px solid rgb(189 202 186 / 0.15);
-          border-radius: 0.625rem;
-          color: var(--color-on-surface);
-          font-size: 0.875rem;
-          outline: none;
-          transition: all 0.15s;
-        }
-        .input:focus {
-          border-color: var(--color-primary);
-        }
-      `}</style>
-    </div>
+      {showSocialVerification && (
+        <SocialVerificationPanel
+          producerAddress={producerAddress}
+          producer={producer}
+        />
+      )}
+    </>
   );
 }
 
