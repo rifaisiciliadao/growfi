@@ -15,6 +15,12 @@ platform handle URL (currently X/Twitter), then `socialProofUrl`. Keep this UI
 behind `NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION=true`; mainnet must not query or
 render social fields until its contracts and subgraph support them.
 
+Backend social EAS publishing on Sepolia must use multiple RPC endpoints. Prefer
+`SOCIAL_RPC_URLS` as a comma-separated list; the app also appends Sepolia public
+fallbacks so a single rate-limited provider cannot block schema registration,
+EAS attestations, or registry relays. The social verifier wallet must hold
+Sepolia ETH for gas.
+
 ## Current target chain — Ethereum Mainnet (chain 1), audit-hardened build
 
 **As of 2026-06-16 the live production app runs on Ethereum Mainnet** (chain 1):

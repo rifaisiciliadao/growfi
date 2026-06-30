@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
 import { getAddress, verifyTypedData } from "viem";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { buildApp, buildDefaultDeps, type AppDeps } from "./app.js";
+import {
+  buildApp,
+  buildDefaultDeps,
+  socialRpcUrls,
+  type AppDeps,
+} from "./app.js";
 import type { EmailPayload } from "./email.js";
 import type { SnapshotResult } from "./snapshot.js";
 import { computeEasSchemaUID } from "./social-verification.js";
@@ -26,6 +31,7 @@ const SOCIAL_ENV_KEYS = [
   "PRODUCER_REGISTRY_ADDRESS",
   "NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS",
   "SOCIAL_EAS_ENABLED",
+  "SOCIAL_RPC_URLS",
   "SOCIAL_RPC_URL",
   "RPC_URL",
   "SEPOLIA_RPC_URL",
@@ -168,6 +174,22 @@ describe("buildDefaultDeps social onchain wiring", () => {
     const deps = buildDefaultDeps();
 
     assert.equal(deps.socialOnchainAttester, null);
+  });
+
+  it("uses explicit social RPC fallbacks before Sepolia defaults", () => {
+    process.env.SOCIAL_RPC_URLS = "https://one.example, https://two.example";
+    process.env.SOCIAL_RPC_URL = "https://two.example";
+    process.env.RPC_URL = "https://shared.example";
+    process.env.SEPOLIA_RPC_URL = "https://shared.example";
+
+    assert.deepEqual(socialRpcUrls(11155111), [
+      "https://one.example",
+      "https://two.example",
+      "https://shared.example",
+      "https://ethereum-sepolia-rpc.publicnode.com",
+      "https://rpc.sepolia.org",
+      "https://1rpc.io/sepolia",
+    ]);
   });
 });
 

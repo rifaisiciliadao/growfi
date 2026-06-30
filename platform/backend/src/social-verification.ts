@@ -4,6 +4,7 @@ import {
   createWalletClient,
   encodeAbiParameters,
   encodePacked,
+  fallback,
   getAddress,
   http,
   isAddress,
@@ -173,7 +174,8 @@ export interface SocialOnchainResult {
 
 export interface SocialOnchainAttesterConfig {
   chainId: number;
-  rpcUrl: string;
+  rpcUrl?: string;
+  rpcUrls?: readonly string[];
   verifierPrivateKey: Hex;
   registryAddress?: Address | null;
   easAddress?: Address | null;
@@ -228,6 +230,13 @@ export function buildSocialOnchainAttester(
   config: SocialOnchainAttesterConfig,
 ): SocialOnchainAttester {
   const account = privateKeyToAccount(config.verifierPrivateKey);
+  const rpcUrls = normalizeRpcUrls(config.rpcUrls ?? config.rpcUrl);
+  if (rpcUrls.length === 0) {
+    throw new Error("At least one social RPC URL is required");
+  }
+  const transport = rpcUrls.length === 1
+    ? http(rpcUrls[0])
+    : fallback(rpcUrls.map((url) => http(url)));
   const chain = config.chainId === sepolia.id
     ? sepolia
     : config.chainId === mainnet.id
@@ -235,12 +244,12 @@ export function buildSocialOnchainAttester(
       : undefined;
   const publicClient = createPublicClient({
     chain,
-    transport: http(config.rpcUrl),
+    transport,
   });
   const walletClient = createWalletClient({
     account,
     chain,
-    transport: http(config.rpcUrl),
+    transport,
   });
   const defaults = EAS_CONTRACTS[config.chainId];
   const easAddress = config.easAddress ?? defaults?.eas;
@@ -329,6 +338,14 @@ export function buildSocialOnchainAttester(
       };
     },
   };
+}
+
+function normalizeRpcUrls(input: string | readonly string[] | undefined): string[] {
+  const values = Array.isArray(input) ? input : input ? [input] : [];
+  return values
+    .flatMap((value) => value.split(","))
+    .map((value) => value.trim())
+    .filter(Boolean);
 }
 
 export function registerSocialVerificationRoutes(

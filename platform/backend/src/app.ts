@@ -170,15 +170,15 @@ function buildDefaultSocialOnchainAttester(input: {
       "SOCIAL_EAS_ENABLED=true but SOCIAL_VERIFIER_PRIVATE_KEY is missing",
     );
   }
-  const rpcUrl = socialRpcUrl(input.chainId);
-  if (!rpcUrl) {
+  const rpcUrls = socialRpcUrls(input.chainId);
+  if (rpcUrls.length === 0) {
     return failedSocialOnchainAttester(
       "SOCIAL_EAS_ENABLED=true but no social RPC URL is configured",
     );
   }
   return buildSocialOnchainAttester({
     chainId: input.chainId,
-    rpcUrl,
+    rpcUrls,
     verifierPrivateKey: input.verifierPrivateKey,
     registryAddress: input.registryAddress,
     easAddress: addressFromEnv(process.env.SOCIAL_EAS_ADDRESS),
@@ -199,18 +199,32 @@ function failedSocialOnchainAttester(message: string): SocialOnchainAttester {
   };
 }
 
-function socialRpcUrl(chainId: number): string | null {
-  return (
-    process.env.SOCIAL_RPC_URL ||
-    process.env.RPC_URL ||
-    (chainId === SEPOLIA_CHAIN_ID
-      ? process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com"
-      : undefined) ||
-    (chainId === 1
-      ? process.env.MAINNET_RPC_URL || process.env.ETHEREUM_RPC_URL
-      : undefined) ||
-    null
-  );
+export function socialRpcUrls(chainId: number): string[] {
+  const urls = [
+    process.env.SOCIAL_RPC_URLS,
+    process.env.SOCIAL_RPC_URL,
+    process.env.RPC_URL,
+    ...(chainId === SEPOLIA_CHAIN_ID
+      ? [
+          process.env.SEPOLIA_RPC_URL,
+          "https://ethereum-sepolia-rpc.publicnode.com",
+          "https://rpc.sepolia.org",
+          "https://1rpc.io/sepolia",
+        ]
+      : []),
+    ...(chainId === 1
+      ? [process.env.MAINNET_RPC_URL, process.env.ETHEREUM_RPC_URL]
+      : []),
+  ];
+  const seen = new Set<string>();
+  return urls
+    .flatMap((url) => (url ?? "").split(","))
+    .map((url) => url.trim())
+    .filter((url) => {
+      if (!url || seen.has(url)) return false;
+      seen.add(url);
+      return true;
+    });
 }
 
 function socialEasEnabled(
