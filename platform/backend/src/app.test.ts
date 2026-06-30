@@ -873,6 +873,56 @@ describe("POST /api/social-verification", () => {
     assert.equal(validSignature, true);
   });
 
+  it("normalizes supported platforms and infers known social profile URLs", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+    });
+
+    const xRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: { wallet: ALICE, platform: "twitter", handle: "@alice" },
+    });
+    assert.equal(xRes.statusCode, 200);
+    assert.equal(xRes.json().profileUrl, "https://x.com/alice");
+
+    const tiktokRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: { wallet: ALICE, platform: "tiktok", handle: "@alice" },
+    });
+    assert.equal(tiktokRes.statusCode, 200);
+    assert.equal(tiktokRes.json().profileUrl, "https://www.tiktok.com/@alice");
+  });
+
+  it("400 when the platform is unsupported or a social handle is missing", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+    });
+
+    const unsupported = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: { wallet: ALICE, platform: "facebook", handle: "alice" },
+    });
+    assert.equal(unsupported.statusCode, 400);
+    assert.equal(unsupported.json().error, "Invalid platform");
+
+    const missingHandle = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: { wallet: ALICE, platform: "x" },
+    });
+    assert.equal(missingHandle.statusCode, 400);
+    assert.equal(missingHandle.json().error, "Handle is required for this platform");
+  });
+
   it("returns EAS and registry transactions when the backend relays onchain", async () => {
     const easUid = `0x${"11".repeat(32)}` as const;
     const easTxHash = `0x${"22".repeat(32)}` as const;
@@ -968,8 +1018,14 @@ describe("POST /api/social-verification", () => {
     const challengeRes = await h.app.inject({
       method: "POST",
       url: "/api/social-verification/challenge",
-      payload: { wallet: ALICE, platform: "instagram" },
+      payload: {
+        wallet: ALICE,
+        platform: "instagram",
+        handle: "alice",
+        profileUrl: "https://instagram.com/alice",
+      },
     });
+    assert.equal(challengeRes.statusCode, 200);
     const challenge = challengeRes.json();
     const proofUrl = "https://instagram.com/p/1";
     h.fetchStub.set(proofUrl, {
@@ -988,6 +1044,78 @@ describe("POST /api/social-verification", () => {
     });
     assert.equal(verifyRes.statusCode, 400);
     assert.match(verifyRes.json().error, /verification code/);
+  });
+
+  it("400 when the proof URL does not match the selected platform", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+    });
+
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: ALICE,
+        platform: "x",
+        handle: "alice",
+        profileUrl: "https://x.com/alice",
+      },
+    });
+    assert.equal(challengeRes.statusCode, 200);
+    const challenge = challengeRes.json();
+
+    const verifyRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload: {
+        ...challenge,
+        proofUrl: "https://postman-echo.com/get?growfi=not-x",
+        onchainNonce: "0",
+      },
+    });
+    assert.equal(verifyRes.statusCode, 400);
+    assert.equal(verifyRes.json().error, "Proof URL must be an X post URL");
+    assert.equal(h.fetchCalls.length, 0);
+  });
+
+  it("400 when a website proof URL is outside the profile domain", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+    });
+
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: ALICE,
+        platform: "website",
+        profileUrl: "https://growfi.dev",
+      },
+    });
+    assert.equal(challengeRes.statusCode, 200);
+    const challenge = challengeRes.json();
+
+    const verifyRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload: {
+        ...challenge,
+        proofUrl: "https://example.com/growfi-proof",
+        onchainNonce: "0",
+      },
+    });
+    assert.equal(verifyRes.statusCode, 400);
+    assert.equal(
+      verifyRes.json().error,
+      "Proof URL must use the same website domain as the profile URL",
+    );
+    assert.equal(h.fetchCalls.length, 0);
   });
 });
 

@@ -26,6 +26,14 @@ const CHALLENGE_VERSION = "v1";
 const EAS_PROTOCOL = "GrowFi";
 const DEFAULT_EAS_SCHEMA =
   "string protocol,address grower,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce";
+const SUPPORTED_SOCIAL_PLATFORMS = new Set([
+  "x",
+  "twitter",
+  "instagram",
+  "tiktok",
+  "linkedin",
+  "website",
+]);
 
 const EAS_CONTRACTS: Record<
   number,
@@ -353,7 +361,12 @@ export function registerSocialVerificationRoutes(
   app: FastifyInstance,
   deps: SocialVerificationDeps,
 ) {
-  const fetchText = deps.fetchText ?? ((url: string) => fetch(url));
+  const fetchText = deps.fetchText ?? ((url: string) => fetch(url, {
+    headers: {
+      accept: "text/html,text/plain,*/*",
+      "user-agent": "GrowFiSocialVerifier/1.0 (+https://growfi.dev)",
+    },
+  }));
   const challengeTtlMs = deps.challengeTtlMs ?? 15 * 60 * 1000;
   const attestationTtlSeconds = deps.attestationTtlSeconds ?? 180 * 24 * 60 * 60;
 
@@ -415,6 +428,8 @@ export function registerSocialVerificationRoutes(
 
     const proofUrl = normalizeHttpUrl(req.body.proofUrl);
     if (!proofUrl) return reply.status(400).send({ error: "Invalid proofUrl" });
+    const proofUrlError = validateProofUrlForPlatform(proofUrl, parsed);
+    if (proofUrlError) return reply.status(400).send({ error: proofUrlError });
 
     const challengePayload: ChallengePayload = {
       ...parsed,
@@ -538,16 +553,25 @@ function parseChallengeRequest(body: {
   if (!body.wallet || !isAddress(body.wallet)) return { error: "Invalid wallet" };
   const platform = normalizePlatform(body.platform);
   if (!platform) return { error: "Invalid platform" };
+  const handle = normalizeHandle(body.handle ?? "");
+  if (platform !== "website" && !handle) {
+    return { error: "Handle is required for this platform" };
+  }
   let profileUrl = "";
   if (body.profileUrl) {
     const normalized = normalizeHttpUrl(body.profileUrl);
     if (!normalized) return { error: "Invalid profileUrl" };
     profileUrl = normalized;
   }
+  if (!profileUrl) {
+    const inferred = inferProfileUrl(platform, handle);
+    if (!inferred) return { error: "Profile URL is required for this platform" };
+    profileUrl = inferred;
+  }
   return {
     wallet: getAddress(body.wallet),
     platform,
-    handle: normalizeHandle(body.handle ?? ""),
+    handle,
     profileUrl,
   };
 }
@@ -555,6 +579,7 @@ function parseChallengeRequest(body: {
 function normalizePlatform(platform: string | undefined): string | null {
   const p = (platform ?? "").trim().toLowerCase();
   if (!/^[a-z0-9-]{1,32}$/.test(p)) return null;
+  if (!SUPPORTED_SOCIAL_PLATFORMS.has(p)) return null;
   return p;
 }
 
@@ -569,6 +594,89 @@ function normalizeHttpUrl(input: string): string | null {
     return url.toString();
   } catch {
     return null;
+  }
+}
+
+function inferProfileUrl(platform: string, handle: string): string | null {
+  if (!handle) return null;
+  if (platform === "x" || platform === "twitter") return `https://x.com/${handle}`;
+  if (platform === "instagram") return `https://www.instagram.com/${handle}`;
+  if (platform === "tiktok") return `https://www.tiktok.com/@${handle}`;
+  return null;
+}
+
+function validateProofUrlForPlatform(
+  proofUrl: string,
+  input: Omit<ChallengePayload, "nonce" | "issuedAt" | "expiresAt" | "code" | "message">,
+): string | null {
+  const proof = new URL(proofUrl);
+  const proofHost = normalizedHost(proof.hostname);
+  const handle = input.handle.toLowerCase();
+  const segments = proof.pathname
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => safeDecodePathSegment(segment));
+
+  if (input.platform === "x" || input.platform === "twitter") {
+    if (!["x.com", "twitter.com", "mobile.twitter.com"].includes(proofHost)) {
+      return "Proof URL must be an X post URL";
+    }
+    if (segments[0] !== handle || !["status", "statuses"].includes(segments[1] ?? "")) {
+      return "Proof URL must point to a post from the selected X handle";
+    }
+    return null;
+  }
+
+  if (input.platform === "instagram") {
+    if (!["instagram.com", "www.instagram.com"].includes(proofHost)) {
+      return "Proof URL must be an Instagram post URL";
+    }
+    if (!["p", "reel", "tv"].includes(segments[0] ?? "")) {
+      return "Proof URL must point to an Instagram post or reel";
+    }
+    return null;
+  }
+
+  if (input.platform === "tiktok") {
+    if (!["tiktok.com", "www.tiktok.com"].includes(proofHost)) {
+      return "Proof URL must be a TikTok post URL";
+    }
+    if (segments[0] !== `@${handle}` || !["video", "photo"].includes(segments[1] ?? "")) {
+      return "Proof URL must point to a post from the selected TikTok handle";
+    }
+    return null;
+  }
+
+  if (input.platform === "linkedin") {
+    if (!["linkedin.com", "www.linkedin.com"].includes(proofHost)) {
+      return "Proof URL must be a LinkedIn post URL";
+    }
+    if (!["posts", "feed", "pulse"].includes(segments[0] ?? "")) {
+      return "Proof URL must point to a public LinkedIn post";
+    }
+    return null;
+  }
+
+  if (input.platform === "website") {
+    const profile = new URL(input.profileUrl);
+    const profileHost = normalizedHost(profile.hostname);
+    if (proofHost !== profileHost && !proofHost.endsWith(`.${profileHost}`)) {
+      return "Proof URL must use the same website domain as the profile URL";
+    }
+  }
+
+  return null;
+}
+
+function normalizedHost(hostname: string): string {
+  return hostname.toLowerCase().replace(/\.$/, "");
+}
+
+function safeDecodePathSegment(segment: string): string {
+  try {
+    return decodeURIComponent(segment).toLowerCase();
+  } catch {
+    return segment.toLowerCase();
   }
 }
 

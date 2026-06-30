@@ -28,6 +28,13 @@ contract field named `producer` because that ABI is already deployed. The
 frontend proof post text must stay localized in all supported locales and tag
 `@higrowfi`; X proofs should offer a prefilled X composer link.
 
+Social proof validation accepts only `x`/`twitter`, `instagram`, `tiktok`,
+`linkedin`, and `website`. X/Twitter and TikTok proof URLs must be posts from
+the selected handle; Instagram and LinkedIn proof URLs must be public post URLs
+on their official domains; website proofs must live on the same domain as the
+profile URL. This is still a public-page fetch flow: social platforms only work
+when their public HTML response exposes the GrowFi verification code.
+
 ## Current target chain — Ethereum Mainnet (chain 1), audit-hardened build
 
 **As of 2026-06-16 the live production app runs on Ethereum Mainnet** (chain 1):
