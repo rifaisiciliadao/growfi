@@ -26,6 +26,8 @@ import {
   type SocialOnchainAttester,
 } from "./social-verification.js";
 
+const SEPOLIA_CHAIN_ID = 11155111;
+
 export interface AppConfig {
   spacesBucket: string;
   spacesPublicBase: string;
@@ -161,7 +163,8 @@ function buildDefaultSocialOnchainAttester(input: {
   verifierPrivateKey: `0x${string}` | null;
   registryAddress: Address | null;
 }): SocialOnchainAttester | null {
-  if (process.env.SOCIAL_EAS_ENABLED !== "true") return null;
+  const easEnabled = socialEasEnabled(input.chainId, input.verifierPrivateKey);
+  if (!easEnabled) return null;
   if (!input.verifierPrivateKey) {
     return failedSocialOnchainAttester(
       "SOCIAL_EAS_ENABLED=true but SOCIAL_VERIFIER_PRIVATE_KEY is missing",
@@ -200,12 +203,25 @@ function socialRpcUrl(chainId: number): string | null {
   return (
     process.env.SOCIAL_RPC_URL ||
     process.env.RPC_URL ||
-    (chainId === 11155111 ? process.env.SEPOLIA_RPC_URL : undefined) ||
+    (chainId === SEPOLIA_CHAIN_ID
+      ? process.env.SEPOLIA_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com"
+      : undefined) ||
     (chainId === 1
       ? process.env.MAINNET_RPC_URL || process.env.ETHEREUM_RPC_URL
       : undefined) ||
     null
   );
+}
+
+function socialEasEnabled(
+  chainId: number,
+  verifierPrivateKey: `0x${string}` | null,
+): boolean {
+  const configured = process.env.SOCIAL_EAS_ENABLED;
+  if (configured !== undefined && configured !== "") {
+    return booleanFromEnv(configured, false);
+  }
+  return chainId === SEPOLIA_CHAIN_ID && Boolean(verifierPrivateKey);
 }
 
 function addressFromEnv(value: string | undefined): Address | null {

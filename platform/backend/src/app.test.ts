@@ -1,9 +1,9 @@
-import { describe, it, beforeEach } from "node:test";
+import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
 import { getAddress, verifyTypedData } from "viem";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { buildApp, type AppDeps } from "./app.js";
+import { buildApp, buildDefaultDeps, type AppDeps } from "./app.js";
 import type { EmailPayload } from "./email.js";
 import type { SnapshotResult } from "./snapshot.js";
 
@@ -12,7 +12,23 @@ const BOB = getAddress("0xBbbbbbBBbBbbbBBBbbBBbbBbbbbbBBBbbbbBBbBb");
 const CAMPAIGN = getAddress("0x1111111111111111111111111111111111111111");
 const VAULT = getAddress("0x2222222222222222222222222222222222222222");
 const YIELD = getAddress("0x3333333333333333333333333333333333333333");
+const TEST_REGISTRY_ADDRESS = getAddress("0x4444444444444444444444444444444444444444");
 const SKU = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const TEST_VERIFIER_PRIVATE_KEY = `0x${"11".repeat(32)}` as const;
+
+const SOCIAL_ENV_KEYS = [
+  "CHAIN_ID",
+  "NEXT_PUBLIC_CHAIN_ID",
+  "SOCIAL_VERIFIER_PRIVATE_KEY",
+  "PRODUCER_REGISTRY_ADDRESS",
+  "NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS",
+  "SOCIAL_EAS_ENABLED",
+  "SOCIAL_RPC_URL",
+  "RPC_URL",
+  "SEPOLIA_RPC_URL",
+  "MAINNET_RPC_URL",
+  "ETHEREUM_RPC_URL",
+] as const;
 
 interface TestHarness {
   app: FastifyInstance;
@@ -93,6 +109,62 @@ describe("GET /health", () => {
     const body = res.json();
     assert.equal(body.status, "ok");
     assert.equal(typeof body.ts, "number");
+  });
+});
+
+describe("buildDefaultDeps social onchain wiring", () => {
+  const previous = new Map<string, string | undefined>();
+
+  beforeEach(() => {
+    previous.clear();
+    for (const key of SOCIAL_ENV_KEYS) {
+      previous.set(key, process.env[key]);
+      delete process.env[key];
+    }
+  });
+
+  afterEach(() => {
+    for (const key of SOCIAL_ENV_KEYS) {
+      const value = previous.get(key);
+      if (value === undefined) {
+        delete process.env[key];
+      } else {
+        process.env[key] = value;
+      }
+    }
+  });
+
+  it("enables EAS by default on Sepolia when the verifier key is configured", () => {
+    process.env.CHAIN_ID = "11155111";
+    process.env.SOCIAL_VERIFIER_PRIVATE_KEY = TEST_VERIFIER_PRIVATE_KEY;
+    process.env.PRODUCER_REGISTRY_ADDRESS = TEST_REGISTRY_ADDRESS;
+
+    const deps = buildDefaultDeps();
+
+    assert.ok(deps.socialOnchainAttester);
+    assert.equal(deps.socialChainId, 11155111);
+    assert.equal(deps.socialRegistryAddress, TEST_REGISTRY_ADDRESS);
+  });
+
+  it("keeps EAS opt-in on mainnet", () => {
+    process.env.CHAIN_ID = "1";
+    process.env.SOCIAL_VERIFIER_PRIVATE_KEY = TEST_VERIFIER_PRIVATE_KEY;
+    process.env.PRODUCER_REGISTRY_ADDRESS = TEST_REGISTRY_ADDRESS;
+
+    const deps = buildDefaultDeps();
+
+    assert.equal(deps.socialOnchainAttester, null);
+  });
+
+  it("allows Sepolia EAS to be explicitly disabled", () => {
+    process.env.CHAIN_ID = "11155111";
+    process.env.SOCIAL_VERIFIER_PRIVATE_KEY = TEST_VERIFIER_PRIVATE_KEY;
+    process.env.PRODUCER_REGISTRY_ADDRESS = TEST_REGISTRY_ADDRESS;
+    process.env.SOCIAL_EAS_ENABLED = "false";
+
+    const deps = buildDefaultDeps();
+
+    assert.equal(deps.socialOnchainAttester, null);
   });
 });
 
