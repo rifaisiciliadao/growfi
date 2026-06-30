@@ -95,6 +95,8 @@ export function SocialVerificationPanel({
 
   const selectedPlatform = SOCIAL_PLATFORM_OPTIONS.find((item) => item.value === platform);
   const selectedPlatformComingSoon = Boolean(selectedPlatform?.comingSoon);
+  const isWebsitePlatform = platform === "website";
+  const isWebsiteChallenge = challenge?.platform === "website";
 
   const requestChallenge = async () => {
     if (selectedPlatformComingSoon) return;
@@ -104,7 +106,7 @@ export function SocialVerificationPanel({
       const next = await requestSocialVerificationChallenge({
         wallet: producerAddress,
         platform,
-        handle,
+        handle: isWebsitePlatform ? "" : handle,
         profileUrl,
       });
       setChallenge(next);
@@ -221,12 +223,18 @@ export function SocialVerificationPanel({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`grid grid-cols-1 gap-4 ${
+        isWebsitePlatform ? "md:grid-cols-2" : "md:grid-cols-3"
+      }`}>
         <Field label={t("platform")}>
           <select
             value={platform}
             onChange={(e) => {
-              setPlatform(e.target.value);
+              const nextPlatform = e.target.value;
+              setPlatform(nextPlatform);
+              if (nextPlatform === "website") {
+                setHandle("");
+              }
               setChallenge(null);
               setProofUrl("");
             }}
@@ -245,21 +253,23 @@ export function SocialVerificationPanel({
             ))}
           </select>
         </Field>
-        <Field label={t("handle")}>
-          <input
-            value={handle}
-            onChange={(e) => setHandle(e.target.value)}
-            className="social-input"
-            placeholder="@grower"
-            disabled={busy !== null}
-          />
-        </Field>
-        <Field label={t("profileUrl")}>
+        {!isWebsitePlatform && (
+          <Field label={t("handle")}>
+            <input
+              value={handle}
+              onChange={(e) => setHandle(e.target.value)}
+              className="social-input"
+              placeholder="@grower"
+              disabled={busy !== null}
+            />
+          </Field>
+        )}
+        <Field label={isWebsitePlatform ? t("websiteUrl") : t("profileUrl")}>
           <input
             value={profileUrl}
             onChange={(e) => setProfileUrl(e.target.value)}
             className="social-input"
-            placeholder="https://"
+            placeholder={isWebsitePlatform ? "https://example.com" : "https://"}
             disabled={busy !== null}
           />
         </Field>
@@ -304,12 +314,12 @@ export function SocialVerificationPanel({
               </a>
             )}
           </div>
-          <Field label={t("proofUrl")}>
+          <Field label={isWebsiteChallenge ? t("websiteProofUrl") : t("proofUrl")}>
             <input
               value={proofUrl}
               onChange={(e) => setProofUrl(e.target.value)}
               className="social-input"
-              placeholder="https://"
+              placeholder={isWebsiteChallenge ? "https://example.com/growfi-proof" : "https://"}
               disabled={busy !== null}
             />
           </Field>
