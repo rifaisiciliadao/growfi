@@ -1198,6 +1198,7 @@
       "statusVerified": "Verificato",
       "statusMissing": "Non verificato",
       "platform": "Piattaforma",
+      "comingSoon": "coming soon",
       "handle": "Handle",
       "profileUrl": "URL profilo",
       "createChallenge": "Crea codice di verifica",

@@ -1198,6 +1198,7 @@
       "statusVerified": "Verified",
       "statusMissing": "Not verified",
       "platform": "Platform",
+      "comingSoon": "coming soon",
       "handle": "Handle",
       "profileUrl": "Profile URL",
       "createChallenge": "Create verification code",

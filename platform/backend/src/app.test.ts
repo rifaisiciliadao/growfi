@@ -923,6 +923,30 @@ describe("POST /api/social-verification", () => {
     assert.equal(missingHandle.json().error, "Handle is required for this platform");
   });
 
+  it("400 when the platform is coming soon", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+    });
+
+    for (const platform of ["instagram", "linkedin"]) {
+      const res = await h.app.inject({
+        method: "POST",
+        url: "/api/social-verification/challenge",
+        payload: {
+          wallet: ALICE,
+          platform,
+          handle: "alice",
+          profileUrl: `https://example.com/${platform}/alice`,
+        },
+      });
+      assert.equal(res.statusCode, 400);
+      assert.equal(res.json().error, "Platform coming soon");
+    }
+  });
+
   it("returns EAS and registry transactions when the backend relays onchain", async () => {
     const easUid = `0x${"11".repeat(32)}` as const;
     const easTxHash = `0x${"22".repeat(32)}` as const;
@@ -1020,14 +1044,14 @@ describe("POST /api/social-verification", () => {
       url: "/api/social-verification/challenge",
       payload: {
         wallet: ALICE,
-        platform: "instagram",
+        platform: "x",
         handle: "alice",
-        profileUrl: "https://instagram.com/alice",
+        profileUrl: "https://x.com/alice",
       },
     });
     assert.equal(challengeRes.statusCode, 200);
     const challenge = challengeRes.json();
-    const proofUrl = "https://instagram.com/p/1";
+    const proofUrl = "https://x.com/alice/status/1";
     h.fetchStub.set(proofUrl, {
       status: 200,
       body: "no verification code here",

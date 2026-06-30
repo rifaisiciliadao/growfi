@@ -21,6 +21,14 @@ import { Spinner } from "@/components/Spinner";
 
 type Busy = null | "challenge" | "verify" | "sig" | "chain";
 
+const SOCIAL_PLATFORM_OPTIONS = [
+  { value: "x", label: "X" },
+  { value: "tiktok", label: "TikTok" },
+  { value: "website", label: "Website" },
+  { value: "instagram", label: "Instagram", comingSoon: true },
+  { value: "linkedin", label: "LinkedIn", comingSoon: true },
+];
+
 export function SocialVerificationPanel({
   producerAddress,
   producer,
@@ -85,7 +93,11 @@ export function SocialVerificationPanel({
     }
   };
 
+  const selectedPlatform = SOCIAL_PLATFORM_OPTIONS.find((item) => item.value === platform);
+  const selectedPlatformComingSoon = Boolean(selectedPlatform?.comingSoon);
+
   const requestChallenge = async () => {
+    if (selectedPlatformComingSoon) return;
     setError(null);
     try {
       setBusy("challenge");
@@ -213,15 +225,24 @@ export function SocialVerificationPanel({
         <Field label={t("platform")}>
           <select
             value={platform}
-            onChange={(e) => setPlatform(e.target.value)}
+            onChange={(e) => {
+              setPlatform(e.target.value);
+              setChallenge(null);
+              setProofUrl("");
+            }}
             className="social-input"
             disabled={busy !== null}
           >
-            <option value="x">X</option>
-            <option value="instagram">Instagram</option>
-            <option value="tiktok">TikTok</option>
-            <option value="linkedin">LinkedIn</option>
-            <option value="website">Website</option>
+            {SOCIAL_PLATFORM_OPTIONS.map((option) => (
+              <option
+                key={option.value}
+                value={option.value}
+                disabled={option.comingSoon}
+              >
+                {option.label}
+                {option.comingSoon ? ` (${t("comingSoon")})` : ""}
+              </option>
+            ))}
           </select>
         </Field>
         <Field label={t("handle")}>
@@ -246,7 +267,7 @@ export function SocialVerificationPanel({
 
       <button
         onClick={requestChallenge}
-        disabled={busy !== null}
+        disabled={busy !== null || selectedPlatformComingSoon}
         className="bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 inline-flex items-center gap-2"
       >
         {busy === "challenge" && <Spinner size={14} />}

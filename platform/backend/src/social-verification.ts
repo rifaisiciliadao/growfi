@@ -29,11 +29,10 @@ const DEFAULT_EAS_SCHEMA =
 const SUPPORTED_SOCIAL_PLATFORMS = new Set([
   "x",
   "twitter",
-  "instagram",
   "tiktok",
-  "linkedin",
   "website",
 ]);
+const COMING_SOON_SOCIAL_PLATFORMS = new Set(["instagram", "linkedin"]);
 
 const EAS_CONTRACTS: Record<
   number,
@@ -553,6 +552,10 @@ function parseChallengeRequest(body: {
   if (!body.wallet || !isAddress(body.wallet)) return { error: "Invalid wallet" };
   const platform = normalizePlatform(body.platform);
   if (!platform) return { error: "Invalid platform" };
+  if (COMING_SOON_SOCIAL_PLATFORMS.has(platform)) {
+    return { error: "Platform coming soon" };
+  }
+  if (!SUPPORTED_SOCIAL_PLATFORMS.has(platform)) return { error: "Invalid platform" };
   const handle = normalizeHandle(body.handle ?? "");
   if (platform !== "website" && !handle) {
     return { error: "Handle is required for this platform" };
@@ -579,7 +582,6 @@ function parseChallengeRequest(body: {
 function normalizePlatform(platform: string | undefined): string | null {
   const p = (platform ?? "").trim().toLowerCase();
   if (!/^[a-z0-9-]{1,32}$/.test(p)) return null;
-  if (!SUPPORTED_SOCIAL_PLATFORMS.has(p)) return null;
   return p;
 }
 
