@@ -22,7 +22,7 @@ const TEST_REGISTRY_ADDRESS = getAddress("0x444444444444444444444444444444444444
 const SKU = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const TEST_VERIFIER_PRIVATE_KEY = `0x${"11".repeat(32)}` as const;
 const DEFAULT_SOCIAL_EAS_SCHEMA =
-  "address producer,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce";
+  "string protocol,address grower,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce";
 
 const SOCIAL_ENV_KEYS = [
   "CHAIN_ID",
@@ -203,7 +203,7 @@ describe("EAS social schema", () => {
 
     assert.equal(
       uid,
-      "0x945ceede810991d8a0cbc267fe69e4f395689259f207d42b25d201f6b9b3bc7b",
+      "0x78422879833ca667e9b3ea79d6aaa24328d751493bbd42c92d271d7e94f40caa",
     );
   });
 });
@@ -893,7 +893,7 @@ describe("POST /api/social-verification", () => {
           return {
             eas: {
               schema:
-                "address producer,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce",
+                DEFAULT_SOCIAL_EAS_SCHEMA,
               schemaUID,
               attestationUID: easUid,
               txHash: easTxHash,

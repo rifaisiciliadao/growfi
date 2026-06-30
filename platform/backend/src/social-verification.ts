@@ -23,8 +23,9 @@ const ZERO_BYTES32 =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 const CHALLENGE_VERSION = "v1";
+const EAS_PROTOCOL = "GrowFi";
 const DEFAULT_EAS_SCHEMA =
-  "address producer,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce";
+  "string protocol,address grower,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce";
 
 const EAS_CONTRACTS: Record<
   number,
@@ -740,7 +741,8 @@ function readEasAttestationUID(input: {
 function encodeSocialAttestationData(attestation: SocialAttestationMessage): Hex {
   return encodeAbiParameters(
     [
-      { name: "producer", type: "address" },
+      { name: "protocol", type: "string" },
+      { name: "grower", type: "address" },
       { name: "platform", type: "string" },
       { name: "handle", type: "string" },
       { name: "profileUrl", type: "string" },
@@ -751,6 +753,7 @@ function encodeSocialAttestationData(attestation: SocialAttestationMessage): Hex
       { name: "nonce", type: "uint256" },
     ],
     [
+      EAS_PROTOCOL,
       attestation.producer,
       attestation.platform,
       attestation.handle,

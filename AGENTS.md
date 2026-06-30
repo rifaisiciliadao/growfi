@@ -21,6 +21,13 @@ fallbacks so a single rate-limited provider cannot block schema registration,
 EAS attestations, or registry relays. The social verifier wallet must hold
 Sepolia ETH for gas.
 
+The canonical social EAS schema is:
+`string protocol,address grower,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce`.
+Encode `protocol` as `GrowFi` and use `grower` in EAS data; keep the registry
+contract field named `producer` because that ABI is already deployed. The
+frontend proof post text must stay localized in all supported locales and tag
+`@higrowfi`; X proofs should offer a prefilled X composer link.
+
 ## Current target chain — Ethereum Mainnet (chain 1), audit-hardened build
 
 **As of 2026-06-16 the live production app runs on Ethereum Mainnet** (chain 1):

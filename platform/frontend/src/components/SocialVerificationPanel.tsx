@@ -64,6 +64,26 @@ export function SocialVerificationPanel({
     if (!producer?.socialExpiresAt) return null;
     return new Date(Number(producer.socialExpiresAt) * 1000).toLocaleDateString();
   }, [producer?.socialExpiresAt]);
+  const suggestedPost = useMemo(() => {
+    if (!challenge) return "";
+    return t("postTemplate", { code: challenge.code });
+  }, [challenge, t]);
+  const isXChallenge = challenge
+    ? challenge.platform === "x" || challenge.platform === "twitter"
+    : false;
+  const xPostUrl = useMemo(() => {
+    if (!suggestedPost) return "";
+    return `https://x.com/intent/post?text=${encodeURIComponent(suggestedPost)}`;
+  }, [suggestedPost]);
+
+  const copySuggestedPost = async () => {
+    if (!suggestedPost) return;
+    try {
+      await navigator.clipboard.writeText(suggestedPost);
+    } catch {
+      setError(t("copyFailed"));
+    }
+  };
 
   const requestChallenge = async () => {
     setError(null);
@@ -238,11 +258,31 @@ export function SocialVerificationPanel({
           <Field label={t("message")}>
             <textarea
               readOnly
-              rows={3}
-              className="social-input font-mono text-xs"
-              value={challenge.message}
+              rows={6}
+              className="social-input text-sm leading-relaxed"
+              value={suggestedPost}
             />
           </Field>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={copySuggestedPost}
+              className="bg-surface-container-high text-on-surface px-4 py-2 rounded-full text-xs font-semibold hover:opacity-90 transition disabled:opacity-50"
+              disabled={busy !== null}
+            >
+              {t("copyPost")}
+            </button>
+            {isXChallenge && (
+              <a
+                href={xPostUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="bg-on-surface text-surface px-4 py-2 rounded-full text-xs font-semibold hover:opacity-90 transition"
+              >
+                {t("openXPost")}
+              </a>
+            )}
+          </div>
           <Field label={t("proofUrl")}>
             <input
               value={proofUrl}

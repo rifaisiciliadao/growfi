@@ -1202,6 +1202,9 @@
       "profileUrl": "URL du profil",
       "createChallenge": "Créer le code de vérification",
       "message": "Publie ce message",
+      "postTemplate": "Je vérifie mon profil grower sur GrowFi avec @higrowfi.\nLa finance régénérative commence avec des growers vérifiés.\n\n{code}\nhttps://growfi.dev",
+      "copyPost": "Copier le texte du post",
+      "openXPost": "Ouvrir le post sur X",
       "proofUrl": "URL du post",
       "verifiedProfileLink": "Ouvrir le profil social vérifié {handle}",
       "verifyAndClaim": "Vérifier et réclamer le badge",
@@ -1209,6 +1212,7 @@
       "awaitingSignature": "En attente du wallet…",
       "confirmingTx": "Confirmation on-chain…",
       "nonceUnavailable": "Le nonce on-chain n'est pas encore chargé. Réessaie dans un instant.",
+      "copyFailed": "Impossible de copier le texte du post. Sélectionne-le et copie-le manuellement.",
       "verifierNotConfigured": "Le vérificateur a accepté la preuve mais n'est pas configuré pour signer des attestations on-chain."
     },
     "notifications": {
