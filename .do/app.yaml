@@ -104,6 +104,11 @@ services:
       #   RESEND_API_KEY               (SECRET, RUN_TIME)
       #   NOTIFICATIONS_UNSUB_SECRET   (SECRET, RUN_TIME)  — HMAC key for digest unsubscribe links; rotate to invalidate all live links
       #   SEPOLIA_RPC_URL              (optional override for the snapshot multicall)
+      #   SOCIAL_CHALLENGE_SECRET      (SECRET, RUN_TIME)
+      #   SOCIAL_VERIFIER_PRIVATE_KEY  (SECRET, RUN_TIME)  — must be granted isSocialVerifier on ProducerRegistry before relay works
+      #   SOCIAL_RPC_URL               (RUN_TIME; Sepolia/mainnet RPC used to publish EAS + registry txs)
+      #   SOCIAL_EAS_ENABLED           (RUN_TIME; set to "true" only where backend tx relay is intended)
+      #   SOCIAL_REGISTRY_RELAY        (RUN_TIME; default true, writes ProducerRegistry.setSocialAttestation after EAS)
       #   SUBGRAPH_URL                 (optional; defaults to ugraph latest in code)
       #   NOTIFIER_DISABLED            (optional; set to "1" to stop the digest worker without a redeploy)
 

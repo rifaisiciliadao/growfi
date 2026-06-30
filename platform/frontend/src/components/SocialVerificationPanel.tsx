@@ -106,6 +106,21 @@ export function SocialVerificationPanel({
         challenge: challenge.challenge,
         onchainNonce: nonceRaw.toString(),
       });
+      if (result.registry?.txHash) {
+        setBusy("chain");
+        notify.success(tx("socialVerificationConfirmed"), result.registry.txHash);
+        setChallenge(null);
+        setProofUrl("");
+        await Promise.all([
+          refetchNonce(),
+          refetchActive(),
+          queryClient.invalidateQueries({
+            queryKey: ["subgraph", "producer", producerAddress.toLowerCase()],
+          }),
+        ]);
+        return;
+      }
+
       if (!result.authorizationReady || !result.signature) {
         throw new Error(t("verifierNotConfigured"));
       }

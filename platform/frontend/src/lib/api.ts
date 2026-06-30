@@ -471,8 +471,17 @@ export interface SocialVerificationResult {
   attestation: SocialAttestationPayload;
   eas: {
     schema: string;
+    schemaUID?: `0x${string}`;
     attestationUID: `0x${string}`;
+    txHash?: `0x${string}`;
+    address?: `0x${string}`;
+    schemaRegistryAddress?: `0x${string}`;
+    registrationTxHash?: `0x${string}` | null;
   };
+  registry?: {
+    address: `0x${string}`;
+    txHash: `0x${string}`;
+  } | null;
 }
 
 export async function requestSocialVerificationChallenge(input: {

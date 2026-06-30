@@ -1,18 +1,152 @@
 import type { FastifyInstance } from "fastify";
 import {
+  createPublicClient,
+  createWalletClient,
+  encodeAbiParameters,
   getAddress,
+  http,
   isAddress,
   keccak256,
+  parseEventLogs,
   toBytes,
   type Address,
   type Hex,
+  type Log,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
+import { mainnet, sepolia } from "viem/chains";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 const ZERO_BYTES32 =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
 const CHALLENGE_VERSION = "v1";
+const DEFAULT_EAS_SCHEMA =
+  "address producer,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce";
+
+const EAS_CONTRACTS: Record<
+  number,
+  { eas: Address; schemaRegistry: Address }
+> = {
+  [mainnet.id]: {
+    eas: getAddress("0xa1207f3bba224e2c9c3c6ebd2c90b7fe3d0f0d17"),
+    schemaRegistry: getAddress("0xa7b39296258348c78294f95b872b282326a97bdf"),
+  },
+  [sepolia.id]: {
+    eas: getAddress("0xc2679fbd37d54388ce493f1db75320d236e1815e"),
+    schemaRegistry: getAddress("0x0a7e2ff54e76b8e2ad111554352ea6c67f4e7f85"),
+  },
+};
+
+const EAS_ABI = [
+  {
+    type: "event",
+    name: "Attested",
+    inputs: [
+      { name: "recipient", type: "address", indexed: true },
+      { name: "attester", type: "address", indexed: true },
+      { name: "uid", type: "bytes32", indexed: false },
+      { name: "schema", type: "bytes32", indexed: true },
+    ],
+  },
+  {
+    type: "function",
+    name: "attest",
+    stateMutability: "payable",
+    inputs: [
+      {
+        name: "request",
+        type: "tuple",
+        components: [
+          { name: "schema", type: "bytes32" },
+          {
+            name: "data",
+            type: "tuple",
+            components: [
+              { name: "recipient", type: "address" },
+              { name: "expirationTime", type: "uint64" },
+              { name: "revocable", type: "bool" },
+              { name: "refUID", type: "bytes32" },
+              { name: "data", type: "bytes" },
+              { name: "value", type: "uint256" },
+            ],
+          },
+        ],
+      },
+    ],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+] as const;
+
+const SCHEMA_REGISTRY_ABI = [
+  {
+    type: "function",
+    name: "getSchemaUID",
+    stateMutability: "pure",
+    inputs: [
+      { name: "schema", type: "string" },
+      { name: "resolver", type: "address" },
+      { name: "revocable", type: "bool" },
+    ],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+  {
+    type: "function",
+    name: "getSchema",
+    stateMutability: "view",
+    inputs: [{ name: "uid", type: "bytes32" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "uid", type: "bytes32" },
+          { name: "resolver", type: "address" },
+          { name: "revocable", type: "bool" },
+          { name: "schema", type: "string" },
+        ],
+      },
+    ],
+  },
+  {
+    type: "function",
+    name: "register",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "schema", type: "string" },
+      { name: "resolver", type: "address" },
+      { name: "revocable", type: "bool" },
+    ],
+    outputs: [{ name: "", type: "bytes32" }],
+  },
+] as const;
+
+const PRODUCER_REGISTRY_SOCIAL_ABI = [
+  {
+    type: "function",
+    name: "setSocialAttestation",
+    stateMutability: "nonpayable",
+    inputs: [
+      {
+        name: "attestation",
+        type: "tuple",
+        components: [
+          { name: "producer", type: "address" },
+          { name: "platform", type: "string" },
+          { name: "handle", type: "string" },
+          { name: "profileUrl", type: "string" },
+          { name: "proofUrl", type: "string" },
+          { name: "proofHash", type: "bytes32" },
+          { name: "issuedAt", type: "uint64" },
+          { name: "expiresAt", type: "uint64" },
+          { name: "nonce", type: "uint256" },
+          { name: "attestationUID", type: "bytes32" },
+        ],
+      },
+    ],
+    outputs: [],
+  },
+] as const;
 
 export interface SocialVerificationDeps {
   secret?: string | null;
@@ -22,6 +156,42 @@ export interface SocialVerificationDeps {
   challengeTtlMs?: number;
   attestationTtlSeconds?: number;
   fetchText?: (url: string) => Promise<Response>;
+  onchainAttester?: SocialOnchainAttester | null;
+}
+
+export interface SocialOnchainAttester {
+  issue(input: {
+    attestation: SocialAttestationMessage;
+  }): Promise<SocialOnchainResult>;
+}
+
+export interface SocialOnchainResult {
+  eas: {
+    schema: string;
+    schemaUID: Hex;
+    attestationUID: Hex;
+    txHash: Hex;
+    address: Address;
+    schemaRegistryAddress: Address;
+    registrationTxHash?: Hex | null;
+  };
+  registry?: {
+    address: Address;
+    txHash: Hex;
+  } | null;
+}
+
+export interface SocialOnchainAttesterConfig {
+  chainId: number;
+  rpcUrl: string;
+  verifierPrivateKey: Hex;
+  registryAddress?: Address | null;
+  easAddress?: Address | null;
+  schemaRegistryAddress?: Address | null;
+  schema?: string;
+  resolver?: Address;
+  revocable?: boolean;
+  relayRegistry?: boolean;
 }
 
 type ChallengePayload = {
@@ -36,7 +206,7 @@ type ChallengePayload = {
   message: string;
 };
 
-type SocialAttestationMessage = {
+export type SocialAttestationMessage = {
   producer: Address;
   platform: string;
   handle: string;
@@ -63,6 +233,113 @@ const socialAttestationTypes = {
     { name: "attestationUID", type: "bytes32" },
   ],
 } as const;
+
+export function buildSocialOnchainAttester(
+  config: SocialOnchainAttesterConfig,
+): SocialOnchainAttester {
+  const account = privateKeyToAccount(config.verifierPrivateKey);
+  const chain = config.chainId === sepolia.id
+    ? sepolia
+    : config.chainId === mainnet.id
+      ? mainnet
+      : undefined;
+  const publicClient = createPublicClient({
+    chain,
+    transport: http(config.rpcUrl),
+  });
+  const walletClient = createWalletClient({
+    account,
+    chain,
+    transport: http(config.rpcUrl),
+  });
+  const defaults = EAS_CONTRACTS[config.chainId];
+  const easAddress = config.easAddress ?? defaults?.eas;
+  const schemaRegistryAddress =
+    config.schemaRegistryAddress ?? defaults?.schemaRegistry;
+  if (!easAddress || !schemaRegistryAddress) {
+    throw new Error(`EAS contracts are not configured for chain ${config.chainId}`);
+  }
+
+  const schema = config.schema ?? DEFAULT_EAS_SCHEMA;
+  const resolver = config.resolver ?? ZERO_ADDRESS;
+  const revocable = config.revocable ?? true;
+  const relayRegistry = config.relayRegistry ?? true;
+
+  return {
+    async issue({ attestation }) {
+      const { schemaUID, registrationTxHash } = await ensureSchema({
+        publicClient,
+        walletClient,
+        account,
+        schemaRegistryAddress,
+        schema,
+        resolver,
+        revocable,
+      });
+      const easRequest = {
+        schema: schemaUID,
+        data: {
+          recipient: attestation.producer,
+          expirationTime: BigInt(attestation.expiresAt),
+          revocable,
+          refUID: ZERO_BYTES32,
+          data: encodeSocialAttestationData(attestation),
+          value: 0n,
+        },
+      };
+      const simulation = await publicClient.simulateContract({
+        account,
+        address: easAddress,
+        abi: EAS_ABI,
+        functionName: "attest",
+        args: [easRequest],
+        value: 0n,
+      });
+      const easTxHash = await walletClient.writeContract(simulation.request);
+      const easReceipt = await publicClient.waitForTransactionReceipt({
+        hash: easTxHash,
+      });
+      const attestationUID = readEasAttestationUID({
+        logs: easReceipt.logs,
+        recipient: attestation.producer,
+        attester: account.address,
+        schemaUID,
+      });
+
+      const nextAttestation = {
+        ...attestation,
+        attestationUID,
+      };
+      let registry: SocialOnchainResult["registry"] = null;
+      if (relayRegistry && config.registryAddress) {
+        const registryTxHash = await walletClient.writeContract({
+          address: config.registryAddress,
+          abi: PRODUCER_REGISTRY_SOCIAL_ABI,
+          functionName: "setSocialAttestation",
+          args: [toRegistryAttestation(nextAttestation)],
+        });
+        await publicClient.waitForTransactionReceipt({ hash: registryTxHash });
+        registry = {
+          address: config.registryAddress,
+          txHash: registryTxHash,
+        };
+      }
+
+      return {
+        eas: {
+          schema,
+          schemaUID,
+          attestationUID,
+          txHash: easTxHash,
+          address: easAddress,
+          schemaRegistryAddress,
+          registrationTxHash,
+        },
+        registry,
+      };
+    },
+  };
+}
 
 export function registerSocialVerificationRoutes(
   app: FastifyInstance,
@@ -188,6 +465,19 @@ export function registerSocialVerificationRoutes(
       attestationUID: ZERO_BYTES32,
     };
 
+    let onchainResult: SocialOnchainResult | null = null;
+    if (deps.onchainAttester) {
+      try {
+        onchainResult = await deps.onchainAttester.issue({ attestation });
+        attestation.attestationUID = onchainResult.eas.attestationUID;
+      } catch (err) {
+        req.log.error({ err }, "social verification onchain attestation failed");
+        return reply.status(502).send({
+          error: "Unable to publish social attestation on-chain",
+        });
+      }
+    }
+
     const registryAddress = deps.registryAddress ?? null;
     const chainId = deps.chainId ?? 1;
     const typedData = registryAddress
@@ -196,33 +486,37 @@ export function registerSocialVerificationRoutes(
 
     let verifier: Address | null = null;
     let signature: Hex | null = null;
-    if (deps.verifierPrivateKey && typedData) {
+    if (deps.verifierPrivateKey) {
       const account = privateKeyToAccount(deps.verifierPrivateKey);
       verifier = account.address;
-      signature = await account.signTypedData({
-        domain: typedData.domain,
-        types: socialAttestationTypes,
-        primaryType: "SocialAttestation",
-        message: {
-          ...attestation,
-          issuedAt: BigInt(attestation.issuedAt),
-          expiresAt: BigInt(attestation.expiresAt),
-          nonce: onchainNonce,
-        },
-      });
+      if (typedData && !onchainResult?.registry) {
+        signature = await account.signTypedData({
+          domain: typedData.domain,
+          types: socialAttestationTypes,
+          primaryType: "SocialAttestation",
+          message: {
+            ...attestation,
+            issuedAt: BigInt(attestation.issuedAt),
+            expiresAt: BigInt(attestation.expiresAt),
+            nonce: onchainNonce,
+          },
+        });
+      }
     }
 
     return {
       ok: true,
-      authorizationReady: Boolean(signature),
+      authorizationReady: Boolean(signature || onchainResult?.registry),
       verifier,
       signature,
       attestation,
       typedData,
-      eas: {
-        schema: "growfi.social.v1",
+      eas: onchainResult?.eas ?? {
+        schema: DEFAULT_EAS_SCHEMA,
+        schemaUID: ZERO_BYTES32,
         attestationUID: ZERO_BYTES32,
       },
+      registry: onchainResult?.registry ?? null,
     };
   });
 }
@@ -347,4 +641,124 @@ function buildTypedData(
     primaryType: "SocialAttestation",
     message,
   } as const;
+}
+
+async function ensureSchema(input: {
+  publicClient: ReturnType<typeof createPublicClient>;
+  walletClient: ReturnType<typeof createWalletClient>;
+  account: ReturnType<typeof privateKeyToAccount>;
+  schemaRegistryAddress: Address;
+  schema: string;
+  resolver: Address;
+  revocable: boolean;
+}): Promise<{ schemaUID: Hex; registrationTxHash: Hex | null }> {
+  const schemaUID = await input.publicClient.readContract({
+    address: input.schemaRegistryAddress,
+    abi: SCHEMA_REGISTRY_ABI,
+    functionName: "getSchemaUID",
+    args: [input.schema, input.resolver, input.revocable],
+  }) as Hex;
+  const record = await input.publicClient.readContract({
+    address: input.schemaRegistryAddress,
+    abi: SCHEMA_REGISTRY_ABI,
+    functionName: "getSchema",
+    args: [schemaUID],
+  });
+  if (schemaRecordUid(record) !== ZERO_BYTES32) {
+    return { schemaUID, registrationTxHash: null };
+  }
+
+  const txHash = await input.walletClient.writeContract({
+    chain: undefined,
+    account: input.account,
+    address: input.schemaRegistryAddress,
+    abi: SCHEMA_REGISTRY_ABI,
+    functionName: "register",
+    args: [input.schema, input.resolver, input.revocable],
+  });
+  await input.publicClient.waitForTransactionReceipt({ hash: txHash });
+  return { schemaUID, registrationTxHash: txHash };
+}
+
+function schemaRecordUid(record: unknown): Hex {
+  if (Array.isArray(record) && typeof record[0] === "string") {
+    return record[0] as Hex;
+  }
+  if (
+    record &&
+    typeof record === "object" &&
+    "uid" in record &&
+    typeof record.uid === "string"
+  ) {
+    return record.uid as Hex;
+  }
+  return ZERO_BYTES32;
+}
+
+function readEasAttestationUID(input: {
+  logs: readonly Log[];
+  recipient: Address;
+  attester: Address;
+  schemaUID: Hex;
+}): Hex {
+  const attestedLogs = parseEventLogs({
+    abi: EAS_ABI,
+    eventName: "Attested",
+    logs: [...input.logs],
+  });
+  const matching = attestedLogs.find((log) => {
+    const args = log.args;
+    return (
+      args.recipient.toLowerCase() === input.recipient.toLowerCase() &&
+      args.attester.toLowerCase() === input.attester.toLowerCase() &&
+      args.schema.toLowerCase() === input.schemaUID.toLowerCase()
+    );
+  });
+  const uid = matching?.args.uid ?? attestedLogs[0]?.args.uid ?? ZERO_BYTES32;
+  if (uid === ZERO_BYTES32) {
+    throw new Error("EAS receipt did not include an Attested event");
+  }
+  return uid;
+}
+
+function encodeSocialAttestationData(attestation: SocialAttestationMessage): Hex {
+  return encodeAbiParameters(
+    [
+      { name: "producer", type: "address" },
+      { name: "platform", type: "string" },
+      { name: "handle", type: "string" },
+      { name: "profileUrl", type: "string" },
+      { name: "proofUrl", type: "string" },
+      { name: "proofHash", type: "bytes32" },
+      { name: "issuedAt", type: "uint64" },
+      { name: "expiresAt", type: "uint64" },
+      { name: "nonce", type: "uint256" },
+    ],
+    [
+      attestation.producer,
+      attestation.platform,
+      attestation.handle,
+      attestation.profileUrl,
+      attestation.proofUrl,
+      attestation.proofHash,
+      BigInt(attestation.issuedAt),
+      BigInt(attestation.expiresAt),
+      BigInt(attestation.nonce),
+    ],
+  );
+}
+
+function toRegistryAttestation(attestation: SocialAttestationMessage) {
+  return {
+    producer: attestation.producer,
+    platform: attestation.platform,
+    handle: attestation.handle,
+    profileUrl: attestation.profileUrl,
+    proofUrl: attestation.proofUrl,
+    proofHash: attestation.proofHash,
+    issuedAt: BigInt(attestation.issuedAt),
+    expiresAt: BigInt(attestation.expiresAt),
+    nonce: BigInt(attestation.nonce),
+    attestationUID: attestation.attestationUID,
+  };
 }

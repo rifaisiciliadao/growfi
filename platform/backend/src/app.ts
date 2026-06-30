@@ -20,7 +20,11 @@ import {
 } from "./notifications-store.js";
 import { registerNotificationRoutes } from "./notifications.js";
 import { registerEcommerceRoutes } from "./ecommerce.js";
-import { registerSocialVerificationRoutes } from "./social-verification.js";
+import {
+  buildSocialOnchainAttester,
+  registerSocialVerificationRoutes,
+  type SocialOnchainAttester,
+} from "./social-verification.js";
 
 export interface AppConfig {
   spacesBucket: string;
@@ -51,6 +55,7 @@ export interface AppDeps {
   socialChainId?: number;
   socialChallengeTtlMs?: number;
   socialAttestationTtlSeconds?: number;
+  socialOnchainAttester?: SocialOnchainAttester | null;
 }
 
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
@@ -101,6 +106,18 @@ export function buildDefaultDeps(): AppDeps {
     : buildNoopSender((p) =>
         console.log(`[email noop] to=${p.to} kind=${p.kind} data=${JSON.stringify(p.data)}`),
       );
+  const socialChainId = Number(process.env.CHAIN_ID || process.env.NEXT_PUBLIC_CHAIN_ID || 1);
+  const socialVerifierPrivateKey =
+    (process.env.SOCIAL_VERIFIER_PRIVATE_KEY as `0x${string}` | undefined) ||
+    null;
+  const socialRegistryAddress =
+    addressFromEnv(process.env.PRODUCER_REGISTRY_ADDRESS) ||
+    addressFromEnv(process.env.NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS);
+  const socialOnchainAttester = buildDefaultSocialOnchainAttester({
+    chainId: socialChainId,
+    verifierPrivateKey: socialVerifierPrivateKey,
+    registryAddress: socialRegistryAddress,
+  });
 
   return {
     config: {
@@ -132,15 +149,78 @@ export function buildDefaultDeps(): AppDeps {
       // build time. NEVER rely on this in prod — set the env explicitly.
       "growfi-dev-unsub-secret-do-not-use-in-prod",
     socialChallengeSecret: process.env.SOCIAL_CHALLENGE_SECRET || null,
-    socialVerifierPrivateKey:
-      (process.env.SOCIAL_VERIFIER_PRIVATE_KEY as `0x${string}` | undefined) ||
-      null,
-    socialRegistryAddress:
-      (process.env.PRODUCER_REGISTRY_ADDRESS as Address | undefined) ||
-      (process.env.NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS as Address | undefined) ||
-      null,
-    socialChainId: Number(process.env.CHAIN_ID || process.env.NEXT_PUBLIC_CHAIN_ID || 1),
+    socialVerifierPrivateKey,
+    socialRegistryAddress,
+    socialChainId,
+    socialOnchainAttester,
   };
+}
+
+function buildDefaultSocialOnchainAttester(input: {
+  chainId: number;
+  verifierPrivateKey: `0x${string}` | null;
+  registryAddress: Address | null;
+}): SocialOnchainAttester | null {
+  if (process.env.SOCIAL_EAS_ENABLED !== "true") return null;
+  if (!input.verifierPrivateKey) {
+    return failedSocialOnchainAttester(
+      "SOCIAL_EAS_ENABLED=true but SOCIAL_VERIFIER_PRIVATE_KEY is missing",
+    );
+  }
+  const rpcUrl = socialRpcUrl(input.chainId);
+  if (!rpcUrl) {
+    return failedSocialOnchainAttester(
+      "SOCIAL_EAS_ENABLED=true but no social RPC URL is configured",
+    );
+  }
+  return buildSocialOnchainAttester({
+    chainId: input.chainId,
+    rpcUrl,
+    verifierPrivateKey: input.verifierPrivateKey,
+    registryAddress: input.registryAddress,
+    easAddress: addressFromEnv(process.env.SOCIAL_EAS_ADDRESS),
+    schemaRegistryAddress: addressFromEnv(process.env.SOCIAL_EAS_SCHEMA_REGISTRY_ADDRESS),
+    schema: process.env.SOCIAL_EAS_SCHEMA || undefined,
+    resolver: addressFromEnv(process.env.SOCIAL_EAS_RESOLVER) || undefined,
+    revocable: booleanFromEnv(process.env.SOCIAL_EAS_REVOCABLE, true),
+    relayRegistry: booleanFromEnv(process.env.SOCIAL_REGISTRY_RELAY, true),
+  });
+}
+
+function failedSocialOnchainAttester(message: string): SocialOnchainAttester {
+  console.warn(`[social] ${message}`);
+  return {
+    async issue() {
+      throw new Error(message);
+    },
+  };
+}
+
+function socialRpcUrl(chainId: number): string | null {
+  return (
+    process.env.SOCIAL_RPC_URL ||
+    process.env.RPC_URL ||
+    (chainId === 11155111 ? process.env.SEPOLIA_RPC_URL : undefined) ||
+    (chainId === 1
+      ? process.env.MAINNET_RPC_URL || process.env.ETHEREUM_RPC_URL
+      : undefined) ||
+    null
+  );
+}
+
+function addressFromEnv(value: string | undefined): Address | null {
+  if (!value) return null;
+  try {
+    return getAddress(value);
+  } catch {
+    console.warn(`[env] ignoring invalid address: ${value}`);
+    return null;
+  }
+}
+
+function booleanFromEnv(value: string | undefined, defaultValue: boolean): boolean {
+  if (value === undefined || value === "") return defaultValue;
+  return /^(1|true|yes|on)$/i.test(value);
 }
 
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
@@ -210,6 +290,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     challengeTtlMs: deps.socialChallengeTtlMs,
     attestationTtlSeconds: deps.socialAttestationTtlSeconds,
     fetchText,
+    onchainAttester: deps.socialOnchainAttester,
   });
 
   app.post("/api/upload", async (req, reply) => {

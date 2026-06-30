@@ -761,6 +761,90 @@ describe("POST /api/social-verification", () => {
     assert.equal(validSignature, true);
   });
 
+  it("returns EAS and registry transactions when the backend relays onchain", async () => {
+    const easUid = `0x${"11".repeat(32)}` as const;
+    const easTxHash = `0x${"22".repeat(32)}` as const;
+    const registryTxHash = `0x${"33".repeat(32)}` as const;
+    const schemaUID = `0x${"44".repeat(32)}` as const;
+    const easAddress = getAddress("0x5555555555555555555555555555555555555555");
+    const schemaRegistryAddress = getAddress("0x6666666666666666666666666666666666666666");
+    const relayInputs: unknown[] = [];
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+      socialAttestationTtlSeconds: 3600,
+      socialOnchainAttester: {
+        issue: async ({ attestation }) => {
+          relayInputs.push({ ...attestation });
+          return {
+            eas: {
+              schema:
+                "address producer,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce",
+              schemaUID,
+              attestationUID: easUid,
+              txHash: easTxHash,
+              address: easAddress,
+              schemaRegistryAddress,
+              registrationTxHash: null,
+            },
+            registry: {
+              address: registryAddress,
+              txHash: registryTxHash,
+            },
+          };
+        },
+      },
+    });
+
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: ALICE,
+        platform: "x",
+        handle: "alice",
+        profileUrl: "https://x.com/alice",
+      },
+    });
+    assert.equal(challengeRes.statusCode, 200);
+    const challenge = challengeRes.json();
+    const proofUrl = "https://x.com/alice/status/2";
+    h.fetchStub.set(proofUrl, {
+      status: 200,
+      body: `GrowFi social verification post ${challenge.code}`,
+    });
+
+    const verifyRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload: {
+        ...challenge,
+        wallet: ALICE,
+        proofUrl,
+        onchainNonce: "8",
+      },
+    });
+    assert.equal(verifyRes.statusCode, 200);
+    const body = verifyRes.json();
+    assert.equal(body.ok, true);
+    assert.equal(body.authorizationReady, true);
+    assert.equal(body.signature, null);
+    assert.equal(body.attestation.attestationUID, easUid);
+    assert.equal(body.typedData.message.attestationUID, easUid);
+    assert.equal(body.eas.attestationUID, easUid);
+    assert.equal(body.eas.schemaUID, schemaUID);
+    assert.equal(body.eas.txHash, easTxHash);
+    assert.equal(body.registry.address, registryAddress);
+    assert.equal(body.registry.txHash, registryTxHash);
+    assert.equal(relayInputs.length, 1);
+    assert.equal(
+      (relayInputs[0] as { attestationUID: string }).attestationUID,
+      "0x0000000000000000000000000000000000000000000000000000000000000000",
+    );
+  });
+
   it("400 when the proof URL does not contain the challenge code", async () => {
     const h = await makeApp({
       socialChallengeSecret: "test-secret",
