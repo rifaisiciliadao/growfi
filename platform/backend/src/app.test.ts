@@ -6,6 +6,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { buildApp, buildDefaultDeps, type AppDeps } from "./app.js";
 import type { EmailPayload } from "./email.js";
 import type { SnapshotResult } from "./snapshot.js";
+import { computeEasSchemaUID } from "./social-verification.js";
 
 const ALICE = getAddress("0xAaaaAaaAAaaAAaAaaAAaaaAaaaaaaAAaaAAaAaAa");
 const BOB = getAddress("0xBbbbbbBBbBbbbBBBbbBBbbBbbbbbBBBbbbbBBbBb");
@@ -15,6 +16,8 @@ const YIELD = getAddress("0x3333333333333333333333333333333333333333");
 const TEST_REGISTRY_ADDRESS = getAddress("0x4444444444444444444444444444444444444444");
 const SKU = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const TEST_VERIFIER_PRIVATE_KEY = `0x${"11".repeat(32)}` as const;
+const DEFAULT_SOCIAL_EAS_SCHEMA =
+  "address producer,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce";
 
 const SOCIAL_ENV_KEYS = [
   "CHAIN_ID",
@@ -165,6 +168,21 @@ describe("buildDefaultDeps social onchain wiring", () => {
     const deps = buildDefaultDeps();
 
     assert.equal(deps.socialOnchainAttester, null);
+  });
+});
+
+describe("EAS social schema", () => {
+  it("computes the SchemaRegistry UID locally", () => {
+    const uid = computeEasSchemaUID(
+      DEFAULT_SOCIAL_EAS_SCHEMA,
+      getAddress("0x0000000000000000000000000000000000000000"),
+      true,
+    );
+
+    assert.equal(
+      uid,
+      "0x945ceede810991d8a0cbc267fe69e4f395689259f207d42b25d201f6b9b3bc7b",
+    );
   });
 });
 

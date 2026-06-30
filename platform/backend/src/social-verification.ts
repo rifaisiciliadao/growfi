@@ -3,6 +3,7 @@ import {
   createPublicClient,
   createWalletClient,
   encodeAbiParameters,
+  encodePacked,
   getAddress,
   http,
   isAddress,
@@ -34,7 +35,7 @@ const EAS_CONTRACTS: Record<
   },
   [sepolia.id]: {
     eas: getAddress("0xc2679fbd37d54388ce493f1db75320d236e1815e"),
-    schemaRegistry: getAddress("0x0a7e2ff54e76b8e2ad111554352ea6c67f4e7f85"),
+    schemaRegistry: getAddress("0x0a7e2ff54e76b8e6659aedc9103fb21c038050d0"),
   },
 };
 
@@ -79,17 +80,6 @@ const EAS_ABI = [
 ] as const;
 
 const SCHEMA_REGISTRY_ABI = [
-  {
-    type: "function",
-    name: "getSchemaUID",
-    stateMutability: "pure",
-    inputs: [
-      { name: "schema", type: "string" },
-      { name: "resolver", type: "address" },
-      { name: "revocable", type: "bool" },
-    ],
-    outputs: [{ name: "", type: "bytes32" }],
-  },
   {
     type: "function",
     name: "getSchema",
@@ -652,12 +642,11 @@ async function ensureSchema(input: {
   resolver: Address;
   revocable: boolean;
 }): Promise<{ schemaUID: Hex; registrationTxHash: Hex | null }> {
-  const schemaUID = await input.publicClient.readContract({
-    address: input.schemaRegistryAddress,
-    abi: SCHEMA_REGISTRY_ABI,
-    functionName: "getSchemaUID",
-    args: [input.schema, input.resolver, input.revocable],
-  }) as Hex;
+  const schemaUID = computeEasSchemaUID(
+    input.schema,
+    input.resolver,
+    input.revocable,
+  );
   const record = await input.publicClient.readContract({
     address: input.schemaRegistryAddress,
     abi: SCHEMA_REGISTRY_ABI,
@@ -678,6 +667,16 @@ async function ensureSchema(input: {
   });
   await input.publicClient.waitForTransactionReceipt({ hash: txHash });
   return { schemaUID, registrationTxHash: txHash };
+}
+
+export function computeEasSchemaUID(
+  schema: string,
+  resolver: Address,
+  revocable: boolean,
+): Hex {
+  return keccak256(
+    encodePacked(["string", "address", "bool"], [schema, resolver, revocable]),
+  );
 }
 
 function schemaRecordUid(record: unknown): Hex {
