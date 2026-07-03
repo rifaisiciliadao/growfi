@@ -46,6 +46,8 @@ type ChainAddresses = {
   repaymentImpl?: Address;
   ecommerceImpl?: Address;
   debtRestructuringImpl?: Address;
+  proceedsSplitImpl?: Address;
+  directIssueImpl?: Address;
 };
 
 const ZERO: Address = "0x0000000000000000000000000000000000000000";
@@ -73,6 +75,10 @@ export const addresses: Record<number, ChainAddresses> = {
       process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined,
     debtRestructuringImpl:
       process.env.NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL as Address | undefined,
+    proceedsSplitImpl:
+      process.env.NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL as Address | undefined,
+    directIssueImpl:
+      process.env.NEXT_PUBLIC_DIRECT_ISSUE_IMPL as Address | undefined,
   },
   // Base Sepolia (live testnet deployment, see CONTRACTS.md)
   84532: {
@@ -110,6 +116,10 @@ export const addresses: Record<number, ChainAddresses> = {
       process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined,
     debtRestructuringImpl:
       process.env.NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL as Address | undefined,
+    proceedsSplitImpl:
+      process.env.NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL as Address | undefined,
+    directIssueImpl:
+      process.env.NEXT_PUBLIC_DIRECT_ISSUE_IMPL as Address | undefined,
   },
   // Ethereum Sepolia (L1 testnet, pre-mainnet target)
   11155111: {
@@ -134,6 +144,10 @@ export const addresses: Record<number, ChainAddresses> = {
       process.env.NEXT_PUBLIC_ECOMMERCE_IMPL as Address | undefined,
     debtRestructuringImpl:
       process.env.NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL as Address | undefined,
+    proceedsSplitImpl:
+      process.env.NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL as Address | undefined,
+    directIssueImpl:
+      process.env.NEXT_PUBLIC_DIRECT_ISSUE_IMPL as Address | undefined,
   },
   // Ethereum Mainnet (production target)
   1: {
@@ -173,6 +187,10 @@ export const addresses: Record<number, ChainAddresses> = {
     debtRestructuringImpl:
       (process.env.NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL as Address | undefined) ||
       "0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a",
+    proceedsSplitImpl:
+      process.env.NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL as Address | undefined,
+    directIssueImpl:
+      process.env.NEXT_PUBLIC_DIRECT_ISSUE_IMPL as Address | undefined,
   },
   // Base Mainnet (future)
   8453: {

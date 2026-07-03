@@ -20,20 +20,24 @@ import {CollateralModule} from "../src/modules/CollateralModule.sol";
 import {RepaymentModule} from "../src/modules/RepaymentModule.sol";
 import {EcommerceModule} from "../src/modules/EcommerceModule.sol";
 import {DebtRestructuringModule} from "../src/modules/DebtRestructuringModule.sol";
+import {CampaignProceedsSplitModule} from "../src/modules/CampaignProceedsSplitModule.sol";
+import {DirectIssueModule} from "../src/modules/DirectIssueModule.sol";
 
 import {SaleClassicHelper} from "../test/modules/SaleClassicHelper.sol";
 import {CollateralHelper} from "../test/modules/CollateralHelper.sol";
 import {RepaymentHelper} from "../test/modules/RepaymentHelper.sol";
 import {EcommerceHelper} from "../test/modules/EcommerceHelper.sol";
 import {DebtRestructuringHelper} from "../test/modules/DebtRestructuringHelper.sol";
+import {ProceedsSplitHelper} from "../test/modules/ProceedsSplitHelper.sol";
+import {DirectIssueHelper} from "../test/modules/DirectIssueHelper.sol";
 
 /// @title DeployTestnetSepolia
 /// @notice Fresh v4 deploy targeted at Ethereum Sepolia (chain id 11155111).
-///         Deploys MockUSDC + the factory + 5 satellite impls + 5 module
-///         impls (Sale, Collateral, Repayment, Ecommerce, DebtRestructuring)
-///         + 2 registries. Repayment, Ecommerce, and DebtRestructuring are
-///         whitelisted but NOT added to defaults — producers attach them
-///         post-create.
+///         Deploys MockUSDC + the factory + 5 satellite impls + 7 module
+///         impls (Sale, Collateral, Repayment, Ecommerce, DebtRestructuring,
+///         ProceedsSplit, DirectIssue) + 2 registries. Repayment, Ecommerce,
+///         DebtRestructuring, ProceedsSplit, and DirectIssue are whitelisted but
+///         NOT added to defaults — producers attach them post-create.
 ///
 ///         Run:
 ///           PRIVATE_KEY=0x...
@@ -47,6 +51,8 @@ contract DeployTestnetSepolia is Script {
     bytes32 internal constant KIND_REPAYMENT = keccak256("growfi.repayment.v1");
     bytes32 internal constant KIND_ECOMMERCE = keccak256("growfi.ecommerce.v1");
     bytes32 internal constant KIND_DEBT_RESTRUCTURING = keccak256("growfi.debt.restructuring.v1");
+    bytes32 internal constant KIND_PROCEEDS_SPLIT = keccak256("growfi.proceeds.split.v1");
+    bytes32 internal constant KIND_DIRECT_ISSUE = keccak256("growfi.direct.issue.v1");
 
     function run() public {
         uint256 deployerPk = vm.envUint("PRIVATE_KEY");
@@ -86,6 +92,8 @@ contract DeployTestnetSepolia is Script {
         address repaymentImpl = address(new RepaymentModule());
         address ecommerceImpl = address(new EcommerceModule());
         address debtRestructuringImpl = address(new DebtRestructuringModule());
+        address proceedsSplitImpl = address(new CampaignProceedsSplitModule());
+        address directIssueImpl = address(new DirectIssueModule());
 
         // 5. Register module kinds + approve impls + set defaults
         bytes32 saleKind = factory.KIND_SALE_CLASSIC_V1();
@@ -105,6 +113,12 @@ contract DeployTestnetSepolia is Script {
 
         factory.setModuleKindSelectors(KIND_DEBT_RESTRUCTURING, DebtRestructuringHelper.selectors());
         factory.approveModuleImpl(KIND_DEBT_RESTRUCTURING, debtRestructuringImpl, true);
+
+        factory.setModuleKindSelectors(KIND_PROCEEDS_SPLIT, ProceedsSplitHelper.selectors());
+        factory.approveModuleImpl(KIND_PROCEEDS_SPLIT, proceedsSplitImpl, true);
+
+        factory.setModuleKindSelectors(KIND_DIRECT_ISSUE, DirectIssueHelper.selectors());
+        factory.approveModuleImpl(KIND_DIRECT_ISSUE, directIssueImpl, true);
 
         ModuleRegistry.DefaultModule[] memory defaults = new ModuleRegistry.DefaultModule[](2);
         defaults[0] =
@@ -143,6 +157,8 @@ contract DeployTestnetSepolia is Script {
         console.log("Repayment module impl:     ", repaymentImpl);
         console.log("Ecommerce module impl:     ", ecommerceImpl);
         console.log("Debt restructuring impl:   ", debtRestructuringImpl);
+        console.log("Proceeds split impl:       ", proceedsSplitImpl);
+        console.log("Direct issue impl:         ", directIssueImpl);
         console.log("CampaignRegistry:          ", address(campaignRegistry));
         console.log("ProducerRegistry:          ", address(producerRegistry));
         console.log("");

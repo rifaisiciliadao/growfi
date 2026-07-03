@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import {
   useAccount,
@@ -8,7 +8,13 @@ import {
   useReadContracts,
   useWriteContract,
 } from "wagmi";
-import { formatUnits, parseUnits, zeroAddress, type Address } from "viem";
+import {
+  formatUnits,
+  isAddress,
+  parseUnits,
+  zeroAddress,
+  type Address,
+} from "viem";
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
 import { campaignTokenConfigAbi } from "@/contracts/campaign";
 import {
@@ -29,6 +35,14 @@ import {
   DEBT_RESTRUCTURING_MODULE_TYPE,
   debtRestructuringModuleAbi,
 } from "@/contracts/debtRestructuring";
+import {
+  DIRECT_ISSUE_MODULE_KIND,
+  DIRECT_ISSUE_MODULE_TYPE,
+  PROCEEDS_SPLIT_MODULE_KIND,
+  PROCEEDS_SPLIT_MODULE_TYPE,
+  directIssueModuleAbi,
+  proceedsSplitModuleAbi,
+} from "@/contracts/proceeds";
 import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
 import { fetchSnapshot, generateMerkleTree } from "@/lib/api";
 import { EcommerceModuleManager } from "./EcommerceShopPanel";
@@ -56,6 +70,20 @@ const PAYMENT_TOKEN_OPTIONS = getEnabledTokens(CHAIN_ID);
 const PAYMENT_TOKEN_FALLBACK_ADDRESSES = PAYMENT_TOKEN_OPTIONS.map((token) =>
   resolveTokenAddress(token, CHAIN_ID),
 );
+
+function parsePercentToBps(value: string) {
+  const normalized = value.trim().replace(",", ".");
+  if (!/^\d+(\.\d{0,2})?$/.test(normalized)) return null;
+  const [whole, fraction = ""] = normalized.split(".");
+  return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+}
+
+function formatBpsPercent(value: number) {
+  return (value / 100).toLocaleString(undefined, {
+    minimumFractionDigits: value % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 /**
  * Producer-only dashboard for post-harvest ops. The innovative part of
@@ -142,6 +170,23 @@ export function ProducerManagePanel({
 
       <section className="mt-8">
         <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
+          {t("proceedsSplitTitle")}
+        </h3>
+        <ProceedsSplitManager campaignAddress={campaignAddress} />
+      </section>
+
+      <section className="mt-8">
+        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
+          {t("directIssueTitle")}
+        </h3>
+        <DirectIssueManager
+          campaignAddress={campaignAddress}
+          currentState={currentState}
+        />
+      </section>
+
+      <section className="mt-8">
+        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
           Producer Collateral
         </h3>
         <CollateralSection
@@ -199,6 +244,653 @@ export function ProducerManagePanel({
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+function ProceedsSplitManager({
+  campaignAddress,
+}: {
+  campaignAddress: Address;
+}) {
+  const t = useTranslations("detail.manage.proceedsSplit");
+  const notify = useTxNotify();
+  const { proceedsSplitImpl } = getAddresses();
+  const { writeContractAsync } = useWriteContract();
+
+  const [promoterInput, setPromoterInput] = useState("");
+  const [percentInput, setPercentInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<
+    | null
+    | { kind: "attach" | "enable" | "save" | "clear"; phase: "sig" | "chain" }
+  >(null);
+
+  const { data: slotData, refetch: refetchSlot } = useReadContract({
+    address: campaignAddress,
+    abi: campaignModuleHostAbi,
+    functionName: "moduleSlot",
+    args: [PROCEEDS_SPLIT_MODULE_TYPE],
+    query: { refetchInterval: 20_000 },
+  });
+
+  const slot = slotData as
+    | readonly [Address, `0x${string}`, string, bigint, boolean]
+    | undefined;
+  const attachedImpl = slot?.[0] ?? zeroAddress;
+  const isAttached = attachedImpl !== zeroAddress;
+  const moduleEnabled = Boolean(slot?.[4]);
+  const hasImpl = Boolean(
+    proceedsSplitImpl && proceedsSplitImpl !== zeroAddress,
+  );
+
+  const { data: splitData, refetch: refetchSplit } = useReadContract({
+    address: campaignAddress,
+    abi: proceedsSplitModuleAbi,
+    functionName: "proceedsSplit",
+    query: { enabled: isAttached && moduleEnabled, refetchInterval: 20_000 },
+  });
+
+  const split = splitData as
+    | readonly [boolean, Address, Address, number | bigint, number | bigint]
+    | undefined;
+  const splitActive = Boolean(split?.[0]);
+  const producerAddress = split?.[1] ?? zeroAddress;
+  const promoterAddress = split?.[2] ?? zeroAddress;
+  const currentPromoterBps = Number(split?.[3] ?? 0);
+  const currentProducerBps = Number(split?.[4] ?? 10_000);
+
+  useEffect(() => {
+    if (!splitActive) return;
+    setPromoterInput(promoterAddress);
+    setPercentInput(formatBpsPercent(currentPromoterBps));
+  }, [currentPromoterBps, promoterAddress, splitActive]);
+
+  const promoterBps = parsePercentToBps(percentInput);
+  const promoterValid =
+    isAddress(promoterInput.trim()) && promoterInput.trim() !== zeroAddress;
+  const bpsValid =
+    promoterBps !== null && promoterBps > 0 && promoterBps < 10_000;
+  const busy = pending !== null;
+
+  const refresh = async () => {
+    await Promise.all([refetchSlot(), refetchSplit()]);
+  };
+
+  const fail = (err: unknown, title: string) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/user (rejected|denied)/i.test(msg)) setError(msg);
+    notify.error(title, err);
+  };
+
+  const ensureModule = async () => {
+    if (!proceedsSplitImpl || proceedsSplitImpl === zeroAddress) {
+      throw new Error(t("implMissing"));
+    }
+
+    if (!isAttached) {
+      setPending({ kind: "attach", phase: "sig" });
+      const attachHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "attachModule",
+        args: [
+          PROCEEDS_SPLIT_MODULE_TYPE,
+          PROCEEDS_SPLIT_MODULE_KIND,
+          proceedsSplitImpl,
+          "growfi://proceeds-split/v1",
+        ],
+      });
+      setPending({ kind: "attach", phase: "chain" });
+      const attachReceipt = await waitForTx(attachHash);
+      if (attachReceipt.status !== "success") {
+        throw new Error("attachModule reverted");
+      }
+      return;
+    }
+
+    if (!moduleEnabled) {
+      setPending({ kind: "enable", phase: "sig" });
+      const enableHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "setModuleEnabled",
+        args: [PROCEEDS_SPLIT_MODULE_TYPE, true],
+      });
+      setPending({ kind: "enable", phase: "chain" });
+      const enableReceipt = await waitForTx(enableHash);
+      if (enableReceipt.status !== "success") {
+        throw new Error("setModuleEnabled reverted");
+      }
+    }
+  };
+
+  const handleSave = async () => {
+    setError(null);
+    try {
+      if (!promoterValid) throw new Error(t("invalidAddress"));
+      if (!bpsValid || promoterBps === null) throw new Error(t("invalidBps"));
+
+      await ensureModule();
+
+      setPending({ kind: "save", phase: "sig" });
+      const hash = await writeContractAsync({
+        address: campaignAddress,
+        abi: proceedsSplitModuleAbi,
+        functionName: "setProceedsSplit",
+        args: [promoterInput.trim() as Address, promoterBps],
+      });
+      setPending({ kind: "save", phase: "chain" });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") {
+        throw new Error("setProceedsSplit reverted");
+      }
+      await refresh();
+      notify.success(t("saved"), hash);
+    } catch (err) {
+      fail(err, t("failed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const handleClear = async () => {
+    setError(null);
+    try {
+      setPending({ kind: "clear", phase: "sig" });
+      const hash = await writeContractAsync({
+        address: campaignAddress,
+        abi: proceedsSplitModuleAbi,
+        functionName: "clearProceedsSplit",
+      });
+      setPending({ kind: "clear", phase: "chain" });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") {
+        throw new Error("clearProceedsSplit reverted");
+      }
+      setPromoterInput("");
+      setPercentInput("");
+      await refresh();
+      notify.success(t("cleared"), hash);
+    } catch (err) {
+      fail(err, t("failed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const saveLabel =
+    pending?.kind === "attach"
+      ? pending.phase === "sig"
+        ? t("attachSig")
+        : t("attachChain")
+      : pending?.kind === "enable"
+        ? pending.phase === "sig"
+          ? t("enableSig")
+          : t("enableChain")
+        : pending?.kind === "save"
+          ? pending.phase === "sig"
+            ? t("saveSig")
+            : t("saveChain")
+          : isAttached
+            ? t("saveCta")
+            : t("attachSaveCta");
+
+  return (
+    <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isAttached
+                  ? moduleEnabled
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                  : "bg-outline"
+              }`}
+            />
+            <div className="text-sm font-bold text-on-surface">
+              {isAttached
+                ? moduleEnabled
+                  ? t("statusEnabled")
+                  : t("statusDisabled")
+                : t("statusMissing")}
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-on-surface-variant">
+            {isAttached ? t("attachedHint") : t("missingHint")}
+          </p>
+        </div>
+
+        {splitActive ? (
+          <div className="grid grid-cols-2 gap-2 text-right text-xs">
+            <div>
+              <div className="font-bold text-on-surface">
+                {formatBpsPercent(currentProducerBps)}%
+              </div>
+              <div className="text-on-surface-variant">{t("producer")}</div>
+            </div>
+            <div>
+              <div className="font-bold text-on-surface">
+                {formatBpsPercent(currentPromoterBps)}%
+              </div>
+              <div className="text-on-surface-variant">{t("promoter")}</div>
+            </div>
+          </div>
+        ) : (
+          <div className="rounded-full bg-surface-container-lowest px-3 py-1 text-xs font-semibold text-on-surface-variant">
+            {t("ownerOnly")}
+          </div>
+        )}
+      </div>
+
+      {splitActive && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <RepaymentMetric
+            label={t("ownerReceiver")}
+            value={`${producerAddress.slice(0, 6)}…${producerAddress.slice(-4)}`}
+          />
+          <RepaymentMetric
+            label={t("promoterReceiver")}
+            value={`${promoterAddress.slice(0, 6)}…${promoterAddress.slice(-4)}`}
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_160px] gap-3">
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t("promoterReceiver")}
+          </span>
+          <input
+            type="text"
+            value={promoterInput}
+            onChange={(e) => setPromoterInput(e.target.value)}
+            disabled={busy || !hasImpl}
+            placeholder="0x..."
+            className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm font-mono outline-none focus:border-primary/50 disabled:opacity-50"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t("promoterPercent")}
+          </span>
+          <input
+            type="number"
+            min="0.01"
+            max="99.99"
+            step="0.01"
+            value={percentInput}
+            onChange={(e) => setPercentInput(e.target.value)}
+            disabled={busy || !hasImpl}
+            placeholder="25"
+            className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50 disabled:opacity-50"
+          />
+        </label>
+      </div>
+
+      {promoterBps !== null && promoterBps > 0 && promoterBps < 10_000 && (
+        <div className="text-xs text-on-surface-variant">
+          {t("preview", {
+            promoter: formatBpsPercent(promoterBps),
+            owner: formatBpsPercent(10_000 - promoterBps),
+          })}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={handleSave}
+          disabled={busy || !hasImpl || !promoterInput || !percentInput}
+          className="regen-gradient h-10 rounded-full px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+        >
+          {pending &&
+            (pending.kind === "attach" ||
+              pending.kind === "enable" ||
+              pending.kind === "save") && <Spinner size={14} />}
+          {saveLabel}
+        </button>
+        <button
+          onClick={handleClear}
+          disabled={busy || !splitActive}
+          className="h-10 rounded-full border border-red-200 bg-red-50 px-5 text-sm font-semibold text-error hover:bg-red-100 transition disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2"
+        >
+          {pending?.kind === "clear" && <Spinner size={14} />}
+          {pending?.kind === "clear"
+            ? pending.phase === "sig"
+              ? t("clearSig")
+              : t("clearChain")
+            : t("clearCta")}
+        </button>
+      </div>
+
+      {!hasImpl && (
+        <p className="text-xs text-error">{t("implMissing")}</p>
+      )}
+
+      {attachedImpl !== zeroAddress && (
+        <div className="text-[11px] text-on-surface-variant">
+          {t("implementation")}{" "}
+          <a
+            href={addressUrl(attachedImpl)}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono underline decoration-dotted underline-offset-2"
+          >
+            {attachedImpl.slice(0, 6)}…{attachedImpl.slice(-4)}
+          </a>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-error">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DirectIssueManager({
+  campaignAddress,
+  currentState,
+}: {
+  campaignAddress: Address;
+  currentState: number;
+}) {
+  const t = useTranslations("detail.manage.directIssue");
+  const notify = useTxNotify();
+  const { directIssueImpl } = getAddresses();
+  const { writeContractAsync } = useWriteContract();
+  const [recipient, setRecipient] = useState("");
+  const [amountInput, setAmountInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<
+    | null
+    | { kind: "attach" | "enable" | "issue"; phase: "sig" | "chain" }
+  >(null);
+
+  const { data: slotData, refetch: refetchSlot } = useReadContract({
+    address: campaignAddress,
+    abi: campaignModuleHostAbi,
+    functionName: "moduleSlot",
+    args: [DIRECT_ISSUE_MODULE_TYPE],
+    query: { refetchInterval: 20_000 },
+  });
+
+  const slot = slotData as
+    | readonly [Address, `0x${string}`, string, bigint, boolean]
+    | undefined;
+  const attachedImpl = slot?.[0] ?? zeroAddress;
+  const isAttached = attachedImpl !== zeroAddress;
+  const moduleEnabled = Boolean(slot?.[4]);
+  const hasImpl = Boolean(directIssueImpl && directIssueImpl !== zeroAddress);
+
+  const { data: capData, refetch: refetchCaps } = useReadContracts({
+    contracts: [
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "currentSupply",
+      },
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "maxCap",
+      },
+    ] as never,
+    query: { refetchInterval: 20_000 },
+  });
+  type MaybeResult = { result?: unknown };
+  const capResults = (capData ?? []) as readonly MaybeResult[];
+  const currentSupply =
+    (capResults[0]?.result as bigint | undefined) ?? 0n;
+  const maxCap = (capResults[1]?.result as bigint | undefined) ?? 0n;
+
+  const amountWei = useMemo(() => {
+    try {
+      return parseUnits(amountInput || "0", 18);
+    } catch {
+      return null;
+    }
+  }, [amountInput]);
+  const issueAllowedByState = currentState === 0 || currentState === 1;
+  const recipientValid =
+    isAddress(recipient.trim()) && recipient.trim() !== zeroAddress;
+  const amountValid = amountWei !== null && amountWei > 0n;
+  const projectedSupply =
+    amountWei !== null ? currentSupply + amountWei : currentSupply;
+  const fitsMaxCap = maxCap === 0n || projectedSupply <= maxCap;
+  const busy = pending !== null;
+
+  const refresh = async () => {
+    await Promise.all([refetchSlot(), refetchCaps()]);
+  };
+
+  const fail = (err: unknown, title: string) => {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (!/user (rejected|denied)/i.test(msg)) setError(msg);
+    notify.error(title, err);
+  };
+
+  const ensureModule = async () => {
+    if (!directIssueImpl || directIssueImpl === zeroAddress) {
+      throw new Error(t("implMissing"));
+    }
+
+    if (!isAttached) {
+      setPending({ kind: "attach", phase: "sig" });
+      const attachHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "attachModule",
+        args: [
+          DIRECT_ISSUE_MODULE_TYPE,
+          DIRECT_ISSUE_MODULE_KIND,
+          directIssueImpl,
+          "growfi://direct-issue/v1",
+        ],
+      });
+      setPending({ kind: "attach", phase: "chain" });
+      const attachReceipt = await waitForTx(attachHash);
+      if (attachReceipt.status !== "success") {
+        throw new Error("attachModule reverted");
+      }
+      return;
+    }
+
+    if (!moduleEnabled) {
+      setPending({ kind: "enable", phase: "sig" });
+      const enableHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "setModuleEnabled",
+        args: [DIRECT_ISSUE_MODULE_TYPE, true],
+      });
+      setPending({ kind: "enable", phase: "chain" });
+      const enableReceipt = await waitForTx(enableHash);
+      if (enableReceipt.status !== "success") {
+        throw new Error("setModuleEnabled reverted");
+      }
+    }
+  };
+
+  const handleIssue = async () => {
+    setError(null);
+    try {
+      if (!issueAllowedByState) throw new Error(t("invalidState"));
+      if (!recipientValid) throw new Error(t("invalidRecipient"));
+      if (!amountValid || amountWei === null) throw new Error(t("invalidAmount"));
+      if (!fitsMaxCap) throw new Error(t("exceedsMaxCap"));
+
+      await ensureModule();
+
+      setPending({ kind: "issue", phase: "sig" });
+      const hash = await writeContractAsync({
+        address: campaignAddress,
+        abi: directIssueModuleAbi,
+        functionName: "issueCampaignTokens",
+        args: [recipient.trim() as Address, amountWei],
+      });
+      setPending({ kind: "issue", phase: "chain" });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") {
+        throw new Error("issueCampaignTokens reverted");
+      }
+      setRecipient("");
+      setAmountInput("");
+      await refresh();
+      notify.success(t("issued"), hash);
+    } catch (err) {
+      fail(err, t("failed"));
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const issueLabel =
+    pending?.kind === "attach"
+      ? pending.phase === "sig"
+        ? t("attachSig")
+        : t("attachChain")
+      : pending?.kind === "enable"
+        ? pending.phase === "sig"
+          ? t("enableSig")
+          : t("enableChain")
+        : pending?.kind === "issue"
+          ? pending.phase === "sig"
+            ? t("issueSig")
+            : t("issueChain")
+          : isAttached
+            ? t("issueCta")
+            : t("attachIssueCta");
+
+  const fmtToken = (value: bigint) =>
+    Number(formatUnits(value, 18)).toLocaleString(undefined, {
+      maximumFractionDigits: 4,
+    });
+
+  return (
+    <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isAttached
+                  ? moduleEnabled
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                  : "bg-outline"
+              }`}
+            />
+            <div className="text-sm font-bold text-on-surface">
+              {isAttached
+                ? moduleEnabled
+                  ? t("statusEnabled")
+                  : t("statusDisabled")
+                : t("statusMissing")}
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-on-surface-variant">
+            {isAttached ? t("attachedHint") : t("missingHint")}
+          </p>
+        </div>
+
+        {!issueAllowedByState && (
+          <div className="rounded-lg border border-amber-300/40 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">
+            {t("invalidState")}
+          </div>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <RepaymentMetric
+          label={t("currentSupply")}
+          value={fmtToken(currentSupply)}
+        />
+        <RepaymentMetric label={t("maxCap")} value={fmtToken(maxCap)} />
+        <RepaymentMetric
+          label={t("supplyAfter")}
+          value={amountWei !== null ? fmtToken(projectedSupply) : "—"}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_180px] gap-3">
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t("recipient")}
+          </span>
+          <input
+            type="text"
+            value={recipient}
+            onChange={(e) => setRecipient(e.target.value)}
+            disabled={busy || !hasImpl || !issueAllowedByState}
+            placeholder="0x..."
+            className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm font-mono outline-none focus:border-primary/50 disabled:opacity-50"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+            {t("amount")}
+          </span>
+          <input
+            type="number"
+            min="0"
+            step="0.000001"
+            value={amountInput}
+            onChange={(e) => setAmountInput(e.target.value)}
+            disabled={busy || !hasImpl || !issueAllowedByState}
+            placeholder="1000"
+            className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50 disabled:opacity-50"
+          />
+        </label>
+      </div>
+
+      {!fitsMaxCap && (
+        <p className="text-xs text-error">{t("exceedsMaxCap")}</p>
+      )}
+
+      <button
+        onClick={handleIssue}
+        disabled={
+          busy ||
+          !hasImpl ||
+          !issueAllowedByState ||
+          !recipient ||
+          !amountInput ||
+          !fitsMaxCap
+        }
+        className="regen-gradient h-10 rounded-full px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+      >
+        {pending && <Spinner size={14} />}
+        {issueLabel}
+      </button>
+
+      {!hasImpl && (
+        <p className="text-xs text-error">{t("implMissing")}</p>
+      )}
+
+      {attachedImpl !== zeroAddress && (
+        <div className="text-[11px] text-on-surface-variant">
+          {t("implementation")}{" "}
+          <a
+            href={addressUrl(attachedImpl)}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono underline decoration-dotted underline-offset-2"
+          >
+            {attachedImpl.slice(0, 6)}…{attachedImpl.slice(-4)}
+          </a>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-error">
+          {error}
+        </div>
+      )}
     </div>
   );
 }

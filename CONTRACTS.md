@@ -11,7 +11,7 @@
 > the only enabled payment/stablecoin policy at launch. UGraph serves the
 > mainnet index at `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
 >
-> Fee receiver / operations Safe: `0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9`
+> Fee receiver / operations Safe: `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55`
 > (threshold 2; owners `0x2DC077446182287f1d79847074893CDb559D41f4` and
 > `0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1`). Factory/protocol owner remains
 > the deployer during the launch phase.
@@ -125,7 +125,7 @@ NEXT_PUBLIC_SUBGRAPH_URL=https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
 
 ## Ethereum Sepolia (chain 11155111) — v4 module architecture + GROW system
 
-**Deployed:** 2026-05-12 · **Refreshed:** 2026-05-29 · **Deployer/owner:** `0xFF6bdef4fB646EE44e29FE8FC0862B02F0Ba8a33`
+**Deployed:** 2026-05-12 · **Refreshed:** 2026-07-03 · **Deployer/owner:** `0xFF6bdef4fB646EE44e29FE8FC0862B02F0Ba8a33`
 
 > Current v4 deployment on an L1 testnet, ahead of the Ethereum mainnet
 > target. Module-based Campaign architecture (host + delegatecall router
@@ -151,10 +151,12 @@ NEXT_PUBLIC_SUBGRAPH_URL=https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
 | StakingVault impl | [`0x092Ed1e0845f6817e24316A730E98ec074e5F017`](https://sepolia.etherscan.io/address/0x092Ed1e0845f6817e24316A730E98ec074e5F017) | `forceUnstake` now mints accrued YIELD to owner (no forfeit) — producer-blessed exit path used by `RepaymentModule.redeem`. |
 | YieldToken impl | [`0x8d434e38dd91D9b738f8803dbD18b815720BEDad`](https://sepolia.etherscan.io/address/0x8d434e38dd91D9b738f8803dbD18b815720BEDad) | |
 | HarvestManager impl | [`0x38da3922d3Bc3281F57946618404F0E341777F68`](https://sepolia.etherscan.io/address/0x38da3922d3Bc3281F57946618404F0E341777F68) | |
-| **SaleClassicModule** impl | [`0x5f0C6aB3BE2Ab2A437468A849ba69ee00aC17039`](https://sepolia.etherscan.io/address/0x5f0C6aB3BE2Ab2A437468A849ba69ee00aC17039) | Default auto-attached on every `createCampaign`. Enforces factory token policy, fixed-rate validation, isolated funding escrow, bounded sell-back accounting, buy/sellback/buyback/setMaxCap. |
+| **SaleClassicModule** impl | [`0x4e11259078D5ef4DE008b563f43F87616f3Cf256`](https://sepolia.etherscan.io/address/0x4e11259078D5ef4DE008b563f43F87616f3Cf256) | Default auto-attached on every `createCampaign`. Enforces factory token policy, fixed-rate validation, isolated funding escrow, bounded sell-back accounting, buy/sellback/buyback/setMaxCap, and optional producer/promoter proceeds split routing. Existing seed campaigns were replaced to this impl on 2026-07-03. |
 | **CollateralModule** impl | [`0xF2EAb14F7288E7d4E611C44F2784dfF6394ec476`](https://sepolia.etherscan.io/address/0xF2EAb14F7288E7d4E611C44F2784dfF6394ec476) | Default auto-attached. `lockCollateral`, `depositUSDC`, `settleSeasonShortfall`. |
 | **RepaymentModule** impl | [`0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6`](https://sepolia.etherscan.io/address/0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6) | Whitelisted but NOT default. Producer attaches post-create. Refund = principal (from on-chain `pricePerToken`) + producer-set `bonusPerCt`. |
 | **EcommerceModule** impl | [`0x4921f38F3D0de21057Ef202629D501E8b99d8616`](https://sepolia.etherscan.io/address/0x4921f38F3D0de21057Ef202629D501E8b99d8616) | Whitelisted but NOT default. Producer attaches post-create for SKU checkout. |
+| **CampaignProceedsSplitModule** impl | [`0x500ced1282AC5918798A73bD66E7EdC2cffD8577`](https://sepolia.etherscan.io/address/0x500ced1282AC5918798A73bD66E7EdC2cffD8577) | Whitelisted but NOT default. Producer attaches post-create to split primary sale proceeds between producer and promoter. |
+| **DirectIssueModule** impl | [`0x6f5074658561353644Db6a6270cf7dE2Cebe1256`](https://sepolia.etherscan.io/address/0x6f5074658561353644Db6a6270cf7dE2Cebe1256) | Whitelisted but NOT default. Producer attaches post-create to issue CampaignToken directly for off-chain agreements. |
 | CampaignRegistry | [`0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE`](https://sepolia.etherscan.io/address/0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE) | `(campaign → metadataURI)` + monotonic version. |
 | ProducerRegistry | [`0x52b30540174057756052F676Ed5Fd978E02b939b`](https://sepolia.etherscan.io/address/0x52b30540174057756052F676Ed5Fd978E02b939b) | Social attestation + producer-self-served profile. Deploy block `11163979`. |
 
@@ -200,6 +202,8 @@ NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x52b30540174057756052F676Ed5Fd978E02b939b
 NEXT_PUBLIC_REPAYMENT_IMPL=0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6
 NEXT_PUBLIC_ECOMMERCE_IMPL=0x4921f38F3D0de21057Ef202629D501E8b99d8616
 NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL=
+NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL=0x500ced1282AC5918798A73bD66E7EdC2cffD8577
+NEXT_PUBLIC_DIRECT_ISSUE_IMPL=0x6f5074658561353644Db6a6270cf7dE2Cebe1256
 NEXT_PUBLIC_GROW_TOKEN=0x9bB4f9C41ed922282C181f2f3e01d8384c960b44
 NEXT_PUBLIC_GROW_TREASURY=0xB71D13F80ceAed17A179B4e0D9eb1e8410DeaDDd
 NEXT_PUBLIC_GROW_MINTER=0xD99c1985B257a4A55bA8D0836Fab536389cdd24C

@@ -11,6 +11,7 @@ import {IGrowfiMinter} from "../interfaces/IGrowfiMinter.sol";
 import {IGrowfiCampaignFactoryV4} from "../interfaces/IGrowfiCampaignFactoryV4.sol";
 
 import {CampaignStorage} from "../host/CampaignStorage.sol";
+import {ProceedsSplitStorage} from "./lib/ProceedsSplitStorage.sol";
 
 /// @title  SaleClassicModule
 /// @notice Default sale module. Hosts the classic bonding-curve primary
@@ -185,6 +186,14 @@ contract SaleClassicModule {
     event FundingDeadlineUpdated(uint256 oldDeadline, uint256 newDeadline);
     event MinCapUpdated(uint256 oldMinCap, uint256 newMinCap);
     event MaxCapUpdated(uint256 oldMaxCap, uint256 newMaxCap);
+    event ProducerProceedsRouted(
+        address indexed paymentToken,
+        uint256 totalAmount,
+        address indexed producer,
+        uint256 producerAmount,
+        address indexed promoter,
+        uint256 promoterAmount
+    );
 
     // ------------------------------------------------------------------
     // Storage accessor
@@ -381,8 +390,7 @@ contract SaleClassicModule {
         uint256 mintedTokens;
         if (paymentRemaining > 0 && tokensToMint > 0) {
             if (isActive) {
-                // Net payment → producer wallet
-                IERC20(paymentToken).safeTransfer(cs.producer, paymentRemaining);
+                _routeProducerProceeds(paymentToken, paymentRemaining);
             }
             // In Funding state, funds stay in escrow on the Campaign address.
             IGrowfiCampaignTokenMint(cs.campaignToken).mint(msg.sender, tokensToMint);
@@ -682,7 +690,7 @@ contract SaleClassicModule {
                 uint256 escrow = s.fundingEscrow[token];
                 if (escrow > 0) {
                     s.fundingEscrow[token] = 0;
-                    IERC20(token).safeTransfer(cs.producer, escrow);
+                    _routeProducerProceeds(token, escrow);
                 }
             }
             unchecked {
@@ -701,6 +709,27 @@ contract SaleClassicModule {
 
     function _queueTotalTokens() internal view returns (uint256 depth) {
         depth = _s().sellBackQueueTotal;
+    }
+
+    function _routeProducerProceeds(address paymentToken, uint256 amount) internal {
+        if (amount == 0) return;
+
+        CampaignStorage.Layout storage cs = CampaignStorage.layout();
+        ProceedsSplitStorage.Layout storage split = ProceedsSplitStorage.layout();
+
+        if (!split.active) {
+            IERC20(paymentToken).safeTransfer(cs.producer, amount);
+            emit ProducerProceedsRouted(paymentToken, amount, cs.producer, amount, address(0), 0);
+            return;
+        }
+
+        uint256 promoterAmount = amount * split.promoterBps / ProceedsSplitStorage.BPS;
+        uint256 producerAmount = amount - promoterAmount;
+
+        if (producerAmount > 0) IERC20(paymentToken).safeTransfer(cs.producer, producerAmount);
+        if (promoterAmount > 0) IERC20(paymentToken).safeTransfer(split.promoter, promoterAmount);
+
+        emit ProducerProceedsRouted(paymentToken, amount, cs.producer, producerAmount, split.promoter, promoterAmount);
     }
 
     function _calculateTokensOut(address paymentToken, uint256 paymentAmount)

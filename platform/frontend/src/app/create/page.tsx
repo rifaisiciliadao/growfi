@@ -8,6 +8,7 @@ import { config as wagmiConfig } from "@/app/providers";
 import {
   parseUnits,
   decodeEventLog,
+  isAddress,
   zeroAddress,
   type Address,
 } from "viem";
@@ -24,6 +25,14 @@ import { waitForTx } from "@/lib/waitForTx";
 import { encodeProductType } from "@/lib/productUnit";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { Spinner } from "@/components/Spinner";
+import { campaignModuleHostAbi } from "@/contracts/repayment";
+import {
+  DIRECT_ISSUE_MODULE_KIND,
+  DIRECT_ISSUE_MODULE_TYPE,
+  PROCEEDS_SPLIT_MODULE_KIND,
+  PROCEEDS_SPLIT_MODULE_TYPE,
+  proceedsSplitModuleAbi,
+} from "@/contracts/proceeds";
 
 const USDC_DECIMALS = 6;
 const MOCK_USDC_MINT_AMOUNT = 10_000n * 10n ** BigInt(USDC_DECIMALS); // 10,000 mUSDC
@@ -86,6 +95,10 @@ type FormData = {
      */
     humanRate: string;
   }>;
+  proceedsSplitEnabled: boolean;
+  proceedsSplitPromoter: string;
+  proceedsSplitPromoterPercent: string;
+  directIssueEnabled: boolean;
 };
 
 const STEP_KEYS = ["info", "params", "payments", "collateral", "confirm"] as const;
@@ -108,6 +121,20 @@ const PRODUCT_KEYS = [
   "nuts",
   CUSTOM_KEY,
 ] as const;
+
+function parsePercentToBps(value: string) {
+  const normalized = value.trim().replace(",", ".");
+  if (!/^\d+(\.\d{0,2})?$/.test(normalized)) return null;
+  const [whole, fraction = ""] = normalized.split(".");
+  return Number(whole) * 100 + Number(fraction.padEnd(2, "0"));
+}
+
+function formatBpsPercent(bps: number) {
+  return (bps / 100).toLocaleString(undefined, {
+    minimumFractionDigits: bps % 100 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  });
+}
 
 export default function CreateCampaign() {
   const t = useTranslations("create");
@@ -143,6 +170,10 @@ export default function CreateCampaign() {
     acceptedTokens: DEFAULT_PAYMENT_TOKEN
       ? [{ symbol: DEFAULT_PAYMENT_TOKEN, humanRate: "" }]
       : [],
+    proceedsSplitEnabled: false,
+    proceedsSplitPromoter: "",
+    proceedsSplitPromoterPercent: "",
+    directIssueEnabled: false,
   });
 
   /**
@@ -172,6 +203,12 @@ export default function CreateCampaign() {
         index: number;
         total: number;
       }
+    | { kind: "proceeds-split-attach-sig"; campaign: Address }
+    | { kind: "proceeds-split-attach-chain"; campaign: Address }
+    | { kind: "proceeds-split-set-sig"; campaign: Address }
+    | { kind: "proceeds-split-set-chain"; campaign: Address }
+    | { kind: "direct-issue-attach-sig"; campaign: Address }
+    | { kind: "direct-issue-attach-chain"; campaign: Address }
     | { kind: "collateral-approve-sig"; campaign: Address }
     | { kind: "collateral-approve-chain"; campaign: Address }
     | { kind: "collateral-lock-sig"; campaign: Address }
@@ -210,6 +247,15 @@ export default function CreateCampaign() {
       ? encodeProductType(selectedAssetType, selectedProductType)
       : selectedProductType;
   const selectedProductUnit = t("step2.genericUnit");
+  const promoterBps = parsePercentToBps(form.proceedsSplitPromoterPercent);
+  const splitPromoterAddress = form.proceedsSplitPromoter.trim();
+  const splitPromoterAddressValid =
+    !form.proceedsSplitEnabled ||
+    (isAddress(splitPromoterAddress) && splitPromoterAddress !== zeroAddress);
+  const splitPromoterBpsValid =
+    !form.proceedsSplitEnabled ||
+    (promoterBps !== null && promoterBps > 0 && promoterBps < 10_000);
+  const splitFormValid = splitPromoterAddressValid && splitPromoterBpsValid;
   const assetReviewLabel =
     form.assetType === CUSTOM_KEY
       ? form.assetTypeCustom.trim()
@@ -273,6 +319,7 @@ export default function CreateCampaign() {
       // fixed-rate non-stable tokens require an explicit humanRate.
       return (
         form.acceptedTokens.length > 0 &&
+        splitFormValid &&
         form.acceptedTokens.every((t) => {
           if (!t.symbol) return false;
           const known = PAYMENT_TOKEN_OPTIONS.find((k) => k.symbol === t.symbol);
@@ -311,6 +358,12 @@ export default function CreateCampaign() {
     status.kind === "registering-chain" ||
     status.kind === "whitelisting-sig" ||
     status.kind === "whitelisting-chain" ||
+    status.kind === "proceeds-split-attach-sig" ||
+    status.kind === "proceeds-split-attach-chain" ||
+    status.kind === "proceeds-split-set-sig" ||
+    status.kind === "proceeds-split-set-chain" ||
+    status.kind === "direct-issue-attach-sig" ||
+    status.kind === "direct-issue-attach-chain" ||
     status.kind === "collateral-approve-sig" ||
     status.kind === "collateral-approve-chain" ||
     status.kind === "collateral-lock-sig" ||
@@ -570,7 +623,122 @@ export default function CreateCampaign() {
         }
       }
 
-      // ── 5. Optional collateral lock ──────────────────────────────────
+      // ── 5. Optional campaign modules ─────────────────────────────────
+      const {
+        proceedsSplitImpl,
+        directIssueImpl,
+      } = getAddresses();
+
+      const attachModuleIfMissing = async ({
+        moduleType,
+        kind,
+        impl,
+        metadataURI,
+        sigStatus,
+        chainStatus,
+      }: {
+        moduleType: `0x${string}`;
+        kind: `0x${string}`;
+        impl: Address | undefined;
+        metadataURI: string;
+        sigStatus:
+          | "proceeds-split-attach-sig"
+          | "direct-issue-attach-sig";
+        chainStatus:
+          | "proceeds-split-attach-chain"
+          | "direct-issue-attach-chain";
+      }) => {
+        if (!impl || impl === zeroAddress) {
+          throw new Error(
+            sigStatus === "proceeds-split-attach-sig"
+              ? t("status.errorProceedsSplitImpl")
+              : t("status.errorDirectIssueImpl"),
+          );
+        }
+
+        const slot = (await readContract(wagmiConfig, {
+          chainId: WAGMI_CHAIN_ID,
+          address: newCampaign,
+          abi: campaignModuleHostAbi,
+          functionName: "moduleSlot",
+          args: [moduleType],
+        })) as readonly [Address, `0x${string}`, string, bigint, boolean];
+
+        if (slot[0] !== zeroAddress) {
+          if (!slot[4]) {
+            setStatus({ kind: sigStatus, campaign: newCampaign });
+            const hash = await writeContractAsync({
+              address: newCampaign,
+              chainId: WAGMI_CHAIN_ID,
+              abi: campaignModuleHostAbi,
+              functionName: "setModuleEnabled",
+              args: [moduleType, true],
+            });
+            setStatus({ kind: chainStatus, campaign: newCampaign });
+            const r = await waitForTx(hash);
+            if (r.status !== "success") {
+              throw new Error("setModuleEnabled reverted on-chain");
+            }
+          }
+          return;
+        }
+
+        setStatus({ kind: sigStatus, campaign: newCampaign });
+        const attachHash = await writeContractAsync({
+          address: newCampaign,
+          chainId: WAGMI_CHAIN_ID,
+          abi: campaignModuleHostAbi,
+          functionName: "attachModule",
+          args: [moduleType, kind, impl, metadataURI],
+        });
+        setStatus({ kind: chainStatus, campaign: newCampaign });
+        const attachReceipt = await waitForTx(attachHash);
+        if (attachReceipt.status !== "success") {
+          throw new Error("attachModule reverted on-chain");
+        }
+      };
+
+      if (form.proceedsSplitEnabled) {
+        if (!splitPromoterAddressValid || !splitPromoterBpsValid || promoterBps === null) {
+          throw new Error(t("step3.splitInvalid"));
+        }
+
+        await attachModuleIfMissing({
+          moduleType: PROCEEDS_SPLIT_MODULE_TYPE,
+          kind: PROCEEDS_SPLIT_MODULE_KIND,
+          impl: proceedsSplitImpl,
+          metadataURI: "growfi://proceeds-split/v1",
+          sigStatus: "proceeds-split-attach-sig",
+          chainStatus: "proceeds-split-attach-chain",
+        });
+
+        setStatus({ kind: "proceeds-split-set-sig", campaign: newCampaign });
+        const splitHash = await writeContractAsync({
+          address: newCampaign,
+          chainId: WAGMI_CHAIN_ID,
+          abi: proceedsSplitModuleAbi,
+          functionName: "setProceedsSplit",
+          args: [splitPromoterAddress as Address, promoterBps],
+        });
+        setStatus({ kind: "proceeds-split-set-chain", campaign: newCampaign });
+        const splitReceipt = await waitForTx(splitHash);
+        if (splitReceipt.status !== "success") {
+          throw new Error("setProceedsSplit reverted on-chain");
+        }
+      }
+
+      if (form.directIssueEnabled) {
+        await attachModuleIfMissing({
+          moduleType: DIRECT_ISSUE_MODULE_TYPE,
+          kind: DIRECT_ISSUE_MODULE_KIND,
+          impl: directIssueImpl,
+          metadataURI: "growfi://direct-issue/v1",
+          sigStatus: "direct-issue-attach-sig",
+          chainStatus: "direct-issue-attach-chain",
+        });
+      }
+
+      // ── 6. Optional collateral lock ──────────────────────────────────
       // If the producer entered a positive amount in step 4, fire two extra
       // signatures: approve(factoryUsdc, campaign, amount) → lockCollateral.
       // factory.usdc on Base Sepolia = mUSDC mock; on mainnet = USDC. The
@@ -613,7 +781,7 @@ export default function CreateCampaign() {
         }
       }
 
-      // ── 6. Done ───────────────────────────────────────────────────────
+      // ── 7. Done ───────────────────────────────────────────────────────
       setStatus({
         kind: "success",
         campaign: newCampaign,
@@ -1253,6 +1421,110 @@ export default function CreateCampaign() {
                 );
               })()}
 
+              <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-6 space-y-5">
+                <div>
+                  <h2 className="text-sm font-bold uppercase tracking-wider text-on-surface-variant">
+                    {t("step3.routingTitle")}
+                  </h2>
+                  <p className="mt-1 text-xs text-on-surface-variant">
+                    {t("step3.routingSubtitle")}
+                  </p>
+                </div>
+
+                <label className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={form.proceedsSplitEnabled}
+                    onChange={(e) =>
+                      update("proceedsSplitEnabled", e.target.checked)
+                    }
+                    className="mt-1 h-4 w-4 accent-primary"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-on-surface">
+                      {t("step3.splitEnabled")}
+                    </span>
+                    <span className="block text-xs text-on-surface-variant">
+                      {t("step3.splitEnabledHint")}
+                    </span>
+                  </span>
+                </label>
+
+                {form.proceedsSplitEnabled && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Field label={t("step3.promoterReceiver")}>
+                      <input
+                        type="text"
+                        value={form.proceedsSplitPromoter}
+                        onChange={(e) =>
+                          update("proceedsSplitPromoter", e.target.value)
+                        }
+                        placeholder={t("step3.promoterReceiverPlaceholder")}
+                        className={`input font-mono text-sm ${
+                          splitPromoterAddressValid ? "" : "border-error"
+                        }`}
+                      />
+                      {!splitPromoterAddressValid && (
+                        <p className="text-xs text-error mt-1.5">
+                          {t("step3.splitInvalidAddress")}
+                        </p>
+                      )}
+                    </Field>
+
+                    <Field label={t("step3.promoterShare")}>
+                      <input
+                        type="number"
+                        min="0.01"
+                        max="99.99"
+                        step="0.01"
+                        value={form.proceedsSplitPromoterPercent}
+                        onChange={(e) =>
+                          update(
+                            "proceedsSplitPromoterPercent",
+                            e.target.value,
+                          )
+                        }
+                        placeholder="25"
+                        className={`input ${
+                          splitPromoterBpsValid ? "" : "border-error"
+                        }`}
+                      />
+                      {!splitPromoterBpsValid ? (
+                        <p className="text-xs text-error mt-1.5">
+                          {t("step3.splitInvalidBps")}
+                        </p>
+                      ) : promoterBps !== null && promoterBps > 0 ? (
+                        <p className="text-xs text-on-surface-variant mt-1.5">
+                          {t("step3.ownerSharePreview", {
+                            promoter: formatBpsPercent(promoterBps),
+                            owner: formatBpsPercent(10_000 - promoterBps),
+                          })}
+                        </p>
+                      ) : null}
+                    </Field>
+                  </div>
+                )}
+
+                <label className="flex items-start gap-3 border-t border-outline-variant/15 pt-4">
+                  <input
+                    type="checkbox"
+                    checked={form.directIssueEnabled}
+                    onChange={(e) =>
+                      update("directIssueEnabled", e.target.checked)
+                    }
+                    className="mt-1 h-4 w-4 accent-primary"
+                  />
+                  <span>
+                    <span className="block text-sm font-semibold text-on-surface">
+                      {t("step3.directIssueEnabled")}
+                    </span>
+                    <span className="block text-xs text-on-surface-variant">
+                      {t("step3.directIssueEnabledHint")}
+                    </span>
+                  </span>
+                </label>
+              </div>
+
               <p className="text-xs text-on-surface-variant px-2">
                 {t("step3.signatureNotice")}
               </p>
@@ -1358,6 +1630,36 @@ export default function CreateCampaign() {
                 />
               </ReviewSection>
 
+              <ReviewSection title={t("step5.sections.routing")}>
+                <ReviewRow
+                  label={t("step5.rows.promoterReceiver")}
+                  value={
+                    form.proceedsSplitEnabled
+                      ? `${splitPromoterAddress.slice(0, 6)}…${splitPromoterAddress.slice(-4)}`
+                      : t("step5.rows.ownerOnly")
+                  }
+                />
+                <ReviewRow
+                  label={t("step5.rows.promoterShare")}
+                  value={
+                    form.proceedsSplitEnabled && promoterBps !== null
+                      ? t("step5.rows.splitShare", {
+                          promoter: formatBpsPercent(promoterBps),
+                          owner: formatBpsPercent(10_000 - promoterBps),
+                        })
+                      : t("step5.rows.ownerOnly")
+                  }
+                />
+                <ReviewRow
+                  label={t("step5.rows.directIssue")}
+                  value={
+                    form.directIssueEnabled
+                      ? t("step5.rows.enabled")
+                      : t("step5.rows.notEnabled")
+                  }
+                />
+              </ReviewSection>
+
               <p className="text-xs text-on-surface-variant px-2 mt-2">
                 {t("step5.notice")}
               </p>
@@ -1403,6 +1705,36 @@ export default function CreateCampaign() {
               {status.kind === "collateral-approve-sig" && (
                 <StatusBox kind="info">
                   {t("status.collateralApproveSig")}
+                </StatusBox>
+              )}
+              {status.kind === "proceeds-split-attach-sig" && (
+                <StatusBox kind="info">
+                  {t("status.proceedsSplitAttachSig")}
+                </StatusBox>
+              )}
+              {status.kind === "proceeds-split-attach-chain" && (
+                <StatusBox kind="info">
+                  {t("status.proceedsSplitAttachChain")}
+                </StatusBox>
+              )}
+              {status.kind === "proceeds-split-set-sig" && (
+                <StatusBox kind="info">
+                  {t("status.proceedsSplitSetSig")}
+                </StatusBox>
+              )}
+              {status.kind === "proceeds-split-set-chain" && (
+                <StatusBox kind="info">
+                  {t("status.proceedsSplitSetChain")}
+                </StatusBox>
+              )}
+              {status.kind === "direct-issue-attach-sig" && (
+                <StatusBox kind="info">
+                  {t("status.directIssueAttachSig")}
+                </StatusBox>
+              )}
+              {status.kind === "direct-issue-attach-chain" && (
+                <StatusBox kind="info">
+                  {t("status.directIssueAttachChain")}
                 </StatusBox>
               )}
               {status.kind === "collateral-approve-chain" && (

@@ -24,12 +24,16 @@ import {CollateralModule} from "../src/modules/CollateralModule.sol";
 import {RepaymentModule} from "../src/modules/RepaymentModule.sol";
 import {EcommerceModule} from "../src/modules/EcommerceModule.sol";
 import {DebtRestructuringModule} from "../src/modules/DebtRestructuringModule.sol";
+import {CampaignProceedsSplitModule} from "../src/modules/CampaignProceedsSplitModule.sol";
+import {DirectIssueModule} from "../src/modules/DirectIssueModule.sol";
 
 import {SaleClassicHelper} from "../test/modules/SaleClassicHelper.sol";
 import {CollateralHelper} from "../test/modules/CollateralHelper.sol";
 import {RepaymentHelper} from "../test/modules/RepaymentHelper.sol";
 import {EcommerceHelper} from "../test/modules/EcommerceHelper.sol";
 import {DebtRestructuringHelper} from "../test/modules/DebtRestructuringHelper.sol";
+import {ProceedsSplitHelper} from "../test/modules/ProceedsSplitHelper.sol";
+import {DirectIssueHelper} from "../test/modules/DirectIssueHelper.sol";
 
 /// @title DeployMainnet
 /// @notice Ethereum mainnet protocol deploy only. This script does not create
@@ -37,13 +41,15 @@ import {DebtRestructuringHelper} from "../test/modules/DebtRestructuringHelper.s
 contract DeployMainnet is Script {
     address internal constant MAINNET_USDC = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
     address internal constant MAINNET_USDC_USD_FEED = 0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6;
-    address internal constant MAINNET_FEE_RECEIVER_SAFE = 0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9;
+    address internal constant MAINNET_FEE_RECEIVER_SAFE = 0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55;
 
     bytes32 internal constant TYPE_SALE = keccak256("growfi.type.sale");
     bytes32 internal constant TYPE_COLLATERAL = keccak256("growfi.type.collateral");
     bytes32 internal constant KIND_REPAYMENT = keccak256("growfi.repayment.v1");
     bytes32 internal constant KIND_ECOMMERCE = keccak256("growfi.ecommerce.v1");
     bytes32 internal constant KIND_DEBT_RESTRUCTURING = keccak256("growfi.debt.restructuring.v1");
+    bytes32 internal constant KIND_PROCEEDS_SPLIT = keccak256("growfi.proceeds.split.v1");
+    bytes32 internal constant KIND_DIRECT_ISSUE = keccak256("growfi.direct.issue.v1");
 
     uint256 internal constant GENESIS_DEPLOYER = 0;
     uint256 internal constant GENESIS_TREASURY = 100_000e18;
@@ -81,6 +87,8 @@ contract DeployMainnet is Script {
         address repaymentImpl = address(new RepaymentModule());
         address ecommerceImpl = address(new EcommerceModule());
         address debtRestructuringImpl = address(new DebtRestructuringModule());
+        address proceedsSplitImpl = address(new CampaignProceedsSplitModule());
+        address directIssueImpl = address(new DirectIssueModule());
 
         bytes32 saleKind = factory.KIND_SALE_CLASSIC_V1();
         bytes32 collateralKind = factory.KIND_COLLATERAL_V1();
@@ -99,6 +107,12 @@ contract DeployMainnet is Script {
 
         factory.setModuleKindSelectors(KIND_DEBT_RESTRUCTURING, DebtRestructuringHelper.selectors());
         factory.approveModuleImpl(KIND_DEBT_RESTRUCTURING, debtRestructuringImpl, true);
+
+        factory.setModuleKindSelectors(KIND_PROCEEDS_SPLIT, ProceedsSplitHelper.selectors());
+        factory.approveModuleImpl(KIND_PROCEEDS_SPLIT, proceedsSplitImpl, true);
+
+        factory.setModuleKindSelectors(KIND_DIRECT_ISSUE, DirectIssueHelper.selectors());
+        factory.approveModuleImpl(KIND_DIRECT_ISSUE, directIssueImpl, true);
 
         ModuleRegistry.DefaultModule[] memory defaults = new ModuleRegistry.DefaultModule[](2);
         defaults[0] =
@@ -184,6 +198,8 @@ contract DeployMainnet is Script {
         console.log("Repayment module impl:       ", repaymentImpl);
         console.log("Ecommerce module impl:       ", ecommerceImpl);
         console.log("Debt restructuring impl:     ", debtRestructuringImpl);
+        console.log("Proceeds split impl:         ", proceedsSplitImpl);
+        console.log("Direct issue impl:           ", directIssueImpl);
         console.log("CampaignRegistry:            ", address(campaignRegistry));
         console.log("ProducerRegistry:            ", address(producerRegistry));
         console.log("");

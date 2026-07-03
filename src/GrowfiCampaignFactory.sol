@@ -44,6 +44,8 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
 
     bytes32 public constant KIND_SALE_CLASSIC_V1 = keccak256("growfi.sale.classic.v1");
     bytes32 public constant KIND_COLLATERAL_V1 = keccak256("growfi.collateral.v1");
+    bytes32 public constant KIND_PROCEEDS_SPLIT_V1 = keccak256("growfi.proceeds.split.v1");
+    bytes32 public constant KIND_DIRECT_ISSUE_V1 = keccak256("growfi.direct.issue.v1");
     uint256 public constant FUNDING_FEE_BPS = 300; // 3%
     uint256 public constant HARVEST_PROTOCOL_FEE_BPS = 200; // 2%
     uint16 public constant DEFAULT_ECOMMERCE_PROTOCOL_FEE_BPS = 300; // 3%
