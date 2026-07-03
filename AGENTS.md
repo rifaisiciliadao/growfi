@@ -47,9 +47,18 @@ The mainnet deploy was patched before any campaign existed at block `25328977`
 via `script/UpgradeMainnetAuditMitigations.s.sol`: current factory pointers and
 default/optional module impls are the audit-hardened ones in `CONTRACTS.md`, and
 the stale launch module impls are revoked in the factory whitelist.
+On 2026-06-19 the factory proxy was upgraded in place for the ecommerce fee
+model: live factory impl `0x3EEeD505C21C945845Fb8f57917B035532E0Ac87`, live
+EcommerceModule impl `0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c`. The factory
+global ecommerce protocol fee is `300` bps by default/currently, capped at `1000`
+bps, and owner-controlled through `setEcommerceProtocolFeeBps`. The old
+EcommerceModule impl `0x881883a9fd1c296D198EE9937603E8Eec1AE5E70` is revoked
+for future attaches, but already-attached campaign module slots are unchanged.
+Existing campaigns migrate only if their producer detaches/reattaches the
+ecommerce module through the web app.
 
 Mainnet fee receiver / operations Safe:
-`0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9` (threshold 2; owners
+`0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` (threshold 2; owners
 `0x2DC077446182287f1d79847074893CDb559D41f4` and
 `0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1`). The deployer remains the
 factory/protocol owner for the launch phase. **No campaigns were seeded at
@@ -139,16 +148,20 @@ mainnet launch shows only real USDC, while `mUSDC` is testnet-only.
 
 The pre-v4 monolithic `Campaign` is gone. The host `GrowfiCampaign` is now a minimal contract that owns the namespaced storage (`CampaignStorage` library, slot `keccak256("growfi.campaign.core.v1")`) and routes calls via a `fallback` that delegate-calls into per-type module impls.
 
-Five modules live today:
+Seven modules live today:
 - **`SaleClassicModule`** (default, auto-attached on `createCampaign`): buy/sellback/buyback/funding-fee/setMaxCap/setMinCap/setFundingDeadline/activate. Slot: `keccak256("growfi.module.sale.classic.v1")`. Storage `pricePerToken` is offset 0, `currentSupply` is offset 6 — read by other modules via assembly. **`buy` does NOT auto-activate** (2026-06 hardening): the producer activates explicitly via `activateCampaign()` once `currentSupply >= minCap`.
 - **`CollateralModule`** (default, auto-attached): `lockCollateral`, `depositUSDC` (v3.4 pay-from-collateral-first), `settleSeasonShortfall`. Slot: `keccak256("growfi.module.collateral.v1")`.
 - **`RepaymentModule`** (whitelisted, producer-attaches post-create): producer-funded early-exit pool. Gross payout per CT = on-chain `pricePerToken` (immutable principal floor) + producer-set `bonusPerCt` (additive markup). Redemptions take a fixed 2% protocol fee on the gross payout (`PROTOCOL_FEE_BPS = 200`), transfer that fee to `protocolFeeRecipient`, and pay the net amount to the holder. `redeem(amount, unstakeFirst[])` force-unstakes the caller's own positions (owner-checked — would be a griefing vector otherwise), mints accrued YIELD to owner (no forfeit, no penalty), burns the redeemed CT, and drains the producer-funded pool by the gross amount. `claimedByUser` tracks net holder payouts. The view selector is named `repaymentProtocolFeeBps()` to avoid selector collision with Ecommerce's `protocolFeeBps()`. Slot: `keccak256("growfi.module.repayment.v1")`.
-- **`EcommerceModule`** (whitelisted, producer-attaches post-create): on-chain SKU sales for physical products. The module stores SKU price/inventory/active flags and order records on-chain, while rich catalog/order metadata lives as static JSON in DO Spaces. `buySku(bytes32 skuId, uint256 quantity, bytes32 orderHash)` pulls USDC, records the order, sends protocol fee + producer net, and can automatically credit a configured percentage of the sale into an active Repayment pool via `creditPoolFromCampaign`. `protocolFeeBps` is configurable up to the module cap, `repaymentAllocationBps` is capped together with protocol fee by `MAX_TOTAL_SPLIT_BPS`. Slot: `keccak256("growfi.module.ecommerce.v1")`.
+- **`EcommerceModule`** (whitelisted, producer-attaches post-create): on-chain SKU sales for physical products. The module stores SKU price/inventory/active flags and order records on-chain, while rich catalog/order metadata lives as static JSON in DO Spaces. `buySku(bytes32 skuId, uint256 quantity, bytes32 orderHash)` pulls USDC, records the order, sends protocol fee + producer net, and can automatically credit a configured percentage of the sale into an active Repayment pool via `creditPoolFromCampaign`. Since the 2026-06-19 upgrade, ecommerce protocol fee is factory-owned and global (`CampaignFactory.ecommerceProtocolFeeBps()`, default/current `300` bps, max `1000` bps); producers cannot choose it. `initializeEcommerceByProducer(uint16,string)` keeps the legacy ABI but ignores the fee argument, and `setProtocolFeeBps(uint16)` always reverts `ProtocolFeeFixed`. `repaymentAllocationBps` is still producer-set and capped together with the global protocol fee by `MAX_TOTAL_SPLIT_BPS`. Slot: `keccak256("growfi.module.ecommerce.v1")`.
 - **`DebtRestructuringModule`** (whitelisted, producer-attaches post-create): last-resort conversion of unpaid harvest USDC claims into newly minted CampaignToken after `usdcDeadline`. Holders must first claim all currently available USDC; only the residual shortfall is converted at `SaleClassic.pricePerToken`. Covered seasons require collateral to be exhausted first. The module marks the HarvestManager claim as fully resolved before minting CT, increments SaleClassic `currentSupply`, does **not** call the GROW minter, and blocks later collateral settlement for that season once restructuring starts. Slot: `keccak256("growfi.module.debt.restructuring.v1")`.
+- **`CampaignProceedsSplitModule`** (whitelisted, producer-attaches post-create): optional primary-sale producer proceeds split between the campaign producer/owner and one promoter receiver. `SaleClassicModule.buy` still collects protocol funding fees first; only the remaining producer proceeds are split through `ProceedsSplitStorage` (`promoterBps`, producer gets the remainder). Buyback refunds, protocol fees, sell-back queue fills, harvest deposits, and ecommerce fees are unaffected. Module type: `keccak256("growfi.type.proceeds.split")`; kind: `keccak256("growfi.proceeds.split.v1")`; storage slot: `keccak256("growfi.module.proceeds.split.v1")`.
+- **`DirectIssueModule`** (whitelisted, producer-attaches post-create): producer-only mint path for off-chain agreements. `issueCampaignTokens` / `issueCampaignTokensBatch` mint CampaignToken directly, increment `SaleClassic.currentSupply`, enforce Funding/Active state, pause guards, non-zero recipient/amount, and `currentSupply <= maxCap`. No payment token is pulled and the GROW minter is not called. Module type: `keccak256("growfi.type.direct.issue")`; kind: `keccak256("growfi.direct.issue.v1")`.
 
 Frontend ecommerce checkout supports a multi-SKU cart. The contract still settles one SKU per `buySku` transaction, so the frontend does one USDC approval for the aggregate gross total when needed, then submits one order draft + one `buySku` transaction per cart line. The final purchase receipt is sent once, with aggregate totals and optional `lineItems: Array<{ productName: string; quantity: string }>` on `/api/ecommerce/purchase-receipt`; email rendering falls back to the legacy single `productName`/`quantity` shape when `lineItems` is absent.
 
 Frontend debt restructuring support lives in `platform/frontend/src/contracts/debtRestructuring.ts` plus `HarvestPanel` and `ProducerManagePanel`. The holder harvest UI reads `moduleSlot(keccak256("growfi.type.debt.restructuring"))`, keeps `claimUSDC` disabled until after `claimEnd`, and shows Campaign Token conversion only after `usdcDeadline` when `quoteRestructuredCampaignTokens(seasonId, holder)` returns a non-zero CT amount. The producer manage UI can attach + initialize and toggle the module when `NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL` is configured; without that env var it still reports already-attached module status but cannot initiate attachment.
+
+Frontend proceeds split/direct issue support lives in `platform/frontend/src/contracts/proceeds.ts`, `/create`, and `ProducerManagePanel`. `/create` can configure a promoter receiver + percent during campaign creation; after `createCampaign` it attaches `CampaignProceedsSplitModule` and calls `setProceedsSplit` before optional collateral locking. `/create` can also pre-attach `DirectIssueModule`, while the producer manage tab can later attach/re-enable it and call `issueCampaignTokens` for post-deploy off-chain deals. Attach buttons require `NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL` and `NEXT_PUBLIC_DIRECT_ISSUE_IMPL` for the active chain; already-attached module status remains visible without those env vars.
 
 Lifecycle:
 - Factory bootstraps the campaign + auto-attaches `defaultModules[]` (sale + collateral). Window closes via `Campaign.closeBootstrap()` (one-shot, factory-only).
@@ -156,6 +169,7 @@ Lifecycle:
 - `setModuleEnabled(false)` is the emergency stop — host fallback short-circuits with `ModuleDisabled` before delegatecall, so the module is reachable for governance but no business logic runs.
 - Detach clears the slot AND all selectors mapped to that type; reattach restores routing AND the module's namespaced storage persists (keccak slot survives detach).
 - Whitelist revocation doesn't affect already-attached campaigns (producer-sovereign).
+- Never ship scripts that migrate existing campaign modules unless explicitly requested. Campaign module migrations must be initiated by the producer through the web app; protocol scripts may only update factory/global configuration and future attach allowlists by default.
 
 **Cross-module reads**: a module can read another module's namespaced storage by computing its slot and using `sload`. `RepaymentModule._readPricePerToken()` does exactly this against `SaleClassicModule`'s slot 0. Keeps modules loosely coupled while avoiding ABI hops.
 
@@ -253,6 +267,7 @@ Invariant config: `runs = 256, depth = 128, fail_on_revert = false` → ~33k ran
 - `RepaymentModule.netPayoutPerCt()` and `quoteRepayment(amount)` — holder-facing net payout after the protocol fee.
 - `RepaymentModule.quoteRepaymentGross(amount)` and `quoteRepaymentProtocolFee(amount)` — gross pool drain and fee amount for UI accounting.
 - `EcommerceModule.quoteSku(skuId, quantity) → (gross, protocolFee, repaymentAllocation, producerNet)` — canonical checkout split for product sales.
+- `CampaignFactory.ecommerceProtocolFeeBps()` — canonical global ecommerce protocol fee for attached fixed-fee ecommerce modules.
 
 ## Dev commands
 
@@ -314,7 +329,7 @@ Example reference: `script/UpgradeFactoryV2.s.sol` (adds `minSeasonDuration`, re
   Collateral, Repayment, Ecommerce, DebtRestructuring), registries, GROW Token,
   Treasury, Minter, FeeSplitter, and StakingPool. Requires `block.chainid == 1`
   and `MAINNET_DEPLOYER_PRIVATE_KEY`. Defaults fee receiver / ops to the mainnet
-  Safe `0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9`; owner stays deployer unless
+  Safe `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55`; owner stays deployer unless
   `MAINNET_OWNER_ADDRESS` is explicitly set. **Does not create campaigns.**
 - `script/UpgradeMainnetAuditMitigations.s.sol` — one-time mainnet launch patch
   run at block `25328977` before any campaign existed. Deploys the merged
