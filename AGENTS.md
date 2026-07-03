@@ -57,12 +57,14 @@ for future attaches, but already-attached campaign module slots are unchanged.
 Existing campaigns migrate only if their producer detaches/reattaches the
 ecommerce module through the web app.
 
-Mainnet fee receiver / operations Safe:
-`0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` (threshold 2; owners
+Mainnet production Safe:
+`0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9` (threshold 2; owners
 `0x2DC077446182287f1d79847074893CDb559D41f4` and
-`0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1`). The deployer remains the
-factory/protocol owner for the launch phase. **No campaigns were seeded at
-mainnet launch**; producers create them manually through the app.
+`0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1`). The live FeeSplitter
+`operations()` receiver is still the deployer
+`0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` until it is moved on-chain. The
+deployer remains the factory/protocol owner for the launch phase. **No campaigns
+were seeded at mainnet launch**; producers create them manually through the app.
 
 The earlier **Base Sepolia** audit-hardened build (chain 84532), **Ethereum
 Sepolia** v4 deploy (chain 11155111), and legacy Base Sepolia v3.3 deploy are
@@ -86,6 +88,17 @@ for mutable backend data (`invites-testnet`, `notifications-testnet`).
 On Sepolia testnet, campaign creation is intentionally open: the frontend sets
 the invite gate to approved for `NEXT_PUBLIC_CHAIN_ID=11155111`, while mainnet
 keeps the normal invite lookup and `/create` gate.
+
+As of 2026-07-03, Ethereum Sepolia has a split/direct-issue smoke seed campaign:
+`0x64E8CE3911646154E4e29D715C12b5B1b948D196` (`SPLIT`, $0.144/CT). It has
+`CampaignProceedsSplitModule` and `DirectIssueModule` attached, split set to
+100% promoter (`promoterBps=10000`, producerBps=0), one direct issue of `1e18`
+CT to the deployer, and one paid buy. The Sepolia ugraph deployment
+`growfi-sepolia` indexes this campaign with `hasIndexingErrors=false`.
+Local Sepolia frontend envs must point at
+`https://ugraph.growfi.dev/subgraphs/growfi-sepolia/latest/gn`; the frontend
+subgraph fallback must also choose this endpoint when
+`NEXT_PUBLIC_CHAIN_ID=11155111`.
 
 ### Mainnet/testnet isolation rule
 
@@ -154,14 +167,23 @@ Seven modules live today:
 - **`RepaymentModule`** (whitelisted, producer-attaches post-create): producer-funded early-exit pool. Gross payout per CT = on-chain `pricePerToken` (immutable principal floor) + producer-set `bonusPerCt` (additive markup). Redemptions take a fixed 2% protocol fee on the gross payout (`PROTOCOL_FEE_BPS = 200`), transfer that fee to `protocolFeeRecipient`, and pay the net amount to the holder. `redeem(amount, unstakeFirst[])` force-unstakes the caller's own positions (owner-checked — would be a griefing vector otherwise), mints accrued YIELD to owner (no forfeit, no penalty), burns the redeemed CT, and drains the producer-funded pool by the gross amount. `claimedByUser` tracks net holder payouts. The view selector is named `repaymentProtocolFeeBps()` to avoid selector collision with Ecommerce's `protocolFeeBps()`. Slot: `keccak256("growfi.module.repayment.v1")`.
 - **`EcommerceModule`** (whitelisted, producer-attaches post-create): on-chain SKU sales for physical products. The module stores SKU price/inventory/active flags and order records on-chain, while rich catalog/order metadata lives as static JSON in DO Spaces. `buySku(bytes32 skuId, uint256 quantity, bytes32 orderHash)` pulls USDC, records the order, sends protocol fee + producer net, and can automatically credit a configured percentage of the sale into an active Repayment pool via `creditPoolFromCampaign`. Since the 2026-06-19 upgrade, ecommerce protocol fee is factory-owned and global (`CampaignFactory.ecommerceProtocolFeeBps()`, default/current `300` bps, max `1000` bps); producers cannot choose it. `initializeEcommerceByProducer(uint16,string)` keeps the legacy ABI but ignores the fee argument, and `setProtocolFeeBps(uint16)` always reverts `ProtocolFeeFixed`. `repaymentAllocationBps` is still producer-set and capped together with the global protocol fee by `MAX_TOTAL_SPLIT_BPS`. Slot: `keccak256("growfi.module.ecommerce.v1")`.
 - **`DebtRestructuringModule`** (whitelisted, producer-attaches post-create): last-resort conversion of unpaid harvest USDC claims into newly minted CampaignToken after `usdcDeadline`. Holders must first claim all currently available USDC; only the residual shortfall is converted at `SaleClassic.pricePerToken`. Covered seasons require collateral to be exhausted first. The module marks the HarvestManager claim as fully resolved before minting CT, increments SaleClassic `currentSupply`, does **not** call the GROW minter, and blocks later collateral settlement for that season once restructuring starts. Slot: `keccak256("growfi.module.debt.restructuring.v1")`.
-- **`CampaignProceedsSplitModule`** (whitelisted, producer-attaches post-create): optional primary-sale producer proceeds split between the campaign producer/owner and one promoter receiver. `SaleClassicModule.buy` still collects protocol funding fees first; only the remaining producer proceeds are split through `ProceedsSplitStorage` (`promoterBps`, producer gets the remainder). Buyback refunds, protocol fees, sell-back queue fills, harvest deposits, and ecommerce fees are unaffected. Module type: `keccak256("growfi.type.proceeds.split")`; kind: `keccak256("growfi.proceeds.split.v1")`; storage slot: `keccak256("growfi.module.proceeds.split.v1")`.
-- **`DirectIssueModule`** (whitelisted, producer-attaches post-create): producer-only mint path for off-chain agreements. `issueCampaignTokens` / `issueCampaignTokensBatch` mint CampaignToken directly, increment `SaleClassic.currentSupply`, enforce Funding/Active state, pause guards, non-zero recipient/amount, and `currentSupply <= maxCap`. No payment token is pulled and the GROW minter is not called. Module type: `keccak256("growfi.type.direct.issue")`; kind: `keccak256("growfi.direct.issue.v1")`.
+- **`CampaignProceedsSplitModule`** (whitelisted, producer-attaches post-create): optional primary-sale producer proceeds split between the campaign producer/owner and one promoter receiver. `SaleClassicModule.buy` still collects protocol funding fees first; only the remaining producer proceeds are split through `ProceedsSplitStorage` (`promoterBps`, producer gets the remainder). `promoterBps=10000` is valid and routes all net producer proceeds to the promoter. Buyback refunds, protocol fees, sell-back queue fills, harvest deposits, and ecommerce fees are unaffected. Module type: `keccak256("growfi.type.proceeds.split")`; kind: `keccak256("growfi.proceeds.split.v1")`; storage slot: `keccak256("growfi.module.proceeds.split.v1")`.
+- **`DirectIssueModule`** (whitelisted, producer-attaches post-create): producer-only mint path for off-chain agreements. `issueCampaignTokens` / `issueCampaignTokensBatch` mint CampaignToken directly, increment `SaleClassic.currentSupply`, enforce Funding/Active state, pause guards, non-zero recipient/amount, and `currentSupply <= maxCap`. No payment token is pulled and the GROW minter is not called. Emits `CampaignTokensIssued`, which the subgraph indexes as `DirectIssue`. Module type: `keccak256("growfi.type.direct.issue")`; kind: `keccak256("growfi.direct.issue.v1")`.
 
 Frontend ecommerce checkout supports a multi-SKU cart. The contract still settles one SKU per `buySku` transaction, so the frontend does one USDC approval for the aggregate gross total when needed, then submits one order draft + one `buySku` transaction per cart line. The final purchase receipt is sent once, with aggregate totals and optional `lineItems: Array<{ productName: string; quantity: string }>` on `/api/ecommerce/purchase-receipt`; email rendering falls back to the legacy single `productName`/`quantity` shape when `lineItems` is absent.
 
 Frontend debt restructuring support lives in `platform/frontend/src/contracts/debtRestructuring.ts` plus `HarvestPanel` and `ProducerManagePanel`. The holder harvest UI reads `moduleSlot(keccak256("growfi.type.debt.restructuring"))`, keeps `claimUSDC` disabled until after `claimEnd`, and shows Campaign Token conversion only after `usdcDeadline` when `quoteRestructuredCampaignTokens(seasonId, holder)` returns a non-zero CT amount. The producer manage UI can attach + initialize and toggle the module when `NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL` is configured; without that env var it still reports already-attached module status but cannot initiate attachment.
 
 Frontend proceeds split/direct issue support lives in `platform/frontend/src/contracts/proceeds.ts`, `/create`, and `ProducerManagePanel`. `/create` can configure a promoter receiver + percent during campaign creation; after `createCampaign` it attaches `CampaignProceedsSplitModule` and calls `setProceedsSplit` before optional collateral locking. `/create` can also pre-attach `DirectIssueModule`, while the producer manage tab can later attach/re-enable it and call `issueCampaignTokens` for post-deploy off-chain deals. Attach buttons require `NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL` and `NEXT_PUBLIC_DIRECT_ISSUE_IMPL` for the active chain; already-attached module status remains visible without those env vars.
+
+Subgraph schema v5.2.0 tracks split/direct issue state on `Campaign`:
+`directIssuedTokens`, `directIssueCount`, `proceedsSplitActive`,
+`proceedsSplitPromoter`, `proceedsSplitPromoterBps`,
+`proceedsSplitProducerBps`, and derived `directIssues`. The `DirectIssue`
+entity is created from `CampaignTokensIssued`; `ProceedsSplitSet` and
+`ProceedsSplitCleared` update the campaign split fields. When changing these
+events, update both `platform/subgraph/subgraph.yaml` and
+`platform/subgraph/subgraph.sepolia.yaml`.
 
 Lifecycle:
 - Factory bootstraps the campaign + auto-attaches `defaultModules[]` (sale + collateral). Window closes via `Campaign.closeBootstrap()` (one-shot, factory-only).
