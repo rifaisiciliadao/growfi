@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Local-only admin dashboard for the GrowFi invite queue. Never deploy.",
+  "description": "Wallet-gated GrowFi protocol admin app.",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4101",
     "build": "tsc -b && vite build",

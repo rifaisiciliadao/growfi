@@ -1,0 +1,37 @@
+name: growfi-admin
+region: fra
+
+static_sites:
+  - name: growfi-admin
+    source_dir: platform/admin
+    github:
+      repo: rifaisiciliadao/growfi
+      branch: main
+      deploy_on_push: true
+    build_command: npm ci && npm run build
+    output_dir: dist
+    index_document: index.html
+    catchall_document: index.html
+    envs:
+      - key: VITE_USDC_ADDRESS
+        value: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+        scope: BUILD_TIME
+      - key: VITE_GROW_FEE_SPLITTER
+        value: "0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f"
+        scope: BUILD_TIME
+      - key: VITE_GROW_TREASURY
+        value: "0x47ea5710ea674f5D653A59c96836E2d20288813a"
+        scope: BUILD_TIME
+      - key: VITE_OPERATIONS_SAFE
+        value: "0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9"
+        scope: BUILD_TIME
+      - key: VITE_ADMIN_WALLETS
+        value: "0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9,0x2DC077446182287f1d79847074893CDb559D41f4,0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1,0xa229f3c9851e26fc9ea18157b88cd1cda6f90e55"
+        scope: BUILD_TIME
+      - key: VITE_EXPLORER_URL
+        value: "https://etherscan.io"
+        scope: BUILD_TIME
+
+domains:
+  - domain: admin.growfi.dev
+    type: PRIMARY

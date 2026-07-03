@@ -1,39 +1,28 @@
-# GrowFi · Invite admin (local-only)
+# GrowFi Admin
 
-Mini React/Vite dashboard to manage the invite queue served by `platform/backend`.
-Runs only on localhost. Don't deploy.
+Separate wallet-gated Vite app for protocol operations. It is intended for
+`admin.growfi.dev`, not for the public `growfi.dev` frontend.
 
-## Prereq
+The first supported operation is the mainnet FeeSplitter flush:
 
-In `platform/backend/.env`:
+- connect an allowlisted admin wallet;
+- read the FeeSplitter USDC balance and `previewFlush(USDC)`;
+- submit `flushToken(USDC)` from the connected wallet.
 
-```
-ADMIN_API_KEY=<a-long-random-string>     # openssl rand -hex 24
-RESEND_API_KEY=<resend key>              # optional in dev (logs emails to stdout otherwise)
-RESEND_FROM=GrowFi <hello@yourdomain.com>
-APP_URL=http://localhost:3000
-```
+There is no backend admin key and no private-key custody in this app. All writes
+are wallet transactions.
 
-## Run
+## Local
 
 ```bash
-# 1. Backend (terminal A)
-cd platform/backend
-npm run dev      # listens on :4001
-
-# 2. Admin dashboard (terminal B)
 cd platform/admin
 npm install
-npm run dev      # opens http://127.0.0.1:4101
+npm run dev
 ```
 
-The Vite dev server proxies `/api/*` to `http://localhost:4001` (override with
-`VITE_BACKEND_URL=...`). On first load you paste the `ADMIN_API_KEY`; it is
-kept only in `localStorage`.
+Optional public environment variables are listed in `.env.example`.
 
-## Endpoints used (under `X-Admin-Key`)
+## Deploy
 
-- `GET  /api/admin/invites?status=pending|approved|rejected|all`
-- `POST /api/admin/invites/:id/approve` — generates code, sends approved email
-- `POST /api/admin/invites/:id/reject`  body `{ notes?, notify? }`
-- `DELETE /api/admin/invites/:id`
+The DigitalOcean App Platform spec defines this as a separate static site
+component named `growfi-admin`. Route `admin.growfi.dev` to that component.

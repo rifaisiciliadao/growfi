@@ -14,6 +14,9 @@ shape but with separate secrets and a custom domain.
   - `/` → frontend
   - `/api/*` → backend
 - **Auto-deploy on `main`** pushes (configured in `.do/app.yaml`).
+- **Separate admin app** (`platform/admin`): Vite static site for
+  `admin.growfi.dev`, configured in `.do/admin.yaml`. It is intentionally not
+  routed through the public frontend.
 
 Outside the scope of this deploy (run elsewhere):
 - Subgraph — served through `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`, see `CONTRACTS.md`.
@@ -101,6 +104,24 @@ doctl apps update <APP_ID> --spec .do/app.yaml
 
 Code-only changes don't need this — they auto-deploy via GitHub push
 triggers (`github.deploy_on_push: true`).
+
+### Admin app
+
+The protocol admin UI is a separate DigitalOcean App Platform static site:
+
+```bash
+doctl apps spec validate .do/admin.yaml
+doctl apps create --spec .do/admin.yaml
+```
+
+For updates, use the returned admin app id:
+
+```bash
+doctl apps update <ADMIN_APP_ID> --spec .do/admin.yaml
+```
+
+The app is wallet-only: it does not use `ADMIN_API_KEY`, backend sessions, or
+private keys. Current scope is FeeSplitter operations on Ethereum mainnet.
 
 ### Secret rotation
 

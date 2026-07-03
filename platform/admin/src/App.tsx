@@ -1,329 +1,388 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import {
-  approveInvite,
-  clearAdminKey,
-  deleteInvite,
-  fetchInvites,
-  getAdminKey,
-  rejectInvite,
-  setAdminKey,
-  type Invite,
-  type InviteStatus,
-} from "./api";
+import { useEffect, useMemo, useState } from "react";
 
-type Tab = InviteStatus | "all";
+type Hex = `0x${string}`;
 
-function formatTs(ts: number): string {
-  return new Date(ts).toLocaleString();
+type EthereumProvider = {
+  request(args: { method: string; params?: unknown[] | Record<string, unknown> }): Promise<unknown>;
+  on?(event: string, handler: (...args: unknown[]) => void): void;
+  removeListener?(event: string, handler: (...args: unknown[]) => void): void;
+};
+
+declare global {
+  interface Window {
+    ethereum?: EthereumProvider;
+  }
 }
 
-function shortAddr(a: string): string {
-  return `${a.slice(0, 6)}…${a.slice(-4)}`;
+const MAINNET_CHAIN_ID = "0x1";
+const USDC_DECIMALS = 6;
+
+const DEFAULT_ADMIN_WALLETS = [
+  "0x1f91747d9bf455842cd7f1555f52ae581f6aa9b9",
+  "0x2dc077446182287f1d79847074893cdb559d41f4",
+  "0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1",
+  "0xa229f3c9851e26fc9ea18157b88cd1cda6f90e55",
+];
+
+const CONFIG = {
+  feeSplitter:
+    (import.meta.env.VITE_GROW_FEE_SPLITTER as Hex | undefined) ??
+    "0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f",
+  usdc:
+    (import.meta.env.VITE_USDC_ADDRESS as Hex | undefined) ??
+    "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  treasury:
+    (import.meta.env.VITE_GROW_TREASURY as Hex | undefined) ??
+    "0x47ea5710ea674f5D653A59c96836E2d20288813a",
+  operations:
+    (import.meta.env.VITE_OPERATIONS_SAFE as Hex | undefined) ??
+    "0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9",
+  explorer: import.meta.env.VITE_EXPLORER_URL ?? "https://etherscan.io",
+  adminWallets: (
+    (import.meta.env.VITE_ADMIN_WALLETS as string | undefined)?.split(",") ??
+    DEFAULT_ADMIN_WALLETS
+  )
+    .map((address) => address.trim().toLowerCase())
+    .filter(Boolean),
+};
+
+type Snapshot = {
+  splitterBalance: bigint;
+  safeBalance: bigint;
+  treasuryBalance: bigint;
+  previewBalance: bigint;
+  toTreasury: bigint;
+  toOperations: bigint;
+  treasuryBps: bigint;
+  contractTreasury: Hex;
+  contractOperations: Hex;
+};
+
+function provider(): EthereumProvider | undefined {
+  return window.ethereum;
+}
+
+function normalize(address?: string | null): string {
+  return (address ?? "").toLowerCase();
+}
+
+function short(address?: string | null): string {
+  if (!address) return "-";
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+}
+
+function padAddress(address: string): string {
+  return address.toLowerCase().replace(/^0x/, "").padStart(64, "0");
+}
+
+function balanceOfData(address: string): Hex {
+  return `0x70a08231${padAddress(address)}`;
+}
+
+function previewFlushData(token: string): Hex {
+  return `0xfe2c5174${padAddress(token)}`;
+}
+
+function flushTokenData(token: string): Hex {
+  return `0x9cee789f${padAddress(token)}`;
+}
+
+function hexToBigInt(hex: unknown): bigint {
+  if (typeof hex !== "string" || !hex.startsWith("0x")) return 0n;
+  return BigInt(hex);
+}
+
+function decodeAddress(hex: unknown): Hex {
+  if (typeof hex !== "string" || !hex.startsWith("0x")) return "0x0000000000000000000000000000000000000000";
+  return `0x${hex.slice(-40)}` as Hex;
+}
+
+function decodePreview(hex: unknown): [bigint, bigint, bigint] {
+  if (typeof hex !== "string" || !hex.startsWith("0x")) return [0n, 0n, 0n];
+  const data = hex.slice(2).padEnd(64 * 3, "0");
+  return [
+    BigInt(`0x${data.slice(0, 64)}`),
+    BigInt(`0x${data.slice(64, 128)}`),
+    BigInt(`0x${data.slice(128, 192)}`),
+  ];
+}
+
+function formatUnits(value: bigint, decimals: number): string {
+  const sign = value < 0n ? "-" : "";
+  const raw = value < 0n ? -value : value;
+  const base = 10n ** BigInt(decimals);
+  const whole = raw / base;
+  const fraction = (raw % base).toString().padStart(decimals, "0");
+  const trimmed = fraction.replace(/0+$/, "");
+  return `${sign}${whole.toString()}${trimmed ? `.${trimmed}` : ""}`;
+}
+
+function formatUsd(value: bigint): string {
+  return `${formatUnits(value, USDC_DECIMALS)} USDC`;
+}
+
+async function ethCall(to: Hex, data: Hex): Promise<unknown> {
+  const p = provider();
+  if (!p) throw new Error("No wallet provider found");
+  return p.request({
+    method: "eth_call",
+    params: [{ to, data }, "latest"],
+  });
+}
+
+async function switchToMainnet() {
+  const p = provider();
+  if (!p) throw new Error("No wallet provider found");
+  const chainId = (await p.request({ method: "eth_chainId" })) as string;
+  if (chainId === MAINNET_CHAIN_ID) return;
+  await p.request({
+    method: "wallet_switchEthereumChain",
+    params: [{ chainId: MAINNET_CHAIN_ID }],
+  });
 }
 
 export function App() {
-  const [hasKey, setHasKey] = useState<boolean>(() => Boolean(getAdminKey()));
-  const [keyInput, setKeyInput] = useState("");
-  const [keyErr, setKeyErr] = useState<string | null>(null);
+  const [account, setAccount] = useState<Hex | null>(null);
+  const [chainId, setChainId] = useState<string | null>(null);
+  const [snapshot, setSnapshot] = useState<Snapshot | null>(null);
+  const [busy, setBusy] = useState<"connect" | "read" | "flush" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [txHash, setTxHash] = useState<string | null>(null);
 
-  const [tab, setTab] = useState<Tab>("pending");
-  const [items, setItems] = useState<Invite[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
+  const isAdmin = useMemo(
+    () => Boolean(account && CONFIG.adminWallets.includes(normalize(account))),
+    [account],
+  );
+  const onMainnet = chainId === MAINNET_CHAIN_ID;
+  const canFlush =
+    isAdmin && onMainnet && Boolean(snapshot && snapshot.splitterBalance > 0n);
 
-  const dialogRef = useRef<HTMLDialogElement | null>(null);
-  const [rejectTarget, setRejectTarget] = useState<Invite | null>(null);
-  const [rejectNote, setRejectNote] = useState("");
-  const [rejectNotify, setRejectNotify] = useState(true);
+  useEffect(() => {
+    const p = provider();
+    if (!p?.on) return;
+    const accountsChanged = (accounts: unknown) => {
+      const next = Array.isArray(accounts) ? (accounts[0] as Hex | undefined) : undefined;
+      setAccount(next ?? null);
+      setSnapshot(null);
+    };
+    const chainChanged = (next: unknown) => {
+      setChainId(typeof next === "string" ? next : null);
+      setSnapshot(null);
+    };
+    p.on("accountsChanged", accountsChanged);
+    p.on("chainChanged", chainChanged);
+    return () => {
+      p.removeListener?.("accountsChanged", accountsChanged);
+      p.removeListener?.("chainChanged", chainChanged);
+    };
+  }, []);
+
+  async function connect() {
+    setBusy("connect");
+    setError(null);
+    try {
+      const p = provider();
+      if (!p) throw new Error("Install a wallet browser extension or open with a Safe-compatible wallet.");
+      await switchToMainnet();
+      const accounts = (await p.request({ method: "eth_requestAccounts" })) as Hex[];
+      const currentChain = (await p.request({ method: "eth_chainId" })) as string;
+      setAccount(accounts[0] ?? null);
+      setChainId(currentChain);
+      await refresh();
+    } catch (err) {
+      setError((err as Error).message || "Wallet connection failed");
+    } finally {
+      setBusy(null);
+    }
+  }
 
   async function refresh() {
-    if (!hasKey) return;
-    setLoading(true);
-    setErr(null);
+    setBusy("read");
+    setError(null);
     try {
-      const r = await fetchInvites(tab);
-      setItems(r.items);
-      setTotal(r.total);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "load failed";
-      setErr(msg);
-      if (msg.toLowerCase().includes("unauth")) {
-        setHasKey(false);
+      const p = provider();
+      if (!p) throw new Error("No wallet provider found");
+      const currentChain = (await p.request({ method: "eth_chainId" })) as string;
+      setChainId(currentChain);
+      if (currentChain !== MAINNET_CHAIN_ID) {
+        setSnapshot(null);
+        return;
       }
-    } finally {
-      setLoading(false);
-    }
-  }
 
-  useEffect(() => {
-    void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab, hasKey]);
-
-  useEffect(() => {
-    if (!success) return;
-    const t = window.setTimeout(() => setSuccess(null), 3500);
-    return () => window.clearTimeout(t);
-  }, [success]);
-
-  const counts = useMemo(() => {
-    return {
-      pending: items.filter((i) => i.status === "pending").length,
-      approved: items.filter((i) => i.status === "approved").length,
-      rejected: items.filter((i) => i.status === "rejected").length,
-    };
-  }, [items]);
-
-  function submitKey(e: React.FormEvent) {
-    e.preventDefault();
-    setKeyErr(null);
-    if (keyInput.trim().length < 8) {
-      setKeyErr("Chiave troppo corta");
-      return;
-    }
-    setAdminKey(keyInput.trim());
-    setKeyInput("");
-    setHasKey(true);
-  }
-
-  async function onApprove(invite: Invite) {
-    try {
-      const r = await approveInvite(invite.address);
-      setSuccess(
-        `Invito ${invite.email} approvato.` +
-          (r.emailDelivered ? "" : " (email non inviata)"),
-      );
-      void refresh();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "approve failed");
-    }
-  }
-
-  function openReject(invite: Invite) {
-    setRejectTarget(invite);
-    setRejectNote("");
-    setRejectNotify(true);
-    dialogRef.current?.showModal();
-  }
-  function closeReject() {
-    dialogRef.current?.close();
-    setRejectTarget(null);
-  }
-  async function confirmReject() {
-    if (!rejectTarget) return;
-    try {
-      await rejectInvite(rejectTarget.address, {
-        notes: rejectNote || undefined,
-        notify: rejectNotify,
+      const [
+        splitterBalance,
+        safeBalance,
+        treasuryBalance,
+        preview,
+        treasuryBps,
+        contractTreasury,
+        contractOperations,
+      ] = await Promise.all([
+        ethCall(CONFIG.usdc, balanceOfData(CONFIG.feeSplitter)),
+        ethCall(CONFIG.usdc, balanceOfData(CONFIG.operations)),
+        ethCall(CONFIG.usdc, balanceOfData(CONFIG.treasury)),
+        ethCall(CONFIG.feeSplitter, previewFlushData(CONFIG.usdc)),
+        ethCall(CONFIG.feeSplitter, "0x4dc10ea1"),
+        ethCall(CONFIG.feeSplitter, "0x61d027b3"),
+        ethCall(CONFIG.feeSplitter, "0x8b33b4b2"),
+      ]);
+      const [previewBalance, toTreasury, toOperations] = decodePreview(preview);
+      setSnapshot({
+        splitterBalance: hexToBigInt(splitterBalance),
+        safeBalance: hexToBigInt(safeBalance),
+        treasuryBalance: hexToBigInt(treasuryBalance),
+        previewBalance,
+        toTreasury,
+        toOperations,
+        treasuryBps: hexToBigInt(treasuryBps),
+        contractTreasury: decodeAddress(contractTreasury),
+        contractOperations: decodeAddress(contractOperations),
       });
-      setSuccess(`Invito ${rejectTarget.email} rifiutato.`);
-      closeReject();
-      void refresh();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "reject failed");
+    } catch (err) {
+      setError((err as Error).message || "Read failed");
+    } finally {
+      setBusy(null);
     }
   }
 
-  async function onDelete(invite: Invite) {
-    if (!confirm(`Eliminare definitivamente la richiesta di ${invite.email}?`))
-      return;
+  async function flush() {
+    if (!account || !canFlush) return;
+    setBusy("flush");
+    setError(null);
+    setTxHash(null);
     try {
-      await deleteInvite(invite.address);
-      setSuccess("Richiesta eliminata.");
-      void refresh();
-    } catch (e) {
-      setErr(e instanceof Error ? e.message : "delete failed");
+      const p = provider();
+      if (!p) throw new Error("No wallet provider found");
+      const hash = (await p.request({
+        method: "eth_sendTransaction",
+        params: [
+          {
+            from: account,
+            to: CONFIG.feeSplitter,
+            data: flushTokenData(CONFIG.usdc),
+            value: "0x0",
+          },
+        ],
+      })) as string;
+      setTxHash(hash);
+      window.setTimeout(() => void refresh(), 5_000);
+    } catch (err) {
+      const message = (err as Error).message || "Flush failed";
+      if (!/user rejected|user denied/i.test(message)) setError(message);
+    } finally {
+      setBusy(null);
     }
-  }
-
-  function copy(text: string) {
-    navigator.clipboard.writeText(text).catch(() => {});
-    setSuccess(`Copiato: ${text}`);
-  }
-
-  if (!hasKey) {
-    return (
-      <div className="shell">
-        <div className="brand">
-          <h1>GrowFi · Invite admin</h1>
-          <small>local-only</small>
-        </div>
-        <form className="gate" onSubmit={submitKey}>
-          <h2>Admin key</h2>
-          <p>
-            Incolla la chiave condivisa con il backend (env <code>ADMIN_API_KEY</code>).
-            Resta solo nel localStorage del tuo browser.
-          </p>
-          <input
-            autoFocus
-            type="password"
-            spellCheck={false}
-            placeholder="ADMIN_API_KEY"
-            value={keyInput}
-            onChange={(e) => setKeyInput(e.target.value)}
-          />
-          {keyErr && <div className="error">{keyErr}</div>}
-          <button type="submit" className="btn primary full">
-            Sblocca
-          </button>
-          <div className="tip">
-            Suggerimento: genera la chiave con{" "}
-            <code>openssl rand -hex 24</code> e mettila nel <code>.env</code> del
-            backend come <code>ADMIN_API_KEY</code>.
-          </div>
-        </form>
-      </div>
-    );
   }
 
   return (
-    <div className="shell">
-      <div className="brand">
-        <h1>GrowFi · Invite admin</h1>
-        <small>local-only · {total} totali</small>
-        <span className="spacer" />
-        <button
-          className="btn ghost"
-          onClick={() => {
-            clearAdminKey();
-            setHasKey(false);
-          }}
-        >
-          esci
-        </button>
-      </div>
-
-      {err && <div className="error">{err}</div>}
-      {success && <div className="success">{success}</div>}
-
-      <div className="toolbar">
-        <div className="tabs">
-          {(["pending", "approved", "rejected", "all"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              className={t === tab ? "active" : ""}
-              onClick={() => setTab(t)}
-            >
-              {t}
-            </button>
-          ))}
+    <main className="shell">
+      <header className="topbar">
+        <div>
+          <p className="eyebrow">GrowFi Admin</p>
+          <h1>Fee operations</h1>
         </div>
-        <span className="spacer" />
-        <button className="btn" onClick={() => void refresh()} disabled={loading}>
-          {loading ? "…" : "Refresh"}
-        </button>
-      </div>
-
-      <div className="list">
-        <div className="row head">
-          <span>id</span>
-          <span>email</span>
-          <span>eth</span>
-          <span>telegram</span>
-          <span>status</span>
-          <span style={{ textAlign: "right" }}>actions</span>
+        <div className="wallet">
+          {account ? (
+            <>
+              <span className={isAdmin ? "dot ok" : "dot bad"} />
+              <span>{short(account)}</span>
+            </>
+          ) : (
+            <span>Not connected</span>
+          )}
         </div>
-        {items.length === 0 && !loading && (
-          <div className="empty">Nessuna richiesta in {tab}.</div>
-        )}
-        {items.map((row) => (
-          <div className="row" key={row.id}>
-            <span style={{ color: "#6b7d6f" }}>#{row.id}</span>
-            <div>
-              <div className="email">{row.email}</div>
-              <small style={{ color: "#6b7d6f" }}>{formatTs(row.createdAt)}</small>
-              {row.notes && (
-                <div style={{ color: "#7c2d20", marginTop: 4 }}>
-                  note: {row.notes}
-                </div>
-              )}
-            </div>
-            <span
-              className="eth"
-              title={row.address}
-              onClick={() => copy(row.address)}
-              style={{ cursor: "copy" }}
-            >
-              {shortAddr(row.address)}
-            </span>
-            <span className="tg">{row.telegram}</span>
-            <span>
-              <span className={`badge ${row.status}`}>{row.status}</span>
-            </span>
-            <div className="actions">
-              {row.status === "pending" && (
-                <>
-                  <button className="btn primary" onClick={() => void onApprove(row)}>
-                    Approva
-                  </button>
-                  <button className="btn danger" onClick={() => openReject(row)}>
-                    Rifiuta
-                  </button>
-                </>
-              )}
-              {row.status === "approved" && (
-                <button
-                  className="btn"
-                  onClick={() => void onApprove(row)}
-                  title="reinvia email di approvazione"
-                >
-                  Re-invia email
-                </button>
-              )}
-              {row.status === "rejected" && (
-                <button
-                  className="btn"
-                  onClick={() => void onDelete(row)}
-                  title="elimina definitivamente"
-                >
-                  Elimina
-                </button>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
+      </header>
 
-      <p className="tip">
-        Non versionato. Avvia con <code>npm run dev</code> in{" "}
-        <code>platform/admin</code> dopo aver attivato il backend con{" "}
-        <code>ADMIN_API_KEY</code> e <code>RESEND_API_KEY</code> impostate.
-      </p>
+      <section className="panel hero">
+        <div>
+          <h2>FeeSplitter flush</h2>
+          <p>
+            Connect an admin wallet, review the pending USDC balance, then route it
+            to Treasury and operations with one on-chain transaction.
+          </p>
+        </div>
+        <button className="primary" onClick={connect} disabled={busy === "connect"}>
+          {account ? "Reconnect wallet" : "Login with wallet"}
+        </button>
+      </section>
 
-      <dialog ref={dialogRef}>
-        <h3>Rifiuta invito</h3>
-        <p>
-          {rejectTarget?.email} — {rejectTarget && shortAddr(rejectTarget.address)}
-        </p>
-        <label>
-          <small>Note (visibili nell'email):</small>
-          <textarea
-            value={rejectNote}
-            onChange={(e) => setRejectNote(e.target.value)}
-            placeholder="(facoltativo)"
+      {error && <div className="notice error">{error}</div>}
+      {txHash && (
+        <a className="notice success" href={`${CONFIG.explorer}/tx/${txHash}`} target="_blank">
+          Transaction submitted: {short(txHash)}
+        </a>
+      )}
+      {account && !isAdmin && (
+        <div className="notice warn">
+          Connected wallet is not in the admin allowlist.
+        </div>
+      )}
+      {account && !onMainnet && (
+        <div className="notice warn">
+          Switch wallet network to Ethereum mainnet.
+        </div>
+      )}
+
+      <section className="grid">
+        <Metric title="FeeSplitter balance" value={snapshot ? formatUsd(snapshot.splitterBalance) : "-"} />
+        <Metric title="To Treasury" value={snapshot ? formatUsd(snapshot.toTreasury) : "-"} />
+        <Metric title="To Operations" value={snapshot ? formatUsd(snapshot.toOperations) : "-"} />
+      </section>
+
+      <section className="panel">
+        <div className="rows">
+          <Row label="FeeSplitter" value={CONFIG.feeSplitter} />
+          <Row label="Token" value={CONFIG.usdc} />
+          <Row label="Treasury" value={snapshot?.contractTreasury ?? CONFIG.treasury} />
+          <Row label="Operations" value={snapshot?.contractOperations ?? CONFIG.operations} />
+          <Row
+            label="Split"
+            value={
+              snapshot
+                ? `${Number(snapshot.treasuryBps) / 100}% Treasury / ${
+                    100 - Number(snapshot.treasuryBps) / 100
+                  }% Operations`
+                : "-"
+            }
           />
-        </label>
-        <label
-          style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 13 }}
-        >
-          <input
-            type="checkbox"
-            checked={rejectNotify}
-            onChange={(e) => setRejectNotify(e.target.checked)}
-          />
-          Invia email di rifiuto
-        </label>
-        <div className="row-actions">
-          <button className="btn" onClick={closeReject}>
-            Annulla
+          <Row label="Safe USDC balance" value={snapshot ? formatUsd(snapshot.safeBalance) : "-"} />
+          <Row label="Treasury USDC balance" value={snapshot ? formatUsd(snapshot.treasuryBalance) : "-"} />
+        </div>
+
+        <div className="actions">
+          <button className="secondary" onClick={() => void refresh()} disabled={!account || busy !== null}>
+            {busy === "read" ? "Refreshing..." : "Refresh"}
           </button>
-          <button className="btn danger" onClick={() => void confirmReject()}>
-            Rifiuta
+          <button className="primary" onClick={() => void flush()} disabled={!canFlush || busy !== null}>
+            {busy === "flush" ? "Confirming..." : "Flush USDC"}
           </button>
         </div>
-      </dialog>
+      </section>
+    </main>
+  );
+}
+
+function Metric({ title, value }: { title: string; value: string }) {
+  return (
+    <div className="metric">
+      <span>{title}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  const isAddress = value.startsWith("0x") && value.length >= 42;
+  return (
+    <div className="row">
+      <span>{label}</span>
+      {isAddress ? (
+        <a href={`${CONFIG.explorer}/address/${value}`} target="_blank">
+          {value}
+        </a>
+      ) : (
+        <strong>{value}</strong>
+      )}
     </div>
   );
 }
