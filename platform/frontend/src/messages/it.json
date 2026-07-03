@@ -200,7 +200,7 @@
       "promoterShare": "Quota promoter (%)",
       "ownerSharePreview": "Promoter {promoter}% · Owner {owner}%",
       "splitInvalidAddress": "Inserisci un indirizzo Ethereum valido e non zero.",
-      "splitInvalidBps": "Inserisci una percentuale maggiore di 0 e minore di 100.",
+      "splitInvalidBps": "Inserisci una percentuale maggiore di 0 e fino a 100.",
       "splitInvalid": "Configurazione split proceeds non valida.",
       "directIssueEnabled": "Abilita direct issue dopo il deploy",
       "directIssueEnabledHint": "Permette all'owner della campagna di mintare campaign token in seguito per accordi off-chain."
@@ -817,7 +817,7 @@
         "implementation": "Implementazione:",
         "implMissing": "Implementation split proceeds non configurata per questa rete.",
         "invalidAddress": "Inserisci un indirizzo Ethereum valido e non zero.",
-        "invalidBps": "Inserisci una percentuale maggiore di 0 e minore di 100."
+        "invalidBps": "Inserisci una percentuale maggiore di 0 e fino a 100."
       },
       "directIssue": {
         "statusEnabled": "Direct issue attiva",

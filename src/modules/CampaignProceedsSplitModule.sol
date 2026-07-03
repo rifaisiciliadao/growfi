@@ -25,7 +25,7 @@ contract CampaignProceedsSplitModule {
 
     function setProceedsSplit(address promoter, uint16 promoterBps) external onlyProducer {
         if (promoter == address(0)) revert ZeroAddress();
-        if (promoterBps == 0 || promoterBps >= ProceedsSplitStorage.BPS) revert InvalidBps();
+        if (promoterBps == 0 || promoterBps > ProceedsSplitStorage.BPS) revert InvalidBps();
 
         ProceedsSplitStorage.Layout storage s = ProceedsSplitStorage.layout();
         if (s.active && s.promoter == promoter && s.promoterBps == promoterBps) revert NoChange();

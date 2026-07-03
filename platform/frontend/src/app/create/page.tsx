@@ -254,7 +254,7 @@ export default function CreateCampaign() {
     (isAddress(splitPromoterAddress) && splitPromoterAddress !== zeroAddress);
   const splitPromoterBpsValid =
     !form.proceedsSplitEnabled ||
-    (promoterBps !== null && promoterBps > 0 && promoterBps < 10_000);
+    (promoterBps !== null && promoterBps > 0 && promoterBps <= 10_000);
   const splitFormValid = splitPromoterAddressValid && splitPromoterBpsValid;
   const assetReviewLabel =
     form.assetType === CUSTOM_KEY
@@ -1475,7 +1475,7 @@ export default function CreateCampaign() {
                       <input
                         type="number"
                         min="0.01"
-                        max="99.99"
+                        max="100"
                         step="0.01"
                         value={form.proceedsSplitPromoterPercent}
                         onChange={(e) =>

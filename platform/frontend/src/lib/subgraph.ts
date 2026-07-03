@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
-export const SUBGRAPH_URL =
-  process.env.NEXT_PUBLIC_SUBGRAPH_URL ||
-  "https://ugraph.growfi.dev/subgraphs/growfi/latest/gn";
+const DEFAULT_SUBGRAPH_URL =
+  process.env.NEXT_PUBLIC_CHAIN_ID === "11155111"
+    ? "https://ugraph.growfi.dev/subgraphs/growfi-sepolia/latest/gn"
+    : "https://ugraph.growfi.dev/subgraphs/growfi/latest/gn";
+
+export const SUBGRAPH_URL = process.env.NEXT_PUBLIC_SUBGRAPH_URL || DEFAULT_SUBGRAPH_URL;
 
 export const SOCIAL_VERIFICATION_ENABLED =
   process.env.NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION === "true";
@@ -221,6 +224,7 @@ export interface CampaignInvestor {
   totalTokens: bigint;
   totalPayment: bigint;
   purchaseCount: number;
+  directIssueCount: number;
   firstPurchaseTs: number;
   lastPurchaseTs: number;
 }
@@ -229,6 +233,12 @@ interface RawPurchase {
   buyer: string;
   paymentAmount: string;
   campaignTokensOut: string;
+  timestamp: string;
+}
+
+interface RawDirectIssue {
+  recipient: string;
+  amount: string;
   timestamp: string;
 }
 
@@ -258,6 +268,23 @@ export function useCampaignInvestors(address: string | undefined) {
         `,
         { campaign: address.toLowerCase() },
       );
+      const directIssueData = await gql<{ directIssues: RawDirectIssue[] }>(
+        `
+        query DirectIssues($campaign: String!) {
+          directIssues(
+            where: { campaign: $campaign }
+            first: 1000
+            orderBy: timestamp
+            orderDirection: asc
+          ) {
+            recipient
+            amount
+            timestamp
+          }
+        }
+        `,
+        { campaign: address.toLowerCase() },
+      ).catch(() => ({ directIssues: [] }));
       const byBuyer = new Map<string, CampaignInvestor>();
       for (const p of data.purchases) {
         const key = p.buyer.toLowerCase();
@@ -274,6 +301,28 @@ export function useCampaignInvestors(address: string | undefined) {
             totalTokens: BigInt(p.campaignTokensOut),
             totalPayment: BigInt(p.paymentAmount),
             purchaseCount: 1,
+            directIssueCount: 0,
+            firstPurchaseTs: ts,
+            lastPurchaseTs: ts,
+          });
+        }
+      }
+      for (const issue of directIssueData.directIssues) {
+        const key = issue.recipient.toLowerCase();
+        const ts = Number(issue.timestamp);
+        const existing = byBuyer.get(key);
+        if (existing) {
+          existing.totalTokens += BigInt(issue.amount);
+          existing.directIssueCount += 1;
+          existing.firstPurchaseTs = Math.min(existing.firstPurchaseTs, ts);
+          existing.lastPurchaseTs = Math.max(existing.lastPurchaseTs, ts);
+        } else {
+          byBuyer.set(key, {
+            buyer: issue.recipient,
+            totalTokens: BigInt(issue.amount),
+            totalPayment: 0n,
+            purchaseCount: 0,
+            directIssueCount: 1,
             firstPurchaseTs: ts,
             lastPurchaseTs: ts,
           });

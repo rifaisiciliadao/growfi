@@ -68,6 +68,11 @@ export function handleCampaignCreated(event: CampaignCreatedEvent): void {
   campaign.totalRaised = BigInt.zero();
   campaign.treasuryRaised = BigInt.zero();
   campaign.treasuryTokensOut = BigInt.zero();
+  campaign.directIssuedTokens = BigInt.zero();
+  campaign.directIssueCount = 0;
+  campaign.proceedsSplitActive = false;
+  campaign.proceedsSplitPromoterBps = 0;
+  campaign.proceedsSplitProducerBps = 0;
   campaign.currentYieldRate = BigInt.fromI32(5).times(
     BigInt.fromI32(10).pow(18),
   ); // 5x

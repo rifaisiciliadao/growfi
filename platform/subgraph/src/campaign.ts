@@ -1,6 +1,7 @@
 import { BigInt, Bytes, log, store } from "@graphprotocol/graph-ts";
 import {
   TokensPurchased as TokensPurchasedEvent,
+  CampaignTokensIssued as CampaignTokensIssuedEvent,
   FundingFeeCollected as FundingFeeCollectedEvent,
   AcceptedTokenAdded as AcceptedTokenAddedEvent,
   AcceptedTokenRemoved as AcceptedTokenRemovedEvent,
@@ -20,6 +21,8 @@ import {
   ModuleAttached as ModuleAttachedEvent,
   ModuleDetached as ModuleDetachedEvent,
   ModuleEnabledSet as ModuleEnabledSetEvent,
+  ProceedsSplitSet as ProceedsSplitSetEvent,
+  ProceedsSplitCleared as ProceedsSplitClearedEvent,
   RepaymentInitialized as RepaymentInitializedEvent,
   RepaymentPoolFunded as RepaymentPoolFundedEvent,
   RepaymentPoolCredited as RepaymentPoolCreditedEvent,
@@ -38,6 +41,7 @@ import {
   Campaign,
   AcceptedToken,
   Purchase,
+  DirectIssue,
   FundingFeeByTx,
   SellBackOrder,
   User,
@@ -194,6 +198,34 @@ export function handleTokensPurchased(event: TokensPurchasedEvent): void {
     stats.totalRaised = stats.totalRaised.plus(usdValue);
     stats.save();
   }
+}
+
+export function handleCampaignTokensIssued(
+  event: CampaignTokensIssuedEvent,
+): void {
+  const campaignAddress = event.address;
+  const campaign = Campaign.load(campaignAddress);
+  if (campaign == null) return;
+
+  const issue = new DirectIssue(eventId(event.transaction.hash, event.logIndex));
+  issue.campaign = campaignAddress;
+  issue.recipient = event.params.to;
+  issue.amount = event.params.amount;
+  issue.newCurrentSupply = event.params.newCurrentSupply;
+  issue.timestamp = event.block.timestamp;
+  issue.block = event.block.number;
+  issue.transactionHash = event.transaction.hash;
+  issue.save();
+
+  campaign.currentSupply = event.params.newCurrentSupply;
+  campaign.directIssuedTokens = campaign.directIssuedTokens.plus(
+    event.params.amount,
+  );
+  campaign.directIssueCount = campaign.directIssueCount + 1;
+  campaign.save();
+
+  const user = loadOrCreateUser(event.params.to, event.block.timestamp);
+  user.save();
 }
 
 export function handleFundingFeeCollected(event: FundingFeeCollectedEvent): void {
@@ -387,6 +419,32 @@ export function handleModuleEnabledSet(event: ModuleEnabledSetEvent): void {
   if (module == null) return;
   module.enabled = event.params.enabled;
   module.save();
+}
+
+export function handleProceedsSplitSet(event: ProceedsSplitSetEvent): void {
+  const campaign = Campaign.load(event.address);
+  if (campaign == null) return;
+
+  campaign.proceedsSplitActive = true;
+  campaign.proceedsSplitPromoter = event.params.promoter;
+  campaign.proceedsSplitPromoterBps = event.params.promoterBps;
+  campaign.proceedsSplitProducerBps = event.params.producerBps;
+  campaign.proceedsSplitUpdatedAt = event.block.timestamp;
+  campaign.save();
+}
+
+export function handleProceedsSplitCleared(
+  event: ProceedsSplitClearedEvent,
+): void {
+  const campaign = Campaign.load(event.address);
+  if (campaign == null) return;
+
+  campaign.proceedsSplitActive = false;
+  campaign.proceedsSplitPromoter = null;
+  campaign.proceedsSplitPromoterBps = 0;
+  campaign.proceedsSplitProducerBps = 0;
+  campaign.proceedsSplitUpdatedAt = event.block.timestamp;
+  campaign.save();
 }
 
 export function handleRepaymentInitialized(

@@ -1,11 +1,12 @@
 # GrowFi Subgraph
 
-Indexes the GrowFi protocol on Ethereum Sepolia.
+Indexes the GrowFi protocol on Ethereum Mainnet and Ethereum Sepolia.
 
-Canonical live endpoint:
+Canonical endpoints:
 
 ```text
-https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
+Mainnet: https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
+Sepolia: https://ugraph.growfi.dev/subgraphs/growfi-sepolia/latest/gn
 ```
 
 Direct legacy endpoints are no longer live and must not be used in app
@@ -47,9 +48,12 @@ CampaignFactory static data source
 
 | Command | Description |
 |---------|-------------|
-| `npm run codegen` | Generate types from ABI files and schema |
-| `npm run build` | Compile AssemblyScript handlers to WASM |
-| `npm run prepare` | Run codegen and build |
+| `npm run codegen:mainnet` | Generate types from the Ethereum Mainnet manifest |
+| `npm run codegen:sepolia` | Generate types from the Ethereum Sepolia manifest |
+| `npm run build:mainnet` | Compile the Ethereum Mainnet manifest |
+| `npm run build:sepolia` | Compile the Ethereum Sepolia manifest |
+| `npm run prepare:mainnet` | Run codegen and build for Ethereum Mainnet |
+| `npm run prepare:sepolia` | Run codegen and build for Ethereum Sepolia |
 
 Legacy provider CLI scripts were removed from `package.json` to avoid accidentally
 deploying to a removed endpoint.

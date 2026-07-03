@@ -33,6 +33,13 @@ type Campaign @entity(immutable: false) {
   totalRaised: BigInt!                    # USD-18 sum across all buys (direct + treasury)
   treasuryRaised: BigInt!                 # USD-18 sum of buys where buyer == GrowfiTreasury
   treasuryTokensOut: BigInt!              # raw CampaignTokens (18-dec) minted to the Treasury
+  directIssuedTokens: BigInt!             # raw CampaignTokens issued off-chain via DirectIssueModule
+  directIssueCount: Int!
+  proceedsSplitActive: Boolean!
+  proceedsSplitPromoter: Bytes
+  proceedsSplitPromoterBps: Int!
+  proceedsSplitProducerBps: Int!
+  proceedsSplitUpdatedAt: BigInt
   currentYieldRate: BigInt!
   currentSeasonId: BigInt!
   state: String!                          # "Funding" | "Active" | "Buyback" | "Ended"
@@ -50,6 +57,7 @@ type Campaign @entity(immutable: false) {
 
   acceptedTokens: [AcceptedToken!]! @derivedFrom(field: "campaign")
   purchases: [Purchase!]! @derivedFrom(field: "campaign")
+  directIssues: [DirectIssue!]! @derivedFrom(field: "campaign")
   positions: [Position!]! @derivedFrom(field: "campaign")
   seasons: [Season!]! @derivedFrom(field: "campaign")
   sellBackOrders: [SellBackOrder!]! @derivedFrom(field: "campaign")
@@ -190,6 +198,17 @@ type Purchase @entity(immutable: true) {
   fundingFee: BigInt!                     # Portion skimmed to the protocol at buy time (0 for pre-v2 purchases)
   campaignTokensOut: BigInt!
   oraclePriceUsed: BigInt!
+  newCurrentSupply: BigInt!
+  timestamp: BigInt!
+  block: BigInt!
+  transactionHash: Bytes!
+}
+
+type DirectIssue @entity(immutable: true) {
+  id: Bytes!                              # txHash-logIndex
+  campaign: Campaign!
+  recipient: Bytes!
+  amount: BigInt!
   newCurrentSupply: BigInt!
   timestamp: BigInt!
   block: BigInt!

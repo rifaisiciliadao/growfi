@@ -110,6 +110,7 @@ export function InvestorList({
             currentSupply > 0n
               ? Number((inv.totalTokens * 10000n) / currentSupply) / 100
               : 0;
+          const allocationCount = inv.purchaseCount + inv.directIssueCount;
           return (
             <li
               key={inv.buyer}
@@ -152,7 +153,7 @@ export function InvestorList({
                         maximumFractionDigits: 2,
                       }),
                     })}{" "}
-                    · {t("txCount", { count: inv.purchaseCount })}
+                    · {t("txCount", { count: allocationCount })}
                   </div>
                 </div>
                 <div className="text-right shrink-0">

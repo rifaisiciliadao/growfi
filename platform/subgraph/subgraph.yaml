@@ -236,6 +236,7 @@ templates:
         - Campaign
         - AcceptedToken
         - Purchase
+        - DirectIssue
         - FundingFeeByTx
         - SellBackOrder
         - Module
@@ -251,6 +252,8 @@ templates:
       eventHandlers:
         - event: TokensPurchased(indexed address,indexed address,uint256,uint256,uint256,uint256)
           handler: handleTokensPurchased
+        - event: CampaignTokensIssued(indexed address,uint256,uint256)
+          handler: handleCampaignTokensIssued
         - event: FundingFeeCollected(indexed address,indexed address,uint256)
           handler: handleFundingFeeCollected
         - event: CollateralLocked(indexed address,uint256,uint256)
@@ -289,6 +292,10 @@ templates:
           handler: handleModuleDetached
         - event: ModuleEnabledSet(indexed bytes32,bool)
           handler: handleModuleEnabledSet
+        - event: ProceedsSplitSet(indexed address,uint16,uint16)
+          handler: handleProceedsSplitSet
+        - event: ProceedsSplitCleared()
+          handler: handleProceedsSplitCleared
         - event: RepaymentInitialized(uint256)
           handler: handleRepaymentInitialized
         - event: RepaymentPoolFunded(indexed address,uint256,uint256)

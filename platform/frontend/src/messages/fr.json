@@ -200,7 +200,7 @@
       "promoterShare": "Promoter share (%)",
       "ownerSharePreview": "Promoter {promoter}% · Owner {owner}%",
       "splitInvalidAddress": "Enter a valid non-zero Ethereum address.",
-      "splitInvalidBps": "Enter a percentage greater than 0 and lower than 100.",
+      "splitInvalidBps": "Enter a percentage greater than 0 and up to 100.",
       "splitInvalid": "Invalid proceeds split settings.",
       "directIssueEnabled": "Enable direct issue module after deploy",
       "directIssueEnabledHint": "Allows the campaign owner to mint campaign tokens later for off-chain agreements."
@@ -817,7 +817,7 @@
         "implementation": "Implementation:",
         "implMissing": "Proceeds split implementation not configured for this chain.",
         "invalidAddress": "Enter a valid non-zero Ethereum address.",
-        "invalidBps": "Enter a percentage greater than 0 and lower than 100."
+        "invalidBps": "Enter a percentage greater than 0 and up to 100."
       },
       "directIssue": {
         "statusEnabled": "Direct issue enabled",

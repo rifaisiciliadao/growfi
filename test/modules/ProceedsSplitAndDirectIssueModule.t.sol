@@ -117,6 +117,35 @@ contract ProceedsSplitAndDirectIssueModuleTest is Test {
         assertEq(campaignToken.balanceOf(bob), 1_000e18);
     }
 
+    function test_proceedsSplitCanRouteAllProducerProceedsToPromoter() public {
+        vm.prank(alice);
+        campaign.buy(address(usdc), 144e6);
+        vm.prank(producer);
+        campaign.activateCampaign();
+
+        uint256 producerBefore = usdc.balanceOf(producer);
+        uint256 promoterBefore = usdc.balanceOf(promoter);
+        uint256 feeBefore = usdc.balanceOf(feeRecipient);
+
+        vm.prank(producer);
+        CampaignProceedsSplitModule(payable(campaignAddr)).setProceedsSplit(promoter, 10_000);
+
+        (bool active,, address configuredPromoter, uint16 promoterBps, uint16 producerBps) =
+            CampaignProceedsSplitModule(payable(campaignAddr)).proceedsSplit();
+        assertTrue(active);
+        assertEq(configuredPromoter, promoter);
+        assertEq(promoterBps, 10_000);
+        assertEq(producerBps, 0);
+
+        vm.prank(bob);
+        campaign.buy(address(usdc), 144e6);
+
+        uint256 net = 144e6 - (144e6 * 300 / 10_000);
+        assertEq(usdc.balanceOf(feeRecipient) - feeBefore, 4.32e6);
+        assertEq(usdc.balanceOf(producer) - producerBefore, 0);
+        assertEq(usdc.balanceOf(promoter) - promoterBefore, net);
+    }
+
     function test_clearProceedsSplitRestoresProducerOnlyRouting() public {
         vm.startPrank(producer);
         CampaignProceedsSplitModule(payable(campaignAddr)).setProceedsSplit(promoter, 5_000);
@@ -148,7 +177,7 @@ contract ProceedsSplitAndDirectIssueModuleTest is Test {
         CampaignProceedsSplitModule(payable(campaignAddr)).setProceedsSplit(promoter, 0);
 
         vm.expectRevert(CampaignProceedsSplitModule.InvalidBps.selector);
-        CampaignProceedsSplitModule(payable(campaignAddr)).setProceedsSplit(promoter, 10_000);
+        CampaignProceedsSplitModule(payable(campaignAddr)).setProceedsSplit(promoter, 10_001);
 
         vm.expectRevert(CampaignProceedsSplitModule.NoChange.selector);
         CampaignProceedsSplitModule(payable(campaignAddr)).clearProceedsSplit();

@@ -310,7 +310,7 @@ function ProceedsSplitManager({
   const promoterValid =
     isAddress(promoterInput.trim()) && promoterInput.trim() !== zeroAddress;
   const bpsValid =
-    promoterBps !== null && promoterBps > 0 && promoterBps < 10_000;
+    promoterBps !== null && promoterBps > 0 && promoterBps <= 10_000;
   const busy = pending !== null;
 
   const refresh = async () => {
@@ -519,7 +519,7 @@ function ProceedsSplitManager({
           <input
             type="number"
             min="0.01"
-            max="99.99"
+            max="100"
             step="0.01"
             value={percentInput}
             onChange={(e) => setPercentInput(e.target.value)}
@@ -530,7 +530,7 @@ function ProceedsSplitManager({
         </label>
       </div>
 
-      {promoterBps !== null && promoterBps > 0 && promoterBps < 10_000 && (
+      {promoterBps !== null && promoterBps > 0 && promoterBps <= 10_000 && (
         <div className="text-xs text-on-surface-variant">
           {t("preview", {
             promoter: formatBpsPercent(promoterBps),

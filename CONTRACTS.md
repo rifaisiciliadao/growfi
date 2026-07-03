@@ -134,11 +134,12 @@ NEXT_PUBLIC_SUBGRAPH_URL=https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
 > in a separate broadcast on top.
 >
 > Seed campaigns: Olive Sicily ($0.144/CT, 350k maxCap), Vineyard of Etna
-> ($0.10/CT, 500k maxCap), plus the Ecommerce Olive Shop demo. All are Active.
+> ($0.10/CT, 500k maxCap), the Ecommerce Olive Shop demo, and a
+> Split + Direct Issue smoke campaign. All are Active.
 >
 > Subgraph: served through the ugraph gateway. Direct legacy endpoints and
 > the stale `prod` tag were removed; use
-> `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
+> `https://ugraph.growfi.dev/subgraphs/growfi-sepolia/latest/gn`.
 
 ### Core v4 (campaign factory + module impls + registries)
 
@@ -155,8 +156,8 @@ NEXT_PUBLIC_SUBGRAPH_URL=https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
 | **CollateralModule** impl | [`0xF2EAb14F7288E7d4E611C44F2784dfF6394ec476`](https://sepolia.etherscan.io/address/0xF2EAb14F7288E7d4E611C44F2784dfF6394ec476) | Default auto-attached. `lockCollateral`, `depositUSDC`, `settleSeasonShortfall`. |
 | **RepaymentModule** impl | [`0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6`](https://sepolia.etherscan.io/address/0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6) | Whitelisted but NOT default. Producer attaches post-create. Refund = principal (from on-chain `pricePerToken`) + producer-set `bonusPerCt`. |
 | **EcommerceModule** impl | [`0x4921f38F3D0de21057Ef202629D501E8b99d8616`](https://sepolia.etherscan.io/address/0x4921f38F3D0de21057Ef202629D501E8b99d8616) | Whitelisted but NOT default. Producer attaches post-create for SKU checkout. |
-| **CampaignProceedsSplitModule** impl | [`0x500ced1282AC5918798A73bD66E7EdC2cffD8577`](https://sepolia.etherscan.io/address/0x500ced1282AC5918798A73bD66E7EdC2cffD8577) | Whitelisted but NOT default. Producer attaches post-create to split primary sale proceeds between producer and promoter. |
-| **DirectIssueModule** impl | [`0x6f5074658561353644Db6a6270cf7dE2Cebe1256`](https://sepolia.etherscan.io/address/0x6f5074658561353644Db6a6270cf7dE2Cebe1256) | Whitelisted but NOT default. Producer attaches post-create to issue CampaignToken directly for off-chain agreements. |
+| **CampaignProceedsSplitModule** impl | [`0x989659D823011127af2757A7164Ff57f6daC9Bc7`](https://sepolia.etherscan.io/address/0x989659D823011127af2757A7164Ff57f6daC9Bc7) | Whitelisted but NOT default. Producer attaches post-create to split primary sale proceeds between producer and promoter, including 100% promoter routing. |
+| **DirectIssueModule** impl | [`0x36cd3caB0c1b039dCB2B1BFba6bf926078f705A3`](https://sepolia.etherscan.io/address/0x36cd3caB0c1b039dCB2B1BFba6bf926078f705A3) | Whitelisted but NOT default. Producer attaches post-create to issue CampaignToken directly for off-chain agreements. |
 | CampaignRegistry | [`0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE`](https://sepolia.etherscan.io/address/0xAef1Cb97C9a8CC2d06d6C662F6655009DED1E1BE) | `(campaign → metadataURI)` + monotonic version. |
 | ProducerRegistry | [`0x52b30540174057756052F676Ed5Fd978E02b939b`](https://sepolia.etherscan.io/address/0x52b30540174057756052F676Ed5Fd978E02b939b) | Social attestation + producer-self-served profile. Deploy block `11163979`. |
 
@@ -188,6 +189,7 @@ stablecoin and wired with 24h heartbeat + 95-105% depeg band.
 | Olive Sicily | [`0x3280d078424FDE86fdE23688561FF377278071de`](https://sepolia.etherscan.io/address/0x3280d078424FDE86fdE23688561FF377278071de) | `OLIVE` | $0.144 |
 | Vineyard of Etna | [`0xd99EB722e7D4499f95A60FEEB19Cd1057bad8F2c`](https://sepolia.etherscan.io/address/0xd99EB722e7D4499f95A60FEEB19Cd1057bad8F2c) | `ETNA` | $0.10 |
 | Ecommerce Olive Shop Demo | [`0x9736898EcE96c7F383499254293a76109452A47F`](https://sepolia.etherscan.io/address/0x9736898EcE96c7F383499254293a76109452A47F) | `ESHOP` | $0.10 |
+| Split + Direct Issue Smoke | [`0x64E8CE3911646154E4e29D715C12b5B1b948D196`](https://sepolia.etherscan.io/address/0x64E8CE3911646154E4e29D715C12b5B1b948D196) | `SPLIT` | $0.144 |
 
 ### Frontend env (Sepolia ETH)
 
@@ -202,14 +204,14 @@ NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x52b30540174057756052F676Ed5Fd978E02b939b
 NEXT_PUBLIC_REPAYMENT_IMPL=0xc3B052EA719b8BAe6AFb32bfe6b8D2B8fc2580D6
 NEXT_PUBLIC_ECOMMERCE_IMPL=0x4921f38F3D0de21057Ef202629D501E8b99d8616
 NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL=
-NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL=0x500ced1282AC5918798A73bD66E7EdC2cffD8577
-NEXT_PUBLIC_DIRECT_ISSUE_IMPL=0x6f5074658561353644Db6a6270cf7dE2Cebe1256
+NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL=0x989659D823011127af2757A7164Ff57f6daC9Bc7
+NEXT_PUBLIC_DIRECT_ISSUE_IMPL=0x36cd3caB0c1b039dCB2B1BFba6bf926078f705A3
 NEXT_PUBLIC_GROW_TOKEN=0x9bB4f9C41ed922282C181f2f3e01d8384c960b44
 NEXT_PUBLIC_GROW_TREASURY=0xB71D13F80ceAed17A179B4e0D9eb1e8410DeaDDd
 NEXT_PUBLIC_GROW_MINTER=0xD99c1985B257a4A55bA8D0836Fab536389cdd24C
 NEXT_PUBLIC_GROW_FEE_SPLITTER=0xF1a8527E00916588f4Bb137cE450E8459b6BD436
 NEXT_PUBLIC_GROW_STAKING_POOL=0xD1D8491370A8CF597bEcFc49D3253BfFAF34CDc8
-NEXT_PUBLIC_SUBGRAPH_URL=https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
+NEXT_PUBLIC_SUBGRAPH_URL=https://ugraph.growfi.dev/subgraphs/growfi-sepolia/latest/gn
 ```
 
 ---
@@ -320,11 +322,11 @@ Full UX spec in `docs/REDEEM_2STEP.md`.
 ## Subgraph
 
 - Direct legacy endpoints were removed.
-- No live Base Sepolia subgraph endpoint is retained; the active indexed environment is Ethereum Sepolia through `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
+- No live Base Sepolia subgraph endpoint is retained. The active Ethereum Sepolia index is `https://ugraph.growfi.dev/subgraphs/growfi-sepolia/latest/gn`.
 
 ---
 
-## Frontend `.env.local`
+## Archived Base Sepolia `.env.local` (do not use for current localhost)
 
 ```bash
 NEXT_PUBLIC_CHAIN_ID=84532
