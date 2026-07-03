@@ -36,7 +36,7 @@ const CONFIG = {
     "0x47ea5710ea674f5D653A59c96836E2d20288813a",
   operations:
     (import.meta.env.VITE_OPERATIONS_SAFE as Hex | undefined) ??
-    "0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9",
+    "0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55",
   explorer: import.meta.env.VITE_EXPLORER_URL ?? "https://etherscan.io",
   adminWallets: (
     (import.meta.env.VITE_ADMIN_WALLETS as string | undefined)?.split(",") ??
@@ -48,7 +48,7 @@ const CONFIG = {
 
 type Snapshot = {
   splitterBalance: bigint;
-  safeBalance: bigint;
+  operationsBalance: bigint;
   treasuryBalance: bigint;
   previewBalance: bigint;
   toTreasury: bigint;
@@ -211,7 +211,7 @@ export function App() {
 
       const [
         splitterBalance,
-        safeBalance,
+        operationsBalance,
         treasuryBalance,
         preview,
         treasuryBps,
@@ -229,7 +229,7 @@ export function App() {
       const [previewBalance, toTreasury, toOperations] = decodePreview(preview);
       setSnapshot({
         splitterBalance: hexToBigInt(splitterBalance),
-        safeBalance: hexToBigInt(safeBalance),
+        operationsBalance: hexToBigInt(operationsBalance),
         treasuryBalance: hexToBigInt(treasuryBalance),
         previewBalance,
         toTreasury,
@@ -345,7 +345,7 @@ export function App() {
                 : "-"
             }
           />
-          <Row label="Safe USDC balance" value={snapshot ? formatUsd(snapshot.safeBalance) : "-"} />
+          <Row label="Operations USDC balance" value={snapshot ? formatUsd(snapshot.operationsBalance) : "-"} />
           <Row label="Treasury USDC balance" value={snapshot ? formatUsd(snapshot.treasuryBalance) : "-"} />
         </div>
 
