@@ -47,15 +47,21 @@ export const KNOWN_TOKENS: KnownToken[] = [
     // which broke the BuyPanel "Mint mUSDC" button: selected.address ≠
     // mockUsdcAddress so the gating condition silently failed.
     addresses: {
+      31337:
+        (process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}` | undefined) ||
+        null,
       84532:
         (process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}` | undefined) ||
         "0x784d2221e11f4E87FA031aAC15c168D27b5cCeb4",
+      11155111:
+        (process.env.NEXT_PUBLIC_USDC_ADDRESS as `0x${string}` | undefined) ||
+        "0x32C344Dc9713d904442d0E5B0d2b7994E52B0d4E",
       1: null,
       8453: null,
     },
     decimals: 6,
     defaultMode: "fixed",
-    oracleFeed: { 84532: null, 1: null, 8453: null },
+    oracleFeed: { 31337: null, 84532: null, 11155111: null, 1: null, 8453: null },
     enabled: true,
     stableUsd: true,
   },
@@ -147,7 +153,7 @@ export const KNOWN_TOKENS: KnownToken[] = [
 export function getEnabledTokens(chainId?: number): KnownToken[] {
   const cid = chainId ?? Number(process.env.NEXT_PUBLIC_CHAIN_ID || 1);
   return KNOWN_TOKENS.filter(
-    (t) => t.enabled && t.addresses[cid] !== null,
+    (t) => t.enabled && Boolean(t.addresses[cid]),
   );
 }
 
