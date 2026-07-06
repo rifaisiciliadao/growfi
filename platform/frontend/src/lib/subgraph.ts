@@ -129,8 +129,6 @@ const CAMPAIGN_FIELDS = `
   metadataURI
   metadataVersion
   hidden
-  projectUpdateCount
-  visibleProjectUpdateCount
   repaymentPool {
     initialized
     bonusPerCt
