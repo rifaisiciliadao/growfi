@@ -44,7 +44,10 @@ import { InvestorList } from "@/components/InvestorList";
 import { ActivateCtaBanner } from "@/components/ActivateCtaBanner";
 import { SocialVerificationBadge } from "@/components/SocialVerificationBadge";
 import { Spinner } from "@/components/Spinner";
+import { RichTextEditor } from "@/components/RichTextEditor";
+import { RichTextContent } from "@/components/RichTextContent";
 import { waitForTx } from "@/lib/waitForTx";
+import { prepareRichTextForStorage } from "@/lib/richText";
 import { ECOMMERCE_MODULE_TYPE } from "@/contracts/ecommerce";
 import { campaignModuleHostAbi } from "@/contracts/repayment";
 
@@ -633,7 +636,7 @@ function LinkMetadataBanner({
       }
       const meta = await uploadMetadata({
         name: name.trim(),
-        description: description.trim(),
+        description: prepareRichTextForStorage(description),
         location: location.trim(),
         productType: "",
         imageUrl,
@@ -727,13 +730,12 @@ function LinkMetadataBanner({
         />
       </div>
 
-      <textarea
-        rows={3}
+      <RichTextEditor
         value={description}
-        onChange={(e) => setDescription(e.target.value)}
+        onChange={setDescription}
         placeholder={t("descriptionPlaceholder")}
         disabled={busy}
-        className="w-full px-3 py-2 rounded-lg border border-amber-300 bg-white text-sm focus:outline-none focus:border-amber-500 disabled:opacity-50 mb-4"
+        className="mb-4"
       />
 
       <label className="block mb-4">
@@ -962,11 +964,7 @@ function InfoPanel({
         {t("title")}
       </h2>
       <div className="space-y-4 text-sm text-on-surface-variant leading-relaxed">
-        {description ? (
-          <p className="whitespace-pre-line">{description}</p>
-        ) : (
-          <p>{t("about")}</p>
-        )}
+        <RichTextContent value={description} fallback={<p>{t("about")}</p>} />
         {location && (
           <p className="text-on-surface font-medium">📍 {location}</p>
         )}

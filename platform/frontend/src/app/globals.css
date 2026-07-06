@@ -52,6 +52,88 @@ body {
   scrollbar-width: none;
 }
 
+.rich-editor-shell {
+  overflow: hidden;
+  border: 1px solid color-mix(in oklab, var(--color-outline-variant) 45%, transparent);
+  border-radius: 0.75rem;
+  background: var(--color-surface-container-lowest);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.9) inset;
+}
+
+.rich-editor-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  padding: 0.5rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-outline-variant) 28%, transparent);
+  background: color-mix(in oklab, var(--color-surface-container-low) 76%, white);
+}
+
+.rich-editor-content {
+  min-height: 9.5rem;
+  padding: 0.875rem 1rem;
+  color: var(--color-on-surface);
+  font-size: 0.95rem;
+  line-height: 1.65;
+  outline: none;
+}
+
+.rich-editor-content:empty::before {
+  content: attr(data-placeholder);
+  color: color-mix(in oklab, var(--color-on-surface-variant) 62%, transparent);
+}
+
+.rich-editor-content p,
+.rich-text-content p {
+  margin: 0;
+}
+
+.rich-editor-content > * + *,
+.rich-text-content > * + * {
+  margin-top: 0.75rem;
+}
+
+.rich-editor-content h3,
+.rich-text-content h3 {
+  margin: 0;
+  color: var(--color-on-surface);
+  font-size: 1rem;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+.rich-editor-content ul,
+.rich-text-content ul {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: disc;
+}
+
+.rich-editor-content ol,
+.rich-text-content ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  list-style: decimal;
+}
+
+.rich-editor-content li + li,
+.rich-text-content li + li {
+  margin-top: 0.25rem;
+}
+
+.rich-editor-content blockquote,
+.rich-text-content blockquote {
+  margin: 0;
+  padding-left: 0.875rem;
+  border-left: 3px solid var(--color-primary-container);
+  color: var(--color-on-surface-variant);
+}
+
+.rich-text-content {
+  color: var(--color-on-surface-variant);
+  line-height: 1.7;
+}
+
 /* ============================================================
    Landing page — ported verbatim from the _gfx_growfi refactor.
    Theme vars, glass surfaces, animations, reveal hooks.

@@ -25,7 +25,13 @@ import { waitForTx } from "@/lib/waitForTx";
 import { encodeProductType } from "@/lib/productUnit";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { Spinner } from "@/components/Spinner";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { campaignModuleHostAbi } from "@/contracts/repayment";
+import {
+  hasRichTextContent,
+  prepareRichTextForStorage,
+  richTextToPlainText,
+} from "@/lib/richText";
 import {
   DIRECT_ISSUE_MODULE_KIND,
   DIRECT_ISSUE_MODULE_TYPE,
@@ -285,7 +291,7 @@ export default function CreateCampaign() {
         form.tokenSymbol.trim().length > 0 &&
         form.yieldName.trim().length > 0 &&
         form.yieldSymbol.trim().length > 0 &&
-        form.description.trim().length > 0 &&
+        hasRichTextContent(form.description) &&
         !!form.imageFile &&
         form.location.trim().length > 0 &&
         form.assetType.length > 0 &&
@@ -457,7 +463,7 @@ export default function CreateCampaign() {
       setStatus({ kind: "uploading-metadata" });
       const metadata = await uploadMetadata({
         name: form.name,
-        description: form.description,
+        description: prepareRichTextForStorage(form.description),
         location: form.location,
         productType: encodedProductType,
         imageUrl: image.url,
@@ -912,12 +918,10 @@ export default function CreateCampaign() {
               </div>
 
               <Field label={t("step1.description")}>
-                <textarea
-                  rows={4}
+                <RichTextEditor
                   value={form.description}
-                  onChange={(e) => update("description", e.target.value)}
+                  onChange={(value) => update("description", value)}
                   placeholder={t("step1.descriptionPlaceholder")}
-                  className="input"
                 />
               </Field>
 
@@ -1834,7 +1838,7 @@ export default function CreateCampaign() {
                 {form.name || t("preview.empty")}
               </h4>
               <p className="text-sm text-on-surface-variant mb-6 line-clamp-2">
-                {form.description || t("preview.emptyDescription")}
+                {richTextToPlainText(form.description) || t("preview.emptyDescription")}
               </p>
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">

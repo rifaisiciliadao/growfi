@@ -176,6 +176,17 @@ Frontend debt restructuring support lives in `platform/frontend/src/contracts/de
 
 Frontend proceeds split/direct issue support lives in `platform/frontend/src/contracts/proceeds.ts`, `/create`, and `ProducerManagePanel`. `/create` can configure a promoter receiver + percent during campaign creation; after `createCampaign` it attaches `CampaignProceedsSplitModule` and calls `setProceedsSplit` before optional collateral locking. `/create` can also pre-attach `DirectIssueModule`, while the producer manage tab can later attach/re-enable it and call `issueCampaignTokens` for post-deploy off-chain deals. Attach buttons require `NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL` and `NEXT_PUBLIC_DIRECT_ISSUE_IMPL` for the active chain; already-attached module status remains visible without those env vars.
 
+User-facing proceeds split copy calls the receiver a "project partner". Keep the
+internal ABI/subgraph names (`promoter`, `promoterBps`,
+`proceedsSplitPromoter*`) unchanged unless the contracts are migrated.
+
+Campaign metadata descriptions may contain sanitized rich HTML, not only plain
+text. Use `RichTextEditor` for authoring, `RichTextContent` for rendering, and
+`platform/frontend/src/lib/richText.ts` before upload/render. The allowed tag set
+is intentionally small (`p`, `br`, `strong`, `em`, `u`, `s`, `ul`, `ol`, `li`,
+`blockquote`, `h3`); do not render metadata descriptions with raw
+`dangerouslySetInnerHTML` directly.
+
 Subgraph schema v5.2.0 tracks split/direct issue state on `Campaign`:
 `directIssuedTokens`, `directIssueCount`, `proceedsSplitActive`,
 `proceedsSplitPromoter`, `proceedsSplitPromoterBps`,
