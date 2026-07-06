@@ -60,9 +60,21 @@ const PAYMENT_TOKEN_FALLBACK_ADDRESSES = getEnabledTokens(CHAIN_ID).map(
   (token) => resolveTokenAddress(token, CHAIN_ID),
 );
 
-type Tab = "invest" | "shop" | "updates" | "stake" | "harvest" | "info" | "manage";
-const TAB_KEYS: Tab[] = ["invest", "updates", "stake", "harvest", "info"];
+type Tab = "invest" | "shop" | "updates" | "silvi" | "stake" | "harvest" | "info" | "manage";
 // Manage tab is appended dynamically when the connected wallet is the producer.
+
+function isTabParam(value: string | null): value is Tab {
+  return (
+    value === "invest" ||
+    value === "shop" ||
+    value === "updates" ||
+    value === "silvi" ||
+    value === "stake" ||
+    value === "harvest" ||
+    value === "info" ||
+    value === "manage"
+  );
+}
 
 export default function CampaignDetail({
   params,
@@ -76,16 +88,14 @@ export default function CampaignDetail({
   const searchParams = useSearchParams();
   const initialTab = ((): Tab => {
     const q = searchParams.get("tab");
-    return q === "shop" || q === "updates" || q === "stake" || q === "harvest" || q === "info" || q === "manage"
-      ? q
-      : "invest";
+    return isTabParam(q) ? q : "invest";
   })();
   const [activeTab, setActiveTab] = useState<Tab>(initialTab);
 
   useEffect(() => {
     const q = searchParams.get("tab");
-    if (q === "shop" || q === "updates" || q === "stake" || q === "harvest" || q === "info" || q === "manage") {
-      setActiveTab(q as Tab);
+    if (isTabParam(q)) {
+      setActiveTab(q);
     }
   }, [searchParams]);
 
@@ -203,9 +213,13 @@ export default function CampaignDetail({
     Boolean(ecommerceSlot?.[4]) &&
     ecommerceSlot?.[0] !== ZERO_ADDRESS;
   const visibleTabs: Tab[] = [
-    ...TAB_KEYS.slice(0, 1),
+    "invest",
     ...(hasEcommerce ? (["shop"] as Tab[]) : []),
-    ...TAB_KEYS.slice(1),
+    "updates",
+    ...(metadata?.dmrv ? (["silvi"] as Tab[]) : []),
+    "stake",
+    "harvest",
+    "info",
     ...(isProducerViewing ? (["manage"] as Tab[]) : []),
   ];
   const effectiveTab = visibleTabs.includes(activeTab) ? activeTab : "invest";
@@ -417,6 +431,10 @@ export default function CampaignDetail({
             <ProjectUpdatesPanel campaignAddress={campaignAddress} />
           )}
 
+          {effectiveTab === "silvi" && metadata?.dmrv && (
+            <SilviProtocolPanel dmrv={metadata.dmrv} />
+          )}
+
           {effectiveTab === "stake" &&
             hasCampaignData &&
             stakingVaultAddr &&
@@ -443,7 +461,6 @@ export default function CampaignDetail({
             <InfoPanel
               address={address}
               description={metadata?.description}
-              dmrv={metadata?.dmrv}
               location={displayLocation}
               createdAtBlock={sgCampaign?.createdAtBlock}
             />
@@ -956,13 +973,11 @@ function FundingProgressCard({
 function InfoPanel({
   address,
   description,
-  dmrv,
   location,
   createdAtBlock,
 }: {
   address: string;
   description?: string;
-  dmrv?: CampaignDmrvMetadata | null;
   location?: string;
   createdAtBlock?: string;
 }) {
@@ -978,8 +993,6 @@ function InfoPanel({
           <p className="text-on-surface font-medium">📍 {location}</p>
         )}
         <p>{t("tokens")}</p>
-
-        {dmrv && <DmrvReportPanel dmrv={dmrv} />}
 
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/15">
           <div>
@@ -1006,22 +1019,22 @@ function InfoPanel({
   );
 }
 
-function DmrvReportPanel({ dmrv }: { dmrv: CampaignDmrvMetadata }) {
-  const t = useTranslations("detail.info");
+function SilviProtocolPanel({ dmrv }: { dmrv: CampaignDmrvMetadata }) {
+  const t = useTranslations("detail.silvi");
   const [loaded, setLoaded] = useState(false);
 
   return (
-    <section className="pt-5 border-t border-outline-variant/15">
+    <section className="bg-surface-container-lowest rounded-2xl p-6 md:p-8 border border-outline-variant/15">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1">
-            {t("dmrvEyebrow")}
+            {t("eyebrow")}
           </p>
-          <h3 className="text-base font-bold text-on-surface">
-            {t("dmrvTitle", { projectId: dmrv.projectId })}
-          </h3>
+          <h2 className="text-2xl font-bold tracking-tight text-on-surface">
+            {t("title", { projectId: dmrv.projectId })}
+          </h2>
           <p className="mt-1 text-xs text-on-surface-variant leading-relaxed">
-            {t("dmrvBody")}
+            {t("body")}
           </p>
         </div>
         <div className="flex flex-wrap gap-2 shrink-0">
@@ -1031,7 +1044,7 @@ function DmrvReportPanel({ dmrv }: { dmrv: CampaignDmrvMetadata }) {
             rel="noreferrer"
             className="inline-flex items-center justify-center rounded-full bg-primary text-on-primary px-4 py-2 text-xs font-semibold hover:opacity-90 transition"
           >
-            {t("dmrvOpen")}
+            {t("open")}
           </a>
           <a
             href={dmrv.geojsonUrl}
@@ -1039,7 +1052,7 @@ function DmrvReportPanel({ dmrv }: { dmrv: CampaignDmrvMetadata }) {
             rel="noreferrer"
             className="inline-flex items-center justify-center rounded-full border border-outline-variant/30 px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-high transition"
           >
-            {t("dmrvGeojson")}
+            {t("geojson")}
           </a>
         </div>
       </div>
@@ -1050,17 +1063,17 @@ function DmrvReportPanel({ dmrv }: { dmrv: CampaignDmrvMetadata }) {
             <div className="flex flex-col items-center gap-3 text-center px-6">
               <Spinner />
               <p className="text-sm font-semibold text-on-surface">
-                {t("dmrvLoading")}
+                {t("loading")}
               </p>
               <p className="text-xs text-on-surface-variant max-w-sm">
-                {t("dmrvLoadingHint")}
+                {t("loadingHint")}
               </p>
             </div>
           </div>
         )}
         <iframe
           src={dmrv.embedUrl}
-          title={t("dmrvIframeTitle", { projectId: dmrv.projectId })}
+          title={t("iframeTitle", { projectId: dmrv.projectId })}
           className="absolute inset-0 h-full w-full border-0"
           loading="lazy"
           sandbox="allow-scripts allow-same-origin allow-popups"

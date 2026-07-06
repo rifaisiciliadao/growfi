@@ -123,9 +123,9 @@
       "imageReplace": "Replace image",
       "location": "Location",
       "locationPlaceholder": "e.g. Ragusa, Sicily",
-      "dmrvProjectId": "Silvi dMRV project ID",
+      "dmrvProjectId": "Silvi Protocol project ID",
       "dmrvProjectIdPlaceholder": "e.g. 28",
-      "dmrvProjectIdHint": "Optional. Link a Silvi map project to show public dMRV evidence on the campaign page.",
+      "dmrvProjectIdHint": "Optional. Link a Silvi Protocol project to show public project evidence on the campaign page.",
       "dmrvProjectPreview": "Will link Silvi project #{projectId}",
       "assetType": "Tokenized Asset",
       "selectAsset": "Select tokenized asset",
@@ -243,7 +243,7 @@
         "location": "Location",
         "assetType": "Tokenized Asset",
         "productType": "Product Type",
-        "dmrv": "dMRV",
+        "dmrv": "Silvi Protocol",
         "dmrvProject": "Silvi project #{projectId}",
         "price": "Token Price",
         "minCap": "Min Cap",
@@ -330,6 +330,7 @@
       "invest": "Invest",
       "shop": "Shop",
       "updates": "Updates",
+      "silvi": "Silvi Protocol",
       "stake": "Staking",
       "harvest": "Harvest",
       "info": "Info",
@@ -702,15 +703,25 @@
       "tokens": "Campaign Tokens represent the tokenized share of this campaign. Price, caps, supply, and state are verifiable on-chain.",
       "contract": "Contract Address",
       "block": "Deploy Block",
-      "dmrv": "See dMRV report on Silvi.earth →",
-      "dmrvEyebrow": "Optional dMRV",
+      "dmrv": "Open Silvi Protocol map →",
+      "dmrvEyebrow": "Silvi Protocol",
       "dmrvTitle": "Silvi project #{projectId}",
-      "dmrvBody": "Satellite monitoring and ground-truth evidence are served by the Silvi bridge. Loading can take a while because the map aggregates live tree and field data.",
-      "dmrvOpen": "Open report",
+      "dmrvBody": "Satellite monitoring and field evidence are served by the Silvi bridge. Loading can take a while because the map aggregates live tree and field data.",
+      "dmrvOpen": "Open map",
       "dmrvGeojson": "GeoJSON",
-      "dmrvLoading": "Loading dMRV map…",
+      "dmrvLoading": "Loading Silvi Protocol map…",
       "dmrvLoadingHint": "Silvi project data is fetched live and can take a few seconds.",
-      "dmrvIframeTitle": "Silvi dMRV project #{projectId}"
+      "dmrvIframeTitle": "Silvi Protocol project #{projectId}"
+    },
+    "silvi": {
+      "eyebrow": "Silvi Protocol",
+      "title": "Project #{projectId}",
+      "body": "Satellite monitoring and field evidence are served by the Silvi bridge. Loading can take a while because the map aggregates live tree and field data.",
+      "open": "Open map",
+      "geojson": "GeoJSON",
+      "loading": "Loading Silvi Protocol map…",
+      "loadingHint": "Silvi project data is fetched live and can take a few seconds.",
+      "iframeTitle": "Silvi Protocol project #{projectId}"
     },
     "manage": {
       "title": "Grower management",
@@ -1073,7 +1084,7 @@
       "oracleRate": "Oracle",
       "grower": "The Grower",
       "verified": "Verified grower",
-      "viewReport": "See dMRV report →",
+      "viewReport": "Open Silvi Protocol →",
       "viewProfile": "View profile",
       "live": "Live"
     }
@@ -1591,7 +1602,7 @@
           "body": "Holders can restake into the next season or queue a sell-back. Incoming buyers fill exits first-in-first-out before new exposure is created."
         }
       ],
-      "tail": "The protocol is commodity-agnostic: olive oil, cacao, coffee, wine, honey. Higher-trust campaigns can add dMRV and producer verification without changing the core settlement flow.",
+      "tail": "The protocol is commodity-agnostic: olive oil, cacao, coffee, wine, honey. Higher-trust campaigns can add Silvi Protocol evidence and grower verification without changing the core settlement flow.",
       "ctaSee": "See live campaigns",
       "ledger": {
         "kicker": "Protocol map",
@@ -1680,9 +1691,9 @@
           "detail": "Every price feed validated: non-negative, updated within 1 hour, decimals capped at 18. No oracle manipulation surface."
         },
         {
-          "label": "Optional dMRV",
+          "label": "Silvi Protocol",
           "value": "via Silvi",
-          "detail": "Satellite monitoring + ground-truth verification. Growers can plug in dMRV to raise campaign trust — public, subgraph-indexed."
+          "detail": "Satellite monitoring + ground-truth verification. Growers can plug in Silvi Protocol to raise campaign trust — public, subgraph-indexed."
         }
       ],
       "feeTable": {
@@ -1737,7 +1748,7 @@
       "title2": "regeneration partners.",
       "intro": "GrowFi is the onchain rail. Harvest credibility comes from the DAOs and protocols monitoring the ground and verifying the practice.",
       "rifaiRole": "Host DAO · registered cultural association in Italy. Steward of Sicilian growers and the first live campaign.",
-      "silviRole": "dMRV partner · satellite monitoring and ground-truth verification for planted trees and harvests. Pluggable into any campaign.",
+      "silviRole": "Silvi Protocol partner · satellite monitoring and ground-truth verification for planted trees and harvests. Pluggable into any campaign.",
       "visit": "Visit"
     },
     "invite": {

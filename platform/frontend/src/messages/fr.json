@@ -123,9 +123,9 @@
       "imageReplace": "Remplacer l'image",
       "location": "Localisation",
       "locationPlaceholder": "ex. Ragusa, Sicile",
-      "dmrvProjectId": "ID projet dMRV Silvi",
+      "dmrvProjectId": "ID projet Silvi Protocol",
       "dmrvProjectIdPlaceholder": "ex. 28",
-      "dmrvProjectIdHint": "Optionnel. Relie un projet de carte Silvi pour afficher les preuves dMRV publiques sur la page campagne.",
+      "dmrvProjectIdHint": "Optionnel. Relie un projet Silvi Protocol pour afficher les preuves publiques sur la page campagne.",
       "dmrvProjectPreview": "Reliera le projet Silvi #{projectId}",
       "assetType": "Actif tokenisé",
       "selectAsset": "Sélectionne l'actif tokenisé",
@@ -243,7 +243,7 @@
         "location": "Localisation",
         "assetType": "Actif tokenisé",
         "productType": "Type de Produit",
-        "dmrv": "dMRV",
+        "dmrv": "Silvi Protocol",
         "dmrvProject": "Projet Silvi #{projectId}",
         "price": "Prix Token",
         "minCap": "Min Cap",
@@ -330,6 +330,7 @@
       "invest": "Investir",
       "shop": "Boutique",
       "updates": "Mises à jour",
+      "silvi": "Silvi Protocol",
       "stake": "Staking",
       "harvest": "Récolte",
       "info": "Infos",
@@ -702,15 +703,25 @@
       "tokens": "Les Campaign Tokens représentent la part tokenisée de cette campagne. Prix, limites, supply et état sont vérifiables on-chain.",
       "contract": "Adresse du Contrat",
       "block": "Bloc de Deploy",
-      "dmrv": "Voir le rapport dMRV sur Silvi.earth →",
-      "dmrvEyebrow": "dMRV optionnel",
+      "dmrv": "Ouvrir la carte Silvi Protocol →",
+      "dmrvEyebrow": "Silvi Protocol",
       "dmrvTitle": "Projet Silvi #{projectId}",
       "dmrvBody": "Le bridge Silvi sert le monitoring satellite et les preuves terrain. Le chargement peut prendre du temps car la carte agrège les données live des arbres et vérifications.",
-      "dmrvOpen": "Ouvrir le rapport",
+      "dmrvOpen": "Ouvrir la carte",
       "dmrvGeojson": "GeoJSON",
-      "dmrvLoading": "Chargement de la carte dMRV…",
+      "dmrvLoading": "Chargement de la carte Silvi Protocol…",
       "dmrvLoadingHint": "Les données Silvi sont lues en live et peuvent prendre quelques secondes.",
-      "dmrvIframeTitle": "Projet dMRV Silvi #{projectId}"
+      "dmrvIframeTitle": "Projet Silvi Protocol #{projectId}"
+    },
+    "silvi": {
+      "eyebrow": "Silvi Protocol",
+      "title": "Projet #{projectId}",
+      "body": "Le bridge Silvi sert le monitoring satellite et les preuves terrain. Le chargement peut prendre du temps car la carte agrège les données live des arbres et vérifications.",
+      "open": "Ouvrir la carte",
+      "geojson": "GeoJSON",
+      "loading": "Chargement de la carte Silvi Protocol…",
+      "loadingHint": "Les données Silvi sont lues en live et peuvent prendre quelques secondes.",
+      "iframeTitle": "Projet Silvi Protocol #{projectId}"
     },
     "manage": {
       "title": "Gestion cultivateur",
@@ -1073,7 +1084,7 @@
       "oracleRate": "Oracle",
       "grower": "Le cultivateur",
       "verified": "Cultivateur vérifié",
-      "viewReport": "Voir le rapport dMRV →",
+      "viewReport": "Ouvrir Silvi Protocol →",
       "viewProfile": "Voir le profil",
       "live": "Live"
     }
@@ -1591,7 +1602,7 @@
           "body": "Les holders peuvent restaker dans la saison suivante ou placer un sell-back. Les nouveaux acheteurs remplissent les sorties FIFO avant de créer une nouvelle exposition."
         }
       ],
-      "tail": "Le protocole est agnostique au produit : huile, cacao, café, vin, miel. Les campagnes à forte confiance peuvent ajouter dMRV et vérification producteur sans changer le settlement.",
+      "tail": "Le protocole est agnostique au produit : huile, cacao, café, vin, miel. Les campagnes à forte confiance peuvent ajouter des preuves Silvi Protocol et la vérification cultivateur sans changer le settlement.",
       "ctaSee": "Voir les campagnes live",
       "ledger": {
         "kicker": "Carte du protocole",
@@ -1680,9 +1691,9 @@
           "detail": "Chaque feed validé : non négatif, mis à jour en 1h, decimals cap à 18. Zéro surface de manipulation."
         },
         {
-          "label": "dMRV optionnel",
+          "label": "Silvi Protocol",
           "value": "via Silvi",
-          "detail": "Monitoring satellite + vérification terrain. Le cultivateur peut brancher dMRV pour élever la confiance de la campagne — transparence publique, subgraph-indexed."
+          "detail": "Monitoring satellite + vérification terrain. Le cultivateur peut brancher Silvi Protocol pour élever la confiance de la campagne — transparence publique, subgraph-indexed."
         }
       ],
       "feeTable": {
@@ -1737,7 +1748,7 @@
       "title2": "partenaires régénératifs.",
       "intro": "GrowFi est le rail onchain. La crédibilité des récoltes vient des DAO et protocoles qui monitorent le terrain et vérifient la pratique.",
       "rifaiRole": "DAO host · association culturelle enregistrée en Italie. Steward des cultivateurs siciliens et de la première campagne live.",
-      "silviRole": "Partenaire dMRV · monitoring satellite et vérification terrain pour arbres plantés et récoltes. Branchable sur toute campagne.",
+      "silviRole": "Partenaire Silvi Protocol · monitoring satellite et vérification terrain pour arbres plantés et récoltes. Branchable sur toute campagne.",
       "visit": "Visiter"
     },
     "invite": {
