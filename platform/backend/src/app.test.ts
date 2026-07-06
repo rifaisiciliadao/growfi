@@ -330,6 +330,14 @@ describe("POST /api/metadata", () => {
         location: "Ragusa, Sicily",
         productType: "Extra virgin olive oil",
         imageUrl: "https://cdn.example/x.png",
+        dmrv: {
+          provider: "silvi",
+          projectId: "28",
+          url: "https://silvi.growfi.dev/map/?project=28",
+          embedUrl: "https://silvi.growfi.dev/map/iframe.html?project=28",
+          geojsonUrl: "https://silvi.growfi.dev/api/silvi/projects/28/map.geojson",
+          linkedAt: 1783320000000,
+        },
       },
     });
     assert.equal(res.statusCode, 200);
@@ -337,8 +345,24 @@ describe("POST /api/metadata", () => {
     assert.match(body.key, /^metadata\/.+\.json$/);
     assert.equal(body.metadata.name, "Olive IGP");
     assert.equal(body.metadata.image, "https://cdn.example/x.png");
+    assert.equal(body.metadata.dmrv.provider, "silvi");
+    assert.equal(body.metadata.dmrv.projectId, "28");
     assert.equal(puts.length, 1);
     assert.equal(puts[0].input.ContentType, "application/json");
+  });
+
+  it("400 rejects invalid dMRV metadata", async () => {
+    const { app } = await makeApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/metadata",
+      payload: {
+        name: "Olive IGP",
+        description: "Sicilian olive grove",
+        dmrv: { provider: "silvi", projectId: "abc" },
+      },
+    });
+    assert.equal(res.statusCode, 400);
   });
 });
 

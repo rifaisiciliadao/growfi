@@ -1,3 +1,5 @@
+import type { CampaignDmrvMetadata } from "@/lib/dmrv";
+
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
 
 export interface UploadResult {
@@ -34,6 +36,7 @@ export interface MetadataResult {
     location: string;
     productType: string;
     image: string | null;
+    dmrv?: CampaignDmrvMetadata | null;
     createdAt: number;
   };
 }
@@ -44,6 +47,7 @@ export async function uploadMetadata(input: {
   location: string;
   productType: string;
   imageUrl?: string;
+  dmrv?: CampaignDmrvMetadata | null;
 }): Promise<MetadataResult> {
   const res = await fetch(`${BACKEND_URL}/api/metadata`, {
     method: "POST",

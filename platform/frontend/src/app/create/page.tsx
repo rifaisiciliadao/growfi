@@ -33,6 +33,11 @@ import {
   richTextToPlainText,
 } from "@/lib/richText";
 import {
+  buildSilviDmrvMetadata,
+  isValidSilviProjectId,
+  normalizeSilviProjectId,
+} from "@/lib/dmrv";
+import {
   DIRECT_ISSUE_MODULE_KIND,
   DIRECT_ISSUE_MODULE_TYPE,
   PROCEEDS_SPLIT_MODULE_KIND,
@@ -70,6 +75,7 @@ type FormData = {
   assetTypeCustom: string;
   productType: string;
   productTypeCustom: string;
+  dmrvProjectId: string;
   imageFile: File | null;
   imagePreview: string | null;
   pricePerToken: string;
@@ -157,6 +163,7 @@ export default function CreateCampaign() {
     assetTypeCustom: "",
     productType: "",
     productTypeCustom: "",
+    dmrvProjectId: "",
     imageFile: null,
     imagePreview: null,
     pricePerToken: "",
@@ -241,6 +248,14 @@ export default function CreateCampaign() {
   const update = <K extends keyof FormData>(key: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [key]: value }));
   };
+  const updateDmrvProjectId = (value: string) => {
+    update("dmrvProjectId", normalizeSilviProjectId(value));
+  };
+  const syncDmrvProjectIdInput = (input: HTMLInputElement) => {
+    const normalized = normalizeSilviProjectId(input.value);
+    if (input.value !== normalized) input.value = normalized;
+    update("dmrvProjectId", normalized);
+  };
 
   const selectedAssetType =
     form.assetType === CUSTOM_KEY ? form.assetTypeCustom.trim() : form.assetType;
@@ -299,7 +314,9 @@ export default function CreateCampaign() {
           form.assetTypeCustom.trim().length > 0) &&
         form.productType.length > 0 &&
         (form.productType !== CUSTOM_KEY ||
-          form.productTypeCustom.trim().length > 0)
+          form.productTypeCustom.trim().length > 0) &&
+        (!form.dmrvProjectId.trim() ||
+          isValidSilviProjectId(form.dmrvProjectId))
       );
     }
     if (step === 2) {
@@ -467,6 +484,7 @@ export default function CreateCampaign() {
         location: form.location,
         productType: encodedProductType,
         imageUrl: image.url,
+        dmrv: buildSilviDmrvMetadata(form.dmrvProjectId),
       });
 
       // ── 2. createCampaign: wallet sign → on-chain confirmation ────────
@@ -983,6 +1001,37 @@ export default function CreateCampaign() {
                   placeholder={t("step1.locationPlaceholder")}
                   className="input"
                 />
+              </Field>
+
+              <Field
+                label={t("step1.dmrvProjectId")}
+                hint={t("step1.dmrvProjectIdHint")}
+              >
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={form.dmrvProjectId}
+                  onBeforeInput={(e) => {
+                    const data = (e.nativeEvent as InputEvent).data;
+                    if (data && /\D/.test(data)) e.preventDefault();
+                  }}
+                  onChange={(e) => syncDmrvProjectIdInput(e.currentTarget)}
+                  onInput={(e) => syncDmrvProjectIdInput(e.currentTarget)}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    updateDmrvProjectId(e.clipboardData.getData("text"));
+                  }}
+                  placeholder={t("step1.dmrvProjectIdPlaceholder")}
+                  className="input"
+                />
+                {form.dmrvProjectId.trim() &&
+                  isValidSilviProjectId(form.dmrvProjectId) && (
+                    <p className="mt-2 text-xs text-primary font-medium">
+                      {t("step1.dmrvProjectPreview", {
+                        projectId: form.dmrvProjectId,
+                      })}
+                    </p>
+                  )}
               </Field>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1594,6 +1643,16 @@ export default function CreateCampaign() {
                 <ReviewRow
                   label={t("step5.rows.productType")}
                   value={productReviewLabel}
+                />
+                <ReviewRow
+                  label={t("step5.rows.dmrv")}
+                  value={
+                    form.dmrvProjectId.trim()
+                      ? t("step5.rows.dmrvProject", {
+                          projectId: form.dmrvProjectId,
+                        })
+                      : t("step5.rows.notEnabled")
+                  }
                 />
               </ReviewSection>
 

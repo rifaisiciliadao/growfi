@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useReadContracts } from "wagmi";
 import type { Address } from "viem";
 import { abis, CHAIN_ID, getAddresses } from "@/contracts";
+import type { CampaignDmrvMetadata } from "@/lib/dmrv";
 
 const WAGMI_CHAIN_ID = CHAIN_ID as never;
 
@@ -11,6 +12,7 @@ export interface CampaignMetadata {
   location: string;
   productType: string;
   image: string | null;
+  dmrv?: CampaignDmrvMetadata | null;
   createdAt: number;
 }
 

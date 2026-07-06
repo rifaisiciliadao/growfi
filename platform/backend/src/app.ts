@@ -66,6 +66,15 @@ export interface AppDeps {
   socialOnchainAttester?: SocialOnchainAttester | null;
 }
 
+interface CampaignDmrvMetadata {
+  provider: "silvi";
+  projectId: string;
+  url: string;
+  embedUrl: string;
+  geojsonUrl: string;
+  linkedAt: number;
+}
+
 const ALLOWED_IMAGE_TYPES: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/jpg": "jpg",
@@ -268,6 +277,50 @@ function booleanFromEnv(value: string | undefined, defaultValue: boolean): boole
   return /^(1|true|yes|on)$/i.test(value);
 }
 
+function parseCampaignDmrv(raw: unknown): CampaignDmrvMetadata | null | Error {
+  if (raw === undefined || raw === null || raw === "") return null;
+  if (typeof raw !== "object") return new Error("Invalid dMRV metadata");
+  const value = raw as Partial<CampaignDmrvMetadata>;
+  if (value.provider !== "silvi") {
+    return new Error("Unsupported dMRV provider");
+  }
+  const projectId = String(value.projectId ?? "").trim();
+  if (!/^[1-9]\d*$/.test(projectId)) {
+    return new Error("Invalid dMRV project id");
+  }
+  const url = parsePublicUrl(value.url, "Invalid dMRV URL");
+  if (url instanceof Error) return url;
+  const embedUrl = parsePublicUrl(value.embedUrl, "Invalid dMRV embed URL");
+  if (embedUrl instanceof Error) return embedUrl;
+  const geojsonUrl = parsePublicUrl(value.geojsonUrl, "Invalid dMRV GeoJSON URL");
+  if (geojsonUrl instanceof Error) return geojsonUrl;
+  const linkedAt =
+    typeof value.linkedAt === "number" && Number.isFinite(value.linkedAt)
+      ? value.linkedAt
+      : Date.now();
+  return {
+    provider: "silvi",
+    projectId,
+    url,
+    embedUrl,
+    geojsonUrl,
+    linkedAt,
+  };
+}
+
+function parsePublicUrl(value: unknown, message: string): string | Error {
+  const raw = String(value ?? "").trim();
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      return new Error(message);
+    }
+    return url.toString();
+  } catch {
+    return new Error(message);
+  }
+}
+
 export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const { config, putObject } = deps;
   const snapshot = deps.snapshot ?? snapshotSeasonYield;
@@ -397,6 +450,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       location: string;
       productType: string;
       imageUrl?: string;
+      dmrv?: CampaignDmrvMetadata | null;
     };
   }>("/api/metadata", async (req, reply) => {
     if (!config.hasCredentials) {
@@ -407,6 +461,10 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     if (!name || !description) {
       return reply.status(400).send({ error: "name e description obbligatori" });
     }
+    const dmrv = parseCampaignDmrv(req.body.dmrv);
+    if (dmrv instanceof Error) {
+      return reply.status(400).send({ error: dmrv.message });
+    }
 
     const metadata = {
       name,
@@ -414,6 +472,7 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       location,
       productType,
       image: imageUrl ?? null,
+      ...(dmrv ? { dmrv } : {}),
       createdAt: Date.now(),
     };
 

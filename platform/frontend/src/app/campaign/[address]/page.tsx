@@ -31,6 +31,7 @@ import { useProducerProfile, useResolvedCampaignMetadata } from "@/lib/metadata"
 import { productUnitLabel } from "@/lib/productUnit";
 import { useLocalizedProductDisplay } from "@/lib/useLocalizedProductDisplay";
 import { uploadImage, uploadMetadata } from "@/lib/api";
+import type { CampaignDmrvMetadata } from "@/lib/dmrv";
 import { BuyPanel } from "@/components/BuyPanel";
 import { StakingPanel } from "@/components/StakingPanel";
 import { HarvestPanel } from "@/components/HarvestPanel";
@@ -442,6 +443,7 @@ export default function CampaignDetail({
             <InfoPanel
               address={address}
               description={metadata?.description}
+              dmrv={metadata?.dmrv}
               location={displayLocation}
               createdAtBlock={sgCampaign?.createdAtBlock}
             />
@@ -954,11 +956,13 @@ function FundingProgressCard({
 function InfoPanel({
   address,
   description,
+  dmrv,
   location,
   createdAtBlock,
 }: {
   address: string;
   description?: string;
+  dmrv?: CampaignDmrvMetadata | null;
   location?: string;
   createdAtBlock?: string;
 }) {
@@ -974,6 +978,8 @@ function InfoPanel({
           <p className="text-on-surface font-medium">📍 {location}</p>
         )}
         <p>{t("tokens")}</p>
+
+        {dmrv && <DmrvReportPanel dmrv={dmrv} />}
 
         <div className="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/15">
           <div>
@@ -997,6 +1003,71 @@ function InfoPanel({
         </div>
       </div>
     </div>
+  );
+}
+
+function DmrvReportPanel({ dmrv }: { dmrv: CampaignDmrvMetadata }) {
+  const t = useTranslations("detail.info");
+  const [loaded, setLoaded] = useState(false);
+
+  return (
+    <section className="pt-5 border-t border-outline-variant/15">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1">
+            {t("dmrvEyebrow")}
+          </p>
+          <h3 className="text-base font-bold text-on-surface">
+            {t("dmrvTitle", { projectId: dmrv.projectId })}
+          </h3>
+          <p className="mt-1 text-xs text-on-surface-variant leading-relaxed">
+            {t("dmrvBody")}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2 shrink-0">
+          <a
+            href={dmrv.url}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center rounded-full bg-primary text-on-primary px-4 py-2 text-xs font-semibold hover:opacity-90 transition"
+          >
+            {t("dmrvOpen")}
+          </a>
+          <a
+            href={dmrv.geojsonUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center justify-center rounded-full border border-outline-variant/30 px-4 py-2 text-xs font-semibold text-on-surface hover:bg-surface-container-high transition"
+          >
+            {t("dmrvGeojson")}
+          </a>
+        </div>
+      </div>
+
+      <div className="relative overflow-hidden rounded-xl border border-outline-variant/20 bg-surface-container-low h-[420px] md:h-[560px]">
+        {!loaded && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-surface-container-low">
+            <div className="flex flex-col items-center gap-3 text-center px-6">
+              <Spinner />
+              <p className="text-sm font-semibold text-on-surface">
+                {t("dmrvLoading")}
+              </p>
+              <p className="text-xs text-on-surface-variant max-w-sm">
+                {t("dmrvLoadingHint")}
+              </p>
+            </div>
+          </div>
+        )}
+        <iframe
+          src={dmrv.embedUrl}
+          title={t("dmrvIframeTitle", { projectId: dmrv.projectId })}
+          className="absolute inset-0 h-full w-full border-0"
+          loading="lazy"
+          sandbox="allow-scripts allow-same-origin allow-popups"
+          onLoad={() => setLoaded(true)}
+        />
+      </div>
+    </section>
   );
 }
 
