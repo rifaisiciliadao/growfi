@@ -8,6 +8,8 @@ import { Partners } from "@/components/landing/Partners";
 import { LandingFooter } from "@/components/landing/LandingFooter";
 import { InviteModal } from "@/components/landing/InviteModal";
 
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   return (
     <div className="landing-root relative min-h-screen w-full">
