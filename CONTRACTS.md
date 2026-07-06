@@ -11,12 +11,10 @@
 > the only enabled payment/stablecoin policy at launch. UGraph serves the
 > mainnet index at `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
 >
-> Production Safe: `0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9`
-> (threshold 2; owners `0x2DC077446182287f1d79847074893CDb559D41f4` and
-> `0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1`). Current FeeSplitter
-> operations receiver is still the deployer `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55`
-> until it is moved on-chain. Factory/protocol owner remains the deployer during
-> the launch phase.
+> No production Safe address is currently configured in the admin app. Current
+> FeeSplitter operations receiver is still the deployer
+> `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` until it is moved on-chain.
+> Factory/protocol owner remains the deployer during the launch phase.
 
 ### Core v4 + GROW
 

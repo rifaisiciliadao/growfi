@@ -57,11 +57,8 @@ for future attaches, but already-attached campaign module slots are unchanged.
 Existing campaigns migrate only if their producer detaches/reattaches the
 ecommerce module through the web app.
 
-Mainnet production Safe:
-`0x1f91747D9BF455842CD7f1555f52Ae581F6AA9b9` (threshold 2; owners
-`0x2DC077446182287f1d79847074893CDb559D41f4` and
-`0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1`). The live FeeSplitter
-`operations()` receiver is still the deployer
+No production Safe address is currently configured in the admin app. The live
+FeeSplitter `operations()` receiver is still the deployer
 `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` until it is moved on-chain. The
 deployer remains the factory/protocol owner for the launch phase. **No campaigns
 were seeded at mainnet launch**; producers create them manually through the app.

@@ -18,7 +18,6 @@ const MAINNET_CHAIN_ID = "0x1";
 const USDC_DECIMALS = 6;
 
 const DEFAULT_ADMIN_WALLETS = [
-  "0x1f91747d9bf455842cd7f1555f52ae581f6aa9b9",
   "0x2dc077446182287f1d79847074893cdb559d41f4",
   "0xe6c30ad5aee7ad22e9f39d51d67667587cdd05a1",
   "0xa229f3c9851e26fc9ea18157b88cd1cda6f90e55",
@@ -34,9 +33,6 @@ const CONFIG = {
   treasury:
     (import.meta.env.VITE_GROW_TREASURY as Hex | undefined) ??
     "0x47ea5710ea674f5D653A59c96836E2d20288813a",
-  operations:
-    (import.meta.env.VITE_OPERATIONS_SAFE as Hex | undefined) ??
-    "0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55",
   explorer: import.meta.env.VITE_EXPLORER_URL ?? "https://etherscan.io",
   adminWallets: (
     (import.meta.env.VITE_ADMIN_WALLETS as string | undefined)?.split(",") ??
@@ -211,22 +207,24 @@ export function App() {
 
       const [
         splitterBalance,
-        operationsBalance,
-        treasuryBalance,
         preview,
         treasuryBps,
         contractTreasury,
         contractOperations,
       ] = await Promise.all([
         ethCall(CONFIG.usdc, balanceOfData(CONFIG.feeSplitter)),
-        ethCall(CONFIG.usdc, balanceOfData(CONFIG.operations)),
-        ethCall(CONFIG.usdc, balanceOfData(CONFIG.treasury)),
         ethCall(CONFIG.feeSplitter, previewFlushData(CONFIG.usdc)),
         ethCall(CONFIG.feeSplitter, "0x4dc10ea1"),
         ethCall(CONFIG.feeSplitter, "0x61d027b3"),
         ethCall(CONFIG.feeSplitter, "0x8b33b4b2"),
       ]);
       const [previewBalance, toTreasury, toOperations] = decodePreview(preview);
+      const contractTreasuryAddress = decodeAddress(contractTreasury);
+      const contractOperationsAddress = decodeAddress(contractOperations);
+      const [operationsBalance, treasuryBalance] = await Promise.all([
+        ethCall(CONFIG.usdc, balanceOfData(contractOperationsAddress)),
+        ethCall(CONFIG.usdc, balanceOfData(contractTreasuryAddress)),
+      ]);
       setSnapshot({
         splitterBalance: hexToBigInt(splitterBalance),
         operationsBalance: hexToBigInt(operationsBalance),
@@ -235,8 +233,8 @@ export function App() {
         toTreasury,
         toOperations,
         treasuryBps: hexToBigInt(treasuryBps),
-        contractTreasury: decodeAddress(contractTreasury),
-        contractOperations: decodeAddress(contractOperations),
+        contractTreasury: contractTreasuryAddress,
+        contractOperations: contractOperationsAddress,
       });
     } catch (err) {
       setError((err as Error).message || "Read failed");
@@ -334,7 +332,7 @@ export function App() {
           <Row label="FeeSplitter" value={CONFIG.feeSplitter} />
           <Row label="Token" value={CONFIG.usdc} />
           <Row label="Treasury" value={snapshot?.contractTreasury ?? CONFIG.treasury} />
-          <Row label="Operations" value={snapshot?.contractOperations ?? CONFIG.operations} />
+          <Row label="Operations" value={snapshot?.contractOperations ?? "-"} />
           <Row
             label="Split"
             value={
