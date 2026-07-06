@@ -21,6 +21,11 @@ import {
 import { registerNotificationRoutes } from "./notifications.js";
 import { registerEcommerceRoutes } from "./ecommerce.js";
 import {
+  buildSpacesProjectUpdateReactionStore,
+  type ProjectUpdateReactionStore,
+} from "./project-updates-store.js";
+import { registerProjectUpdateRoutes } from "./project-updates.js";
+import {
   buildSocialOnchainAttester,
   registerSocialVerificationRoutes,
   type SocialOnchainAttester,
@@ -41,6 +46,7 @@ export interface AppDeps {
   snapshot?: (campaign: Address, seasonId: bigint) => Promise<SnapshotResult>;
   inviteStore?: InviteStore;
   notificationStore?: NotificationStore;
+  projectUpdateReactionStore?: ProjectUpdateReactionStore;
   email?: EmailSender;
   adminKey?: string | null;
   adminNotifyEmail?: string | null;
@@ -100,6 +106,14 @@ export function buildDefaultDeps(): AppDeps {
     prefix: process.env.NOTIFICATIONS_OBJECT_PREFIX || "notifications",
   });
 
+  const projectUpdateReactionStore = buildSpacesProjectUpdateReactionStore({
+    s3,
+    bucket,
+    prefix:
+      process.env.PROJECT_UPDATE_REACTIONS_OBJECT_PREFIX ||
+      "project-update-reactions",
+  });
+
   const resendKey = process.env.RESEND_API_KEY;
   const fromAddr = process.env.RESEND_FROM || "GrowFi <hello@growfi.app>";
   const appUrl = process.env.APP_URL || "https://growfi.app";
@@ -133,6 +147,7 @@ export function buildDefaultDeps(): AppDeps {
     snapshot: snapshotSeasonYield,
     inviteStore,
     notificationStore,
+    projectUpdateReactionStore,
     email,
     adminKey: process.env.ADMIN_API_KEY || null,
     adminNotifyEmail: process.env.ADMIN_NOTIFY_EMAIL || "hey@growfi.dev",
@@ -311,6 +326,15 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     email: deps.email,
     appUrl: deps.appUrl ?? "https://growfi.app",
   });
+
+  if (deps.projectUpdateReactionStore) {
+    registerProjectUpdateRoutes(app, {
+      config,
+      putObject,
+      reactionStore: deps.projectUpdateReactionStore,
+      signatureMaxAgeMs: deps.signatureMaxAgeMs,
+    });
+  }
 
   registerSocialVerificationRoutes(app, {
     secret: deps.socialChallengeSecret,

@@ -323,6 +323,7 @@
     "tabs": {
       "invest": "Investi",
       "shop": "Negozio",
+      "updates": "Update",
       "stake": "Staking",
       "harvest": "Raccolto",
       "info": "Info",
@@ -570,6 +571,17 @@
       "defaultProductName": "Prodotto della campagna",
       "defaultProductDescription": "Prodotto riservato dal negozio della campagna."
     },
+    "updates": {
+      "title": "Project updates",
+      "subtitle": "Update on-chain del coltivatore, con media off-chain e reazioni firmate dal wallet.",
+      "loading": "Caricamento update…",
+      "empty": "Ancora nessun project update.",
+      "untitled": "Project update",
+      "proof": "Prova on-chain",
+      "metadataMissing": "I metadata dell'update non sono ancora disponibili.",
+      "react": "Reagisci",
+      "connectToReact": "Connetti il wallet per reagire"
+    },
     "productiveAsset": {
       "title": "Impegno del coltivatore",
       "annualHarvest": "Raccolto annuo",
@@ -745,6 +757,7 @@
       "parametersTitle": "Parametri campagna",
       "proceedsSplitTitle": "Split proceeds vendita",
       "directIssueTitle": "Direct issue",
+      "projectUpdatesTitle": "Project updates",
       "repaymentTitle": "Modulo rimborso",
       "debtRestructuringTitle": "Modulo ristrutturazione debito",
       "ecommerceTitle": "Modulo commercio",
@@ -846,6 +859,34 @@
         "invalidAmount": "Inserisci un importo maggiore di zero.",
         "invalidState": "La direct issue è disponibile solo in Funding o Active.",
         "exceedsMaxCap": "Questa issue supererebbe il max cap della campagna."
+      },
+      "projectUpdates": {
+        "statusEnabled": "Project updates attivi",
+        "statusDisabled": "Project updates collegati, disabilitati",
+        "statusMissing": "Project updates non collegati",
+        "missingHint": "Collega il modulo approvato per pubblicare update on-chain del progetto.",
+        "attachedHint": "Pubblica una prova firmata on-chain mantenendo contenuto e media in metadata pubblici.",
+        "titleLabel": "Titolo",
+        "titlePlaceholder": "Ispezione raccolto, milestone impianto, report campo…",
+        "bodyLabel": "Update",
+        "bodyPlaceholder": "Scrivi l'update per investitori e holder.",
+        "imageLabel": "Immagine opzionale",
+        "attachPostCta": "Collega + pubblica",
+        "postCta": "Pubblica update",
+        "uploadingImage": "Carico immagine…",
+        "uploadingMetadata": "Carico metadata…",
+        "attachSig": "Firma collegamento…",
+        "attachChain": "Collego…",
+        "enableSig": "Firma abilitazione…",
+        "enableChain": "Abilito…",
+        "postSig": "Firma update…",
+        "postChain": "Pubblico on-chain…",
+        "posted": "Project update pubblicato.",
+        "failed": "Project update fallito",
+        "implementation": "Implementazione:",
+        "implMissing": "Implementazione project updates non configurata per questa rete.",
+        "titleRequired": "Inserisci un titolo.",
+        "bodyRequired": "Scrivi il corpo dell'update."
       },
       "repayment": {
         "statusEnabled": "Rimborso attivo",

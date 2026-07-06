@@ -323,6 +323,7 @@
     "tabs": {
       "invest": "Invertir",
       "shop": "Tienda",
+      "updates": "Actualizaciones",
       "stake": "Staking",
       "harvest": "Cosecha",
       "info": "Info",
@@ -570,6 +571,17 @@
       "defaultProductName": "Producto de la campaña",
       "defaultProductDescription": "Producto reservado desde la tienda de la campaña."
     },
+    "updates": {
+      "title": "Actualizaciones del proyecto",
+      "subtitle": "Actualizaciones on-chain del cultivador, con contenido rico off-chain y reacciones firmadas con wallet.",
+      "loading": "Cargando actualizaciones…",
+      "empty": "Aún no hay actualizaciones del proyecto.",
+      "untitled": "Actualización del proyecto",
+      "proof": "Prueba on-chain",
+      "metadataMissing": "Los metadata de la actualización aún no están disponibles.",
+      "react": "Reaccionar",
+      "connectToReact": "Conecta tu wallet para reaccionar"
+    },
     "productiveAsset": {
       "title": "Compromiso del cultivador",
       "annualHarvest": "Cosecha anual",
@@ -745,6 +757,7 @@
       "parametersTitle": "Parámetros de la campaña",
       "proceedsSplitTitle": "Sale proceeds split",
       "directIssueTitle": "Direct issue",
+      "projectUpdatesTitle": "Actualizaciones del proyecto",
       "repaymentTitle": "Módulo de reembolso",
       "debtRestructuringTitle": "Módulo de reestructuración de deuda",
       "ecommerceTitle": "Módulo de comercio",
@@ -846,6 +859,34 @@
         "invalidAmount": "Enter an amount greater than zero.",
         "invalidState": "Direct issue is available only during Funding or Active.",
         "exceedsMaxCap": "This issue would exceed the campaign max cap."
+      },
+      "projectUpdates": {
+        "statusEnabled": "Project updates enabled",
+        "statusDisabled": "Project updates attached, disabled",
+        "statusMissing": "Project updates not attached",
+        "missingHint": "Attach the approved module to publish on-chain project updates.",
+        "attachedHint": "Publish signed update evidence on-chain while keeping rich content in public metadata.",
+        "titleLabel": "Título",
+        "titlePlaceholder": "Inspección de cosecha, hito de plantación, reporte de campo…",
+        "bodyLabel": "Actualización",
+        "bodyPlaceholder": "Escribe la actualización para inversores y holders.",
+        "imageLabel": "Imagen opcional",
+        "attachPostCta": "Attach + publicar",
+        "postCta": "Publicar actualización",
+        "uploadingImage": "Subiendo imagen…",
+        "uploadingMetadata": "Subiendo metadata…",
+        "attachSig": "Sign attach…",
+        "attachChain": "Attaching…",
+        "enableSig": "Sign enable…",
+        "enableChain": "Enabling…",
+        "postSig": "Firma actualización…",
+        "postChain": "Publicando on-chain…",
+        "posted": "Actualización publicada.",
+        "failed": "Actualización fallida",
+        "implementation": "Implementación:",
+        "implMissing": "Project updates implementation not configured for this chain.",
+        "titleRequired": "Ingresa un título.",
+        "bodyRequired": "Escribe el cuerpo de la actualización."
       },
       "repayment": {
         "statusEnabled": "Reembolso activo",

@@ -70,6 +70,8 @@ export function handleCampaignCreated(event: CampaignCreatedEvent): void {
   campaign.treasuryTokensOut = BigInt.zero();
   campaign.directIssuedTokens = BigInt.zero();
   campaign.directIssueCount = 0;
+  campaign.projectUpdateCount = 0;
+  campaign.visibleProjectUpdateCount = 0;
   campaign.proceedsSplitActive = false;
   campaign.proceedsSplitPromoterBps = 0;
   campaign.proceedsSplitProducerBps = 0;

@@ -43,13 +43,28 @@ import {
   directIssueModuleAbi,
   proceedsSplitModuleAbi,
 } from "@/contracts/proceeds";
+import {
+  PROJECT_UPDATES_MODULE_KIND,
+  PROJECT_UPDATES_MODULE_TYPE,
+  projectUpdatesModuleAbi,
+} from "@/contracts/projectUpdates";
 import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
-import { fetchSnapshot, generateMerkleTree } from "@/lib/api";
+import {
+  fetchSnapshot,
+  generateMerkleTree,
+  uploadImage,
+  uploadProjectUpdateMetadata,
+} from "@/lib/api";
 import { EcommerceModuleManager } from "./EcommerceShopPanel";
 import { Spinner } from "./Spinner";
+import { RichTextEditor } from "./RichTextEditor";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
 import { addressUrl, txUrl } from "@/lib/explorer";
+import {
+  hasRichTextContent,
+  prepareRichTextForStorage,
+} from "@/lib/richText";
 
 const campaignAbi = abis.Campaign as never;
 const WAGMI_CHAIN_ID = CHAIN_ID as never;
@@ -183,6 +198,13 @@ export function ProducerManagePanel({
           campaignAddress={campaignAddress}
           currentState={currentState}
         />
+      </section>
+
+      <section className="mt-8">
+        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
+          {t("projectUpdatesTitle")}
+        </h3>
+        <ProjectUpdatesManager campaignAddress={campaignAddress} />
       </section>
 
       <section className="mt-8">
@@ -866,6 +888,277 @@ function DirectIssueManager({
       >
         {pending && <Spinner size={14} />}
         {issueLabel}
+      </button>
+
+      {!hasImpl && (
+        <p className="text-xs text-error">{t("implMissing")}</p>
+      )}
+
+      {attachedImpl !== zeroAddress && (
+        <div className="text-[11px] text-on-surface-variant">
+          {t("implementation")}{" "}
+          <a
+            href={addressUrl(attachedImpl)}
+            target="_blank"
+            rel="noreferrer"
+            className="font-mono underline decoration-dotted underline-offset-2"
+          >
+            {attachedImpl.slice(0, 6)}…{attachedImpl.slice(-4)}
+          </a>
+        </div>
+      )}
+
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-error">
+          {error}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ProjectUpdatesManager({
+  campaignAddress,
+}: {
+  campaignAddress: Address;
+}) {
+  const t = useTranslations("detail.manage.projectUpdates");
+  const notify = useTxNotify();
+  const { projectUpdatesImpl } = getAddresses();
+  const { writeContractAsync } = useWriteContract();
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState<
+    | null
+    | {
+        kind: "image" | "metadata" | "attach" | "enable" | "post";
+        phase?: "sig" | "chain";
+      }
+  >(null);
+
+  const { data: slotData, refetch: refetchSlot } = useReadContract({
+    address: campaignAddress,
+    abi: campaignModuleHostAbi,
+    functionName: "moduleSlot",
+    args: [PROJECT_UPDATES_MODULE_TYPE],
+    query: { refetchInterval: 20_000 },
+  });
+
+  const slot = slotData as
+    | readonly [Address, `0x${string}`, string, bigint, boolean]
+    | undefined;
+  const attachedImpl = slot?.[0] ?? zeroAddress;
+  const isAttached = attachedImpl !== zeroAddress;
+  const moduleEnabled = Boolean(slot?.[4]);
+  const hasImpl = Boolean(projectUpdatesImpl && projectUpdatesImpl !== zeroAddress);
+  const busy = pending !== null;
+  const canPost =
+    title.trim().length > 0 &&
+    hasRichTextContent(body) &&
+    !busy &&
+    hasImpl;
+
+  const handleImage = (file: File) => {
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const ensureModule = async () => {
+    if (!projectUpdatesImpl || projectUpdatesImpl === zeroAddress) {
+      throw new Error(t("implMissing"));
+    }
+    if (!isAttached) {
+      setPending({ kind: "attach", phase: "sig" });
+      const attachHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "attachModule",
+        args: [
+          PROJECT_UPDATES_MODULE_TYPE,
+          PROJECT_UPDATES_MODULE_KIND,
+          projectUpdatesImpl,
+          "growfi://project-updates/v1",
+        ],
+      });
+      setPending({ kind: "attach", phase: "chain" });
+      const receipt = await waitForTx(attachHash);
+      if (receipt.status !== "success") throw new Error("attachModule reverted");
+      return;
+    }
+    if (!moduleEnabled) {
+      setPending({ kind: "enable", phase: "sig" });
+      const enableHash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "setModuleEnabled",
+        args: [PROJECT_UPDATES_MODULE_TYPE, true],
+      });
+      setPending({ kind: "enable", phase: "chain" });
+      const receipt = await waitForTx(enableHash);
+      if (receipt.status !== "success") throw new Error("setModuleEnabled reverted");
+    }
+  };
+
+  const handlePost = async () => {
+    setError(null);
+    try {
+      if (!title.trim()) throw new Error(t("titleRequired"));
+      if (!hasRichTextContent(body)) throw new Error(t("bodyRequired"));
+
+      let imageUrl: string | null = null;
+      if (imageFile) {
+        setPending({ kind: "image" });
+        const uploaded = await uploadImage(imageFile);
+        imageUrl = uploaded.url;
+      }
+
+      setPending({ kind: "metadata" });
+      const metadata = await uploadProjectUpdateMetadata({
+        campaign: campaignAddress,
+        title: title.trim(),
+        body: prepareRichTextForStorage(body),
+        imageUrl,
+      });
+
+      await ensureModule();
+
+      setPending({ kind: "post", phase: "sig" });
+      const hash = await writeContractAsync({
+        address: campaignAddress,
+        abi: projectUpdatesModuleAbi,
+        functionName: "postProjectUpdate",
+        args: [metadata.url, metadata.contentHash],
+      });
+      setPending({ kind: "post", phase: "chain" });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") {
+        throw new Error("postProjectUpdate reverted");
+      }
+
+      setTitle("");
+      setBody("");
+      setImageFile(null);
+      setImagePreview(null);
+      await refetchSlot();
+      notify.success(t("posted"), hash);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!/user (rejected|denied)/i.test(msg)) setError(msg);
+      notify.error(t("failed"), err);
+    } finally {
+      setPending(null);
+    }
+  };
+
+  const label =
+    pending?.kind === "image"
+      ? t("uploadingImage")
+      : pending?.kind === "metadata"
+        ? t("uploadingMetadata")
+        : pending?.kind === "attach"
+          ? pending.phase === "sig"
+            ? t("attachSig")
+            : t("attachChain")
+          : pending?.kind === "enable"
+            ? pending.phase === "sig"
+              ? t("enableSig")
+              : t("enableChain")
+            : pending?.kind === "post"
+              ? pending.phase === "sig"
+                ? t("postSig")
+                : t("postChain")
+              : isAttached
+                ? t("postCta")
+                : t("attachPostCta");
+
+  return (
+    <div className="space-y-4 rounded-xl border border-outline-variant/15 bg-surface-container-low p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span
+              className={`h-2 w-2 rounded-full ${
+                isAttached
+                  ? moduleEnabled
+                    ? "bg-emerald-500"
+                    : "bg-amber-500"
+                  : "bg-outline"
+              }`}
+            />
+            <div className="text-sm font-bold text-on-surface">
+              {isAttached
+                ? moduleEnabled
+                  ? t("statusEnabled")
+                  : t("statusDisabled")
+                : t("statusMissing")}
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-on-surface-variant">
+            {isAttached ? t("attachedHint") : t("missingHint")}
+          </p>
+        </div>
+      </div>
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+          {t("titleLabel")}
+        </span>
+        <input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          disabled={busy || !hasImpl}
+          maxLength={140}
+          placeholder={t("titlePlaceholder")}
+          className="w-full rounded-lg border border-outline-variant/15 bg-surface-container px-3 py-2 text-sm outline-none focus:border-primary/50 disabled:opacity-50"
+        />
+      </label>
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+          {t("bodyLabel")}
+        </span>
+        <RichTextEditor
+          value={body}
+          onChange={setBody}
+          placeholder={t("bodyPlaceholder")}
+          disabled={busy || !hasImpl}
+        />
+      </label>
+
+      <label className="block">
+        <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+          {t("imageLabel")}
+        </span>
+        <input
+          type="file"
+          accept="image/*"
+          disabled={busy || !hasImpl}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImage(file);
+          }}
+          className="text-sm"
+        />
+        {imagePreview && (
+          <img
+            src={imagePreview}
+            alt=""
+            className="mt-2 h-24 rounded-lg object-cover border border-outline-variant/15"
+          />
+        )}
+      </label>
+
+      <button
+        onClick={handlePost}
+        disabled={!canPost}
+        className="regen-gradient h-10 rounded-full px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+      >
+        {pending && <Spinner size={14} />}
+        {label}
       </button>
 
       {!hasImpl && (

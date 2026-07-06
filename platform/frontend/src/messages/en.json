@@ -323,6 +323,7 @@
     "tabs": {
       "invest": "Invest",
       "shop": "Shop",
+      "updates": "Updates",
       "stake": "Staking",
       "harvest": "Harvest",
       "info": "Info",
@@ -570,6 +571,17 @@
       "defaultProductName": "Campaign product",
       "defaultProductDescription": "Product reserved from the campaign shop."
     },
+    "updates": {
+      "title": "Project updates",
+      "subtitle": "On-chain updates from the grower, with off-chain rich media and wallet-signed reactions.",
+      "loading": "Loading updates…",
+      "empty": "No project updates yet.",
+      "untitled": "Project update",
+      "proof": "On-chain proof",
+      "metadataMissing": "Update metadata is not available yet.",
+      "react": "React",
+      "connectToReact": "Connect wallet to react"
+    },
     "productiveAsset": {
       "title": "Grower commitment",
       "annualHarvest": "Annual harvest",
@@ -745,6 +757,7 @@
       "parametersTitle": "Campaign parameters",
       "proceedsSplitTitle": "Sale proceeds split",
       "directIssueTitle": "Direct issue",
+      "projectUpdatesTitle": "Project updates",
       "repaymentTitle": "Repayment module",
       "debtRestructuringTitle": "Debt restructuring module",
       "ecommerceTitle": "Ecommerce module",
@@ -846,6 +859,34 @@
         "invalidAmount": "Enter an amount greater than zero.",
         "invalidState": "Direct issue is available only during Funding or Active.",
         "exceedsMaxCap": "This issue would exceed the campaign max cap."
+      },
+      "projectUpdates": {
+        "statusEnabled": "Project updates enabled",
+        "statusDisabled": "Project updates attached, disabled",
+        "statusMissing": "Project updates not attached",
+        "missingHint": "Attach the approved module to publish on-chain project updates.",
+        "attachedHint": "Publish signed update evidence on-chain while keeping rich content in public metadata.",
+        "titleLabel": "Title",
+        "titlePlaceholder": "Harvest inspection, planting milestone, field report…",
+        "bodyLabel": "Update",
+        "bodyPlaceholder": "Write the update for investors and holders.",
+        "imageLabel": "Optional image",
+        "attachPostCta": "Attach + publish",
+        "postCta": "Publish update",
+        "uploadingImage": "Uploading image…",
+        "uploadingMetadata": "Uploading metadata…",
+        "attachSig": "Sign attach…",
+        "attachChain": "Attaching…",
+        "enableSig": "Sign enable…",
+        "enableChain": "Enabling…",
+        "postSig": "Sign update…",
+        "postChain": "Publishing on-chain…",
+        "posted": "Project update published.",
+        "failed": "Project update failed",
+        "implementation": "Implementation:",
+        "implMissing": "Project updates implementation not configured for this chain.",
+        "titleRequired": "Enter a title.",
+        "bodyRequired": "Write the update body."
       },
       "repayment": {
         "statusEnabled": "Repayment enabled",

@@ -323,6 +323,7 @@
     "tabs": {
       "invest": "Investir",
       "shop": "Loja",
+      "updates": "Atualizações",
       "stake": "Staking",
       "harvest": "Colheita",
       "info": "Informações",
@@ -570,6 +571,17 @@
       "defaultProductName": "Produto da campanha",
       "defaultProductDescription": "Produto reservado da loja da campanha."
     },
+    "updates": {
+      "title": "Atualizações do projeto",
+      "subtitle": "Atualizações on-chain do produtor, com mídia off-chain e reações assinadas pela wallet.",
+      "loading": "Carregando atualizações…",
+      "empty": "Ainda não há atualizações do projeto.",
+      "untitled": "Atualização do projeto",
+      "proof": "Prova on-chain",
+      "metadataMissing": "Os metadata da atualização ainda não estão disponíveis.",
+      "react": "Reagir",
+      "connectToReact": "Conecte a wallet para reagir"
+    },
     "productiveAsset": {
       "title": "Compromisso do produtor",
       "annualHarvest": "Colheita anual",
@@ -745,6 +757,7 @@
       "parametersTitle": "Parâmetros da campanha",
       "proceedsSplitTitle": "Sale proceeds split",
       "directIssueTitle": "Direct issue",
+      "projectUpdatesTitle": "Atualizações do projeto",
       "repaymentTitle": "Módulo de repayment",
       "debtRestructuringTitle": "Módulo de reestruturação de dívida",
       "ecommerceTitle": "Módulo de ecommerce",
@@ -846,6 +859,34 @@
         "invalidAmount": "Enter an amount greater than zero.",
         "invalidState": "Direct issue is available only during Funding or Active.",
         "exceedsMaxCap": "This issue would exceed the campaign max cap."
+      },
+      "projectUpdates": {
+        "statusEnabled": "Project updates enabled",
+        "statusDisabled": "Project updates attached, disabled",
+        "statusMissing": "Project updates not attached",
+        "missingHint": "Attach the approved module to publish on-chain project updates.",
+        "attachedHint": "Publish signed update evidence on-chain while keeping rich content in public metadata.",
+        "titleLabel": "Título",
+        "titlePlaceholder": "Inspeção da colheita, marco de plantio, relatório de campo…",
+        "bodyLabel": "Atualização",
+        "bodyPlaceholder": "Escreva a atualização para investidores e holders.",
+        "imageLabel": "Imagem opcional",
+        "attachPostCta": "Attach + publicar",
+        "postCta": "Publicar atualização",
+        "uploadingImage": "Enviando imagem…",
+        "uploadingMetadata": "Enviando metadata…",
+        "attachSig": "Sign attach…",
+        "attachChain": "Attaching…",
+        "enableSig": "Sign enable…",
+        "enableChain": "Enabling…",
+        "postSig": "Assinar atualização…",
+        "postChain": "Publicando on-chain…",
+        "posted": "Atualização publicada.",
+        "failed": "Falha na atualização",
+        "implementation": "Implementação:",
+        "implMissing": "Project updates implementation not configured for this chain.",
+        "titleRequired": "Informe um título.",
+        "bodyRequired": "Escreva o corpo da atualização."
       },
       "repayment": {
         "statusEnabled": "Repayment ativado",

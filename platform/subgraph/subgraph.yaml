@@ -245,6 +245,7 @@ templates:
         - EcommerceStore
         - EcommerceSku
         - EcommerceOrder
+        - ProjectUpdate
         - User
       abis:
         - name: Campaign
@@ -322,6 +323,10 @@ templates:
           handler: handleEcommerceSkuActiveSet
         - event: EcommerceOrderPlaced(indexed uint256,indexed address,indexed bytes32,uint256,uint256,uint256,uint256,uint256,bytes32)
           handler: handleEcommerceOrderPlaced
+        - event: ProjectUpdatePosted(indexed uint256,indexed address,string,bytes32)
+          handler: handleProjectUpdatePosted
+        - event: ProjectUpdateHidden(indexed uint256,indexed address,bool)
+          handler: handleProjectUpdateHidden
 
   - kind: ethereum/contract
     name: StakingVault

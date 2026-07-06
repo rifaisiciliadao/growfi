@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import type { ProjectUpdateMetadata } from "@/lib/api";
 
 const DEFAULT_SUBGRAPH_URL =
   process.env.NEXT_PUBLIC_CHAIN_ID === "11155111"
@@ -80,6 +81,8 @@ export interface SubgraphCampaign {
   metadataURI: string | null;
   metadataVersion: string;
   hidden: boolean;
+  projectUpdateCount?: number;
+  visibleProjectUpdateCount?: number;
   repaymentPool?: {
     initialized: boolean;
     bonusPerCt: string;
@@ -126,6 +129,8 @@ const CAMPAIGN_FIELDS = `
   metadataURI
   metadataVersion
   hidden
+  projectUpdateCount
+  visibleProjectUpdateCount
   repaymentPool {
     initialized
     bonusPerCt
@@ -138,6 +143,71 @@ const CAMPAIGN_FIELDS = `
     lastUpdatedAt
   }
 `;
+
+export interface SubgraphProjectUpdate {
+  id: string;
+  campaign: { id: string };
+  updateId: string;
+  author: string;
+  metadataURI: string;
+  contentHash: string;
+  hidden: boolean;
+  postedAt: string;
+  updatedAt: string;
+  block: string;
+  transactionHash: string;
+  metadata: ProjectUpdateMetadata | null;
+}
+
+export function useProjectUpdates(campaign: string | undefined) {
+  return useQuery({
+    queryKey: ["subgraph", "project-updates", campaign?.toLowerCase()],
+    enabled: !!campaign,
+    queryFn: async (): Promise<SubgraphProjectUpdate[]> => {
+      if (!campaign) return [];
+      const data = await gql<{
+        projectUpdates: Array<Omit<SubgraphProjectUpdate, "metadata">>;
+      }>(
+        `
+        query ProjectUpdates($campaign: String!) {
+          projectUpdates(
+            where: { campaign: $campaign, hidden: false }
+            first: 100
+            orderBy: postedAt
+            orderDirection: desc
+          ) {
+            id
+            campaign { id }
+            updateId
+            author
+            metadataURI
+            contentHash
+            hidden
+            postedAt
+            updatedAt
+            block
+            transactionHash
+          }
+        }
+        `,
+        { campaign: campaign.toLowerCase() },
+      );
+      return Promise.all(
+        data.projectUpdates.map(async (update) => {
+          try {
+            const res = await fetch(update.metadataURI, { cache: "force-cache" });
+            if (!res.ok) return { ...update, metadata: null };
+            const metadata = (await res.json()) as ProjectUpdateMetadata;
+            return { ...update, metadata };
+          } catch {
+            return { ...update, metadata: null };
+          }
+        }),
+      );
+    },
+    refetchInterval: 15_000,
+  });
+}
 
 /**
  * Public discovery list. By default excludes campaigns the factory owner has

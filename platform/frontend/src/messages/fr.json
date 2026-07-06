@@ -323,6 +323,7 @@
     "tabs": {
       "invest": "Investir",
       "shop": "Boutique",
+      "updates": "Mises à jour",
       "stake": "Staking",
       "harvest": "Récolte",
       "info": "Infos",
@@ -570,6 +571,17 @@
       "defaultProductName": "Produit de la campagne",
       "defaultProductDescription": "Produit réservé depuis la boutique de la campagne."
     },
+    "updates": {
+      "title": "Mises à jour du projet",
+      "subtitle": "Mises à jour on-chain du cultivateur, avec contenu riche off-chain et réactions signées par wallet.",
+      "loading": "Chargement des mises à jour…",
+      "empty": "Aucune mise à jour du projet pour l'instant.",
+      "untitled": "Mise à jour du projet",
+      "proof": "Preuve on-chain",
+      "metadataMissing": "Les metadata de la mise à jour ne sont pas encore disponibles.",
+      "react": "Réagir",
+      "connectToReact": "Connecte ton wallet pour réagir"
+    },
     "productiveAsset": {
       "title": "Engagement du cultivateur",
       "annualHarvest": "Récolte annuelle",
@@ -745,6 +757,7 @@
       "parametersTitle": "Paramètres de la campagne",
       "proceedsSplitTitle": "Sale proceeds split",
       "directIssueTitle": "Direct issue",
+      "projectUpdatesTitle": "Mises à jour du projet",
       "repaymentTitle": "Module de remboursement",
       "debtRestructuringTitle": "Module restructuration de dette",
       "ecommerceTitle": "Module commerce",
@@ -846,6 +859,34 @@
         "invalidAmount": "Enter an amount greater than zero.",
         "invalidState": "Direct issue is available only during Funding or Active.",
         "exceedsMaxCap": "This issue would exceed the campaign max cap."
+      },
+      "projectUpdates": {
+        "statusEnabled": "Project updates enabled",
+        "statusDisabled": "Project updates attached, disabled",
+        "statusMissing": "Project updates not attached",
+        "missingHint": "Attach the approved module to publish on-chain project updates.",
+        "attachedHint": "Publish signed update evidence on-chain while keeping rich content in public metadata.",
+        "titleLabel": "Titre",
+        "titlePlaceholder": "Inspection de récolte, étape de plantation, rapport terrain…",
+        "bodyLabel": "Mise à jour",
+        "bodyPlaceholder": "Écris la mise à jour pour les investisseurs et holders.",
+        "imageLabel": "Image optionnelle",
+        "attachPostCta": "Attach + publier",
+        "postCta": "Publier la mise à jour",
+        "uploadingImage": "Upload image…",
+        "uploadingMetadata": "Upload metadata…",
+        "attachSig": "Sign attach…",
+        "attachChain": "Attaching…",
+        "enableSig": "Sign enable…",
+        "enableChain": "Enabling…",
+        "postSig": "Signer la mise à jour…",
+        "postChain": "Publication on-chain…",
+        "posted": "Mise à jour publiée.",
+        "failed": "Échec de la mise à jour",
+        "implementation": "Implémentation:",
+        "implMissing": "Project updates implementation not configured for this chain.",
+        "titleRequired": "Saisis un titre.",
+        "bodyRequired": "Écris le corps de la mise à jour."
       },
       "repayment": {
         "statusEnabled": "Remboursement actif",

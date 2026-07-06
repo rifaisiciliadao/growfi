@@ -59,6 +59,42 @@ export async function uploadMetadata(input: {
   return res.json();
 }
 
+export interface ProjectUpdateMetadata {
+  schema: "growfi.project-update.v1";
+  campaign: string;
+  title: string;
+  body: string;
+  image: string | null;
+  createdAt: number;
+}
+
+export interface ProjectUpdateMetadataResult {
+  key: string;
+  url: string;
+  contentHash: `0x${string}`;
+  metadata: ProjectUpdateMetadata;
+}
+
+export async function uploadProjectUpdateMetadata(input: {
+  campaign: string;
+  title: string;
+  body: string;
+  imageUrl?: string | null;
+}): Promise<ProjectUpdateMetadataResult> {
+  const res = await fetch(`${BACKEND_URL}/api/project-updates/metadata`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ error: "Project update upload failed" }));
+    throw new Error(err.error || "Project update upload failed");
+  }
+  return res.json();
+}
+
 export interface ProducerProfileResult {
   key: string;
   url: string;
@@ -413,6 +449,93 @@ export function buildNotificationMessage(p: {
     `Issued: ${p.issuedAt}`,
     `Nonce: ${p.nonce}`,
   ].join("\n");
+}
+
+export const PROJECT_UPDATE_REACTION_EMOJIS = [
+  "👍",
+  "👏",
+  "🌱",
+  "💚",
+  "🔥",
+  "👀",
+] as const;
+
+export interface ProjectUpdateReactionSummary {
+  campaign: string;
+  updateId: string;
+  counts: Record<string, number>;
+  total: number;
+  viewerEmoji: string | null;
+  updatedAt: number;
+}
+
+export async function getProjectUpdateReactions(input: {
+  campaign: string;
+  updateId: string | number | bigint;
+  address?: string;
+}): Promise<ProjectUpdateReactionSummary> {
+  const qs = input.address
+    ? `?address=${encodeURIComponent(input.address)}`
+    : "";
+  const res = await fetch(
+    `${BACKEND_URL}/api/project-updates/${input.campaign}/${String(input.updateId)}/reactions${qs}`,
+  );
+  if (!res.ok) {
+    return {
+      campaign: input.campaign.toLowerCase(),
+      updateId: String(input.updateId),
+      counts: {},
+      total: 0,
+      viewerEmoji: null,
+      updatedAt: 0,
+    };
+  }
+  return res.json();
+}
+
+export function buildProjectUpdateReactionMessage(p: {
+  campaign: string;
+  updateId: string;
+  address: string;
+  emoji: string;
+  issuedAt: string;
+  nonce: string;
+}): string {
+  return [
+    "GrowFi project update reaction",
+    `Campaign: ${p.campaign.toLowerCase()}`,
+    `Update ID: ${p.updateId}`,
+    `Address: ${p.address.toLowerCase()}`,
+    `Emoji: ${p.emoji || "remove"}`,
+    `Issued: ${p.issuedAt}`,
+    `Nonce: ${p.nonce}`,
+  ].join("\n");
+}
+
+export async function saveProjectUpdateReaction(input: {
+  campaign: string;
+  updateId: string;
+  address: string;
+  emoji: string;
+  issuedAt: string;
+  nonce: string;
+  signature: `0x${string}`;
+}): Promise<ProjectUpdateReactionSummary & { ok: boolean }> {
+  const res = await fetch(
+    `${BACKEND_URL}/api/project-updates/${input.campaign}/${input.updateId}/reactions/me`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
+  if (!res.ok) {
+    const err = await res
+      .json()
+      .catch(() => ({ error: "Failed to save reaction" }));
+    throw new Error(err.error || "Failed to save reaction");
+  }
+  return res.json();
 }
 
 export async function uploadProducerProfile(input: {

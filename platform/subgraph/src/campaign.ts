@@ -36,6 +36,8 @@ import {
   EcommerceSkuSet as EcommerceSkuSetEvent,
   EcommerceSkuActiveSet as EcommerceSkuActiveSetEvent,
   EcommerceOrderPlaced as EcommerceOrderPlacedEvent,
+  ProjectUpdatePosted as ProjectUpdatePostedEvent,
+  ProjectUpdateHidden as ProjectUpdateHiddenEvent,
 } from "../generated/templates/Campaign/Campaign";
 import {
   Campaign,
@@ -53,6 +55,7 @@ import {
   EcommerceStore,
   EcommerceSku,
   EcommerceOrder,
+  ProjectUpdate,
 } from "../generated/schema";
 
 const PROTOCOL_ID = Bytes.fromUTF8("protocol");
@@ -91,6 +94,10 @@ function moduleId(campaign: Bytes, moduleType: Bytes): Bytes {
 
 function skuEntityId(campaign: Bytes, skuId: Bytes): Bytes {
   return campaign.concat(skuId);
+}
+
+function projectUpdateId(campaign: Bytes, updateId: BigInt): Bytes {
+  return campaign.concatI32(updateId.toI32());
 }
 
 function loadOrCreateRepaymentPool(
@@ -691,4 +698,54 @@ export function handleEcommerceOrderPlaced(
     sku.updatedAt = event.block.timestamp;
     sku.save();
   }
+}
+
+export function handleProjectUpdatePosted(
+  event: ProjectUpdatePostedEvent,
+): void {
+  const campaign = Campaign.load(event.address);
+  if (campaign == null) return;
+
+  const update = new ProjectUpdate(
+    projectUpdateId(event.address, event.params.updateId),
+  );
+  update.campaign = event.address;
+  update.updateId = event.params.updateId;
+  update.author = event.params.author;
+  update.metadataURI = event.params.metadataURI;
+  update.contentHash = event.params.contentHash;
+  update.hidden = false;
+  update.postedAt = event.block.timestamp;
+  update.updatedAt = event.block.timestamp;
+  update.block = event.block.number;
+  update.transactionHash = event.transaction.hash;
+  update.save();
+
+  campaign.projectUpdateCount = campaign.projectUpdateCount + 1;
+  campaign.visibleProjectUpdateCount = campaign.visibleProjectUpdateCount + 1;
+  campaign.save();
+}
+
+export function handleProjectUpdateHidden(
+  event: ProjectUpdateHiddenEvent,
+): void {
+  const campaign = Campaign.load(event.address);
+  if (campaign == null) return;
+
+  const update = ProjectUpdate.load(
+    projectUpdateId(event.address, event.params.updateId),
+  );
+  if (update == null) return;
+  if (update.hidden == event.params.hidden) return;
+
+  update.hidden = event.params.hidden;
+  update.updatedAt = event.block.timestamp;
+  update.save();
+
+  if (event.params.hidden) {
+    campaign.visibleProjectUpdateCount = campaign.visibleProjectUpdateCount - 1;
+  } else {
+    campaign.visibleProjectUpdateCount = campaign.visibleProjectUpdateCount + 1;
+  }
+  campaign.save();
 }

@@ -35,6 +35,8 @@ type Campaign @entity(immutable: false) {
   treasuryTokensOut: BigInt!              # raw CampaignTokens (18-dec) minted to the Treasury
   directIssuedTokens: BigInt!             # raw CampaignTokens issued off-chain via DirectIssueModule
   directIssueCount: Int!
+  projectUpdateCount: Int!
+  visibleProjectUpdateCount: Int!
   proceedsSplitActive: Boolean!
   proceedsSplitPromoter: Bytes
   proceedsSplitPromoterBps: Int!
@@ -67,6 +69,7 @@ type Campaign @entity(immutable: false) {
   ecommerceStore: EcommerceStore @derivedFrom(field: "campaign")
   ecommerceSkus: [EcommerceSku!]! @derivedFrom(field: "campaign")
   ecommerceOrders: [EcommerceOrder!]! @derivedFrom(field: "campaign")
+  projectUpdates: [ProjectUpdate!]! @derivedFrom(field: "campaign")
 }
 
 # v4 — module attached to a Campaign via the host's fallback router.
@@ -161,6 +164,22 @@ type EcommerceOrder @entity(immutable: true) {
   producerNet: BigInt!
   orderHash: Bytes!
   timestamp: BigInt!
+  block: BigInt!
+  transactionHash: Bytes!
+}
+
+# v4 — Producer-authored on-chain project update evidence. Rich body/media stay
+# off-chain at metadataURI; contentHash is keccak256 of the canonical JSON.
+type ProjectUpdate @entity(immutable: false) {
+  id: Bytes!                              # campaign + updateId
+  campaign: Campaign!
+  updateId: BigInt!
+  author: Bytes!
+  metadataURI: String!
+  contentHash: Bytes!
+  hidden: Boolean!
+  postedAt: BigInt!
+  updatedAt: BigInt!
   block: BigInt!
   transactionHash: Bytes!
 }

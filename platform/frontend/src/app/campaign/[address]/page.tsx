@@ -41,6 +41,7 @@ import { SellBackPanel } from "@/components/SellBackPanel";
 import { RepaymentPanel } from "@/components/RepaymentPanel";
 import { EcommerceShopPanel } from "@/components/EcommerceShopPanel";
 import { InvestorList } from "@/components/InvestorList";
+import { ProjectUpdatesPanel } from "@/components/ProjectUpdatesPanel";
 import { ActivateCtaBanner } from "@/components/ActivateCtaBanner";
 import { SocialVerificationBadge } from "@/components/SocialVerificationBadge";
 import { Spinner } from "@/components/Spinner";
@@ -58,8 +59,8 @@ const PAYMENT_TOKEN_FALLBACK_ADDRESSES = getEnabledTokens(CHAIN_ID).map(
   (token) => resolveTokenAddress(token, CHAIN_ID),
 );
 
-type Tab = "invest" | "shop" | "stake" | "harvest" | "info" | "manage";
-const TAB_KEYS: Tab[] = ["invest", "stake", "harvest", "info"];
+type Tab = "invest" | "shop" | "updates" | "stake" | "harvest" | "info" | "manage";
+const TAB_KEYS: Tab[] = ["invest", "updates", "stake", "harvest", "info"];
 // Manage tab is appended dynamically when the connected wallet is the producer.
 
 export default function CampaignDetail({
@@ -74,7 +75,7 @@ export default function CampaignDetail({
   const searchParams = useSearchParams();
   const initialTab = ((): Tab => {
     const q = searchParams.get("tab");
-    return q === "shop" || q === "stake" || q === "harvest" || q === "info" || q === "manage"
+    return q === "shop" || q === "updates" || q === "stake" || q === "harvest" || q === "info" || q === "manage"
       ? q
       : "invest";
   })();
@@ -82,7 +83,7 @@ export default function CampaignDetail({
 
   useEffect(() => {
     const q = searchParams.get("tab");
-    if (q === "shop" || q === "stake" || q === "harvest" || q === "info" || q === "manage") {
+    if (q === "shop" || q === "updates" || q === "stake" || q === "harvest" || q === "info" || q === "manage") {
       setActiveTab(q as Tab);
     }
   }, [searchParams]);
@@ -409,6 +410,10 @@ export default function CampaignDetail({
               currentState={stateIdx}
               campaignName={displayName}
             />
+          )}
+
+          {effectiveTab === "updates" && hasCampaignData && (
+            <ProjectUpdatesPanel campaignAddress={campaignAddress} />
           )}
 
           {effectiveTab === "stake" &&
