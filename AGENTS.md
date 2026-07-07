@@ -193,7 +193,7 @@ static `LandingBackdrop` image treatment; do not reintroduce an autoplay video
 background without an explicit request. The shared header/logo sizing should
 stay consistent across the homepage and internal routes. The `/feed` page shows
 both protocol activity and project updates, with client-side pagination over
-the latest indexed events.
+the latest indexed events plus separate top backer and top staker sidebars.
 
 User-facing proceeds split copy calls the receiver a "project partner". Keep the
 internal ABI/subgraph names (`promoter`, `promoterBps`,
