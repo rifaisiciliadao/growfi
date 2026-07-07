@@ -2,7 +2,7 @@
 
 ## Ethereum Mainnet (chain 1) — v4 audit-hardened launch
 
-**Deployed:** 2026-06-16 · **Audit implementation patch:** block `25328977` · **Deployer/owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` · **Factory deploy block:** `25328624`
+**Deployed:** 2026-06-16 · **Audit implementation patch:** block `25328977` · **Latest module rollout:** block `25480106` · **Deployer/owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` · **Factory deploy block:** `25328624`
 
 > Fresh full v4 deploy on Ethereum Mainnet, followed before any campaign
 > existed by an implementation-pointer patch to the merged 2026-06
@@ -15,6 +15,10 @@
 > FeeSplitter operations receiver is still the deployer
 > `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` until it is moved on-chain.
 > Factory/protocol owner remains the deployer during the launch phase.
+>
+> Latest module rollout registered the split, direct issue, and project update
+> modules, then updated the default SaleClassic and Collateral implementations
+> for newly created campaigns. Existing campaign module slots were not replaced.
 
 ### Core v4 + GROW
 
@@ -27,11 +31,14 @@
 | StakingVault impl | [`0xA9Ae8956B199A2f8a087584cA3B7cf9Fca5066D1`](https://etherscan.io/address/0xA9Ae8956B199A2f8a087584cA3B7cf9Fca5066D1) |
 | YieldToken impl | [`0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20`](https://etherscan.io/address/0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20) |
 | HarvestManager impl | [`0x852987797CCB62735B9880CEaE3251e948bcBA50`](https://etherscan.io/address/0x852987797CCB62735B9880CEaE3251e948bcBA50) |
-| SaleClassicModule impl | [`0x82dea032125FB620E104BF4837c3dEE43C52444E`](https://etherscan.io/address/0x82dea032125FB620E104BF4837c3dEE43C52444E) |
-| CollateralModule impl | [`0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6`](https://etherscan.io/address/0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6) |
+| SaleClassicModule impl | [`0xa1f01A442359E596D8a98aa7c5595016CeBe193a`](https://etherscan.io/address/0xa1f01A442359E596D8a98aa7c5595016CeBe193a) |
+| CollateralModule impl | [`0x1e6D432813BA9B4477ACCC87788bf461c1A55B02`](https://etherscan.io/address/0x1e6D432813BA9B4477ACCC87788bf461c1A55B02) |
 | RepaymentModule impl | [`0x34326058FD53c773Fd7E67a20af17d73ae4d793A`](https://etherscan.io/address/0x34326058FD53c773Fd7E67a20af17d73ae4d793A) |
 | EcommerceModule impl | [`0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c`](https://etherscan.io/address/0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c) |
 | DebtRestructuringModule impl | [`0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a`](https://etherscan.io/address/0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a) |
+| CampaignProceedsSplitModule impl | [`0xb57073310911a902b082d4A7d0CD7dA26e27775D`](https://etherscan.io/address/0xb57073310911a902b082d4A7d0CD7dA26e27775D) |
+| DirectIssueModule impl | [`0x236855EAFb5fbe864E3557f8b621950cBB46d816`](https://etherscan.io/address/0x236855EAFb5fbe864E3557f8b621950cBB46d816) |
+| ProjectUpdatesModule impl | [`0x43FD484D3e12071a53181c3727354530230bEFCf`](https://etherscan.io/address/0x43FD484D3e12071a53181c3727354530230bEFCf) |
 | CampaignRegistry | [`0xA3AEb95Ff4555E266aa1366000204a75FaD4142B`](https://etherscan.io/address/0xA3AEb95Ff4555E266aa1366000204a75FaD4142B) |
 | ProducerRegistry | [`0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5`](https://etherscan.io/address/0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5) |
 | GrowfiToken (proxy) | [`0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725`](https://etherscan.io/address/0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725) |
@@ -62,6 +69,9 @@ NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5
 NEXT_PUBLIC_REPAYMENT_IMPL=0x34326058FD53c773Fd7E67a20af17d73ae4d793A
 NEXT_PUBLIC_ECOMMERCE_IMPL=0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c
 NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL=0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a
+NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL=0xb57073310911a902b082d4A7d0CD7dA26e27775D
+NEXT_PUBLIC_DIRECT_ISSUE_IMPL=0x236855EAFb5fbe864E3557f8b621950cBB46d816
+NEXT_PUBLIC_PROJECT_UPDATES_IMPL=0x43FD484D3e12071a53181c3727354530230bEFCf
 NEXT_PUBLIC_GROW_TOKEN=0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725
 NEXT_PUBLIC_GROW_TREASURY=0x47ea5710ea674f5D653A59c96836E2d20288813a
 NEXT_PUBLIC_GROW_MINTER=0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B

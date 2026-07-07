@@ -261,6 +261,8 @@ templates:
           handler: handleCollateralLocked
         - event: CollateralShortfallSettled(indexed uint256,uint256,uint256)
           handler: handleCollateralShortfallSettled
+        - event: HarvestCommitmentUpdated(indexed address,uint256,uint256,uint256,uint256,uint256,uint256,uint256,uint256)
+          handler: handleHarvestCommitmentUpdated
         - event: AcceptedTokenAdded(indexed address,string,uint8,uint256,address)
           handler: handleAcceptedTokenAdded
         - event: AcceptedTokenRemoved(indexed address)

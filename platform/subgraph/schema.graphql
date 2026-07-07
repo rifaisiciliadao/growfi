@@ -18,7 +18,7 @@ type Campaign @entity(immutable: false) {
   seasonDuration: BigInt!
   minProductClaim: BigInt!
 
-  # v3 — productive-asset commitments (set at creation, immutable).
+  # v3 — productive-asset commitments (set at creation, producer-adjustable before collateral is locked).
   expectedAnnualHarvestUsd: BigInt!
   expectedAnnualHarvest: BigInt!
   firstHarvestYear: BigInt!

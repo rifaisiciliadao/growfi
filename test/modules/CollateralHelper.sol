@@ -5,10 +5,11 @@ import {CollateralModule} from "../../src/modules/CollateralModule.sol";
 
 library CollateralHelper {
     function selectors() internal pure returns (bytes4[] memory s) {
-        s = new bytes4[](13);
+        s = new bytes4[](14);
         uint256 i;
         s[i++] = CollateralModule.initializeCollateral.selector;
         s[i++] = CollateralModule.lockCollateral.selector;
+        s[i++] = CollateralModule.updateHarvestCommitment.selector;
         s[i++] = CollateralModule.depositUSDC.selector;
         s[i++] = CollateralModule.settleSeasonShortfall.selector;
         s[i++] = CollateralModule.maxCollateral.selector;

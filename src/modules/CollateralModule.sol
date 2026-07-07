@@ -67,12 +67,25 @@ contract CollateralModule {
     error NotInCoverage();
     error TransferAmountMismatch();
     error DebtRestructuringStarted();
+    error InvalidHarvestCommitment();
+    error CollateralAlreadyLocked();
 
     // ------------------------------------------------------------------
     // Events
     // ------------------------------------------------------------------
 
     event CollateralInitialized(
+        uint256 expectedAnnualHarvestUsd,
+        uint256 expectedAnnualHarvest,
+        uint256 firstHarvestYear,
+        uint256 coverageHarvests
+    );
+    event HarvestCommitmentUpdated(
+        address indexed producer,
+        uint256 previousExpectedAnnualHarvestUsd,
+        uint256 previousExpectedAnnualHarvest,
+        uint256 previousFirstHarvestYear,
+        uint256 previousCoverageHarvests,
         uint256 expectedAnnualHarvestUsd,
         uint256 expectedAnnualHarvest,
         uint256 firstHarvestYear,
@@ -158,6 +171,42 @@ contract CollateralModule {
         if (balanceAfter - balanceBefore != amount) revert TransferAmountMismatch();
         s.collateralLocked += amount;
         emit CollateralLocked(msg.sender, amount, s.collateralLocked);
+    }
+
+    function updateHarvestCommitment(InitParams calldata p) external onlyProducer {
+        if (p.expectedAnnualHarvestUsd == 0 || p.expectedAnnualHarvest == 0 || p.firstHarvestYear == 0) {
+            revert InvalidHarvestCommitment();
+        }
+
+        Layout storage s = _s();
+        CampaignStorage.Layout storage cs = CampaignStorage.layout();
+        if (cs.paused || cs.factoryPaused) revert InvalidState();
+        if (cs.state != uint8(CampaignStorage.State.Funding) && cs.state != uint8(CampaignStorage.State.Active)) {
+            revert InvalidState();
+        }
+        if (s.collateralLocked != 0 || s.collateralDrawn != 0) revert CollateralAlreadyLocked();
+
+        uint256 previousExpectedAnnualHarvestUsd = s.expectedAnnualHarvestUsd;
+        uint256 previousExpectedAnnualHarvest = s.expectedAnnualHarvest;
+        uint256 previousFirstHarvestYear = s.firstHarvestYear;
+        uint256 previousCoverageHarvests = s.coverageHarvests;
+
+        s.expectedAnnualHarvestUsd = p.expectedAnnualHarvestUsd;
+        s.expectedAnnualHarvest = p.expectedAnnualHarvest;
+        s.firstHarvestYear = p.firstHarvestYear;
+        s.coverageHarvests = p.coverageHarvests;
+
+        emit HarvestCommitmentUpdated(
+            msg.sender,
+            previousExpectedAnnualHarvestUsd,
+            previousExpectedAnnualHarvest,
+            previousFirstHarvestYear,
+            previousCoverageHarvests,
+            p.expectedAnnualHarvestUsd,
+            p.expectedAnnualHarvest,
+            p.firstHarvestYear,
+            p.coverageHarvests
+        );
     }
 
     function depositUSDC(uint256 seasonId, uint256 walletCap) external onlyProducer nonReentrant {

@@ -107,6 +107,64 @@ contract CollateralModuleTest is Test {
         assertEq(CollateralModule(payable(address(campaign))).collateralDrawn(), 0);
     }
 
+    function test_updateHarvestCommitment_happyPath() public {
+        CollateralModule.InitParams memory next = CollateralModule.InitParams({
+            expectedAnnualHarvestUsd: 10_000e18,
+            expectedAnnualHarvest: 10_000e18,
+            firstHarvestYear: 2027,
+            coverageHarvests: 0
+        });
+
+        vm.prank(producer);
+        CollateralModule(payable(address(campaign))).updateHarvestCommitment(next);
+
+        assertEq(CollateralModule(payable(address(campaign))).expectedAnnualHarvestUsd(), 10_000e18);
+        assertEq(CollateralModule(payable(address(campaign))).expectedAnnualHarvest(), 10_000e18);
+        assertEq(CollateralModule(payable(address(campaign))).firstHarvestYear(), 2027);
+        assertEq(CollateralModule(payable(address(campaign))).coverageHarvests(), 0);
+        assertEq(CollateralModule(payable(address(campaign))).maxCollateral(), 0);
+    }
+
+    function test_updateHarvestCommitment_revertsIfNotProducer() public {
+        CollateralModule.InitParams memory next = CollateralModule.InitParams({
+            expectedAnnualHarvestUsd: 10_000e18,
+            expectedAnnualHarvest: 10_000e18,
+            firstHarvestYear: 2027,
+            coverageHarvests: 0
+        });
+
+        vm.prank(randomCaller);
+        vm.expectRevert(CollateralModule.OnlyProducer.selector);
+        CollateralModule(payable(address(campaign))).updateHarvestCommitment(next);
+    }
+
+    function test_updateHarvestCommitment_revertsIfCollateralLocked() public {
+        vm.startPrank(producer);
+        usdc.approve(address(campaign), 5_000e6);
+        CollateralModule(payable(address(campaign))).lockCollateral(5_000e6);
+
+        CollateralModule.InitParams memory next = CollateralModule.InitParams({
+            expectedAnnualHarvestUsd: 10_000e18,
+            expectedAnnualHarvest: 10_000e18,
+            firstHarvestYear: 2027,
+            coverageHarvests: 0
+        });
+
+        vm.expectRevert(CollateralModule.CollateralAlreadyLocked.selector);
+        CollateralModule(payable(address(campaign))).updateHarvestCommitment(next);
+        vm.stopPrank();
+    }
+
+    function test_updateHarvestCommitment_revertsInvalidCommitment() public {
+        CollateralModule.InitParams memory next = CollateralModule.InitParams({
+            expectedAnnualHarvestUsd: 0, expectedAnnualHarvest: 10_000e18, firstHarvestYear: 2027, coverageHarvests: 0
+        });
+
+        vm.prank(producer);
+        vm.expectRevert(CollateralModule.InvalidHarvestCommitment.selector);
+        CollateralModule(payable(address(campaign))).updateHarvestCommitment(next);
+    }
+
     // ------------------------------------------------------------------
     // Lock
     // ------------------------------------------------------------------

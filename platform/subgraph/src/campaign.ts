@@ -18,6 +18,7 @@ import {
   MaxCapUpdated as MaxCapUpdatedEvent,
   CollateralLocked as CollateralLockedEvent,
   CollateralShortfallSettled as CollateralShortfallSettledEvent,
+  HarvestCommitmentUpdated as HarvestCommitmentUpdatedEvent,
   ModuleAttached as ModuleAttachedEvent,
   ModuleDetached as ModuleDetachedEvent,
   ModuleEnabledSet as ModuleEnabledSetEvent,
@@ -259,6 +260,18 @@ export function handleCollateralShortfallSettled(
   const c = Campaign.load(event.address);
   if (c == null) return;
   c.collateralDrawn = event.params.newCollateralDrawn;
+  c.save();
+}
+
+export function handleHarvestCommitmentUpdated(
+  event: HarvestCommitmentUpdatedEvent,
+): void {
+  const c = Campaign.load(event.address);
+  if (c == null) return;
+  c.expectedAnnualHarvestUsd = event.params.expectedAnnualHarvestUsd;
+  c.expectedAnnualHarvest = event.params.expectedAnnualHarvest;
+  c.firstHarvestYear = event.params.firstHarvestYear;
+  c.coverageHarvests = event.params.coverageHarvests;
   c.save();
 }
 
