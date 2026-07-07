@@ -56,6 +56,15 @@ EcommerceModule impl `0x881883a9fd1c296D198EE9937603E8Eec1AE5E70` is revoked
 for future attaches, but already-attached campaign module slots are unchanged.
 Existing campaigns migrate only if their producer detaches/reattaches the
 ecommerce module through the web app.
+On 2026-07-07 the mainnet factory registry was extended for the latest module
+set. New default implementations for future campaigns are SaleClassicModule
+`0xa1f01A442359E596D8a98aa7c5595016CeBe193a` and CollateralModule
+`0x1e6D432813BA9B4477ACCC87788bf461c1A55B02`; optional implementations
+approved in the factory are CampaignProceedsSplitModule
+`0xb57073310911a902b082d4A7d0CD7dA26e27775D`, DirectIssueModule
+`0x236855EAFb5fbe864E3557f8b621950cBB46d816`, and ProjectUpdatesModule
+`0x43FD484D3e12071a53181c3727354530230bEFCf`. Existing campaign module slots
+were intentionally not migrated by the rollout script.
 
 No production Safe address is currently configured in the admin app. The live
 FeeSplitter `operations()` receiver is still the deployer
@@ -160,7 +169,7 @@ The pre-v4 monolithic `Campaign` is gone. The host `GrowfiCampaign` is now a min
 
 Eight modules live today:
 - **`SaleClassicModule`** (default, auto-attached on `createCampaign`): buy/sellback/buyback/funding-fee/setMaxCap/setMinCap/setFundingDeadline/activate. Slot: `keccak256("growfi.module.sale.classic.v1")`. Storage `pricePerToken` is offset 0, `currentSupply` is offset 6 — read by other modules via assembly. **`buy` does NOT auto-activate** (2026-06 hardening): the producer activates explicitly via `activateCampaign()` once `currentSupply >= minCap`.
-- **`CollateralModule`** (default, auto-attached): `lockCollateral`, `depositUSDC` (v3.4 pay-from-collateral-first), `settleSeasonShortfall`. Slot: `keccak256("growfi.module.collateral.v1")`.
+- **`CollateralModule`** (default, auto-attached): `lockCollateral`, `depositUSDC` (v3.4 pay-from-collateral-first), `settleSeasonShortfall`, and `updateHarvestCommitment` for producer edits before collateral is locked/drawn. Slot: `keccak256("growfi.module.collateral.v1")`.
 - **`RepaymentModule`** (whitelisted, producer-attaches post-create): producer-funded early-exit pool. Gross payout per CT = on-chain `pricePerToken` (immutable principal floor) + producer-set `bonusPerCt` (additive markup). Redemptions take a fixed 2% protocol fee on the gross payout (`PROTOCOL_FEE_BPS = 200`), transfer that fee to `protocolFeeRecipient`, and pay the net amount to the holder. `redeem(amount, unstakeFirst[])` force-unstakes the caller's own positions (owner-checked — would be a griefing vector otherwise), mints accrued YIELD to owner (no forfeit, no penalty), burns the redeemed CT, and drains the producer-funded pool by the gross amount. `claimedByUser` tracks net holder payouts. The view selector is named `repaymentProtocolFeeBps()` to avoid selector collision with Ecommerce's `protocolFeeBps()`. Slot: `keccak256("growfi.module.repayment.v1")`.
 - **`EcommerceModule`** (whitelisted, producer-attaches post-create): on-chain SKU sales for physical products. The module stores SKU price/inventory/active flags and order records on-chain, while rich catalog/order metadata lives as static JSON in DO Spaces. `buySku(bytes32 skuId, uint256 quantity, bytes32 orderHash)` pulls USDC, records the order, sends protocol fee + producer net, and can automatically credit a configured percentage of the sale into an active Repayment pool via `creditPoolFromCampaign`. Since the 2026-06-19 upgrade, ecommerce protocol fee is factory-owned and global (`CampaignFactory.ecommerceProtocolFeeBps()`, default/current `300` bps, max `1000` bps); producers cannot choose it. `initializeEcommerceByProducer(uint16,string)` keeps the legacy ABI but ignores the fee argument, and `setProtocolFeeBps(uint16)` always reverts `ProtocolFeeFixed`. `repaymentAllocationBps` is still producer-set and capped together with the global protocol fee by `MAX_TOTAL_SPLIT_BPS`. Slot: `keccak256("growfi.module.ecommerce.v1")`.
 - **`DebtRestructuringModule`** (whitelisted, producer-attaches post-create): last-resort conversion of unpaid harvest USDC claims into newly minted CampaignToken after `usdcDeadline`. Holders must first claim all currently available USDC; only the residual shortfall is converted at `SaleClassic.pricePerToken`. Covered seasons require collateral to be exhausted first. The module marks the HarvestManager claim as fully resolved before minting CT, increments SaleClassic `currentSupply`, does **not** call the GROW minter, and blocks later collateral settlement for that season once restructuring starts. Slot: `keccak256("growfi.module.debt.restructuring.v1")`.
@@ -217,6 +226,10 @@ is created from `ProjectUpdatePosted` and toggled by `ProjectUpdateHidden`;
 `ProceedsSplitSet` and `ProceedsSplitCleared` update the campaign split fields.
 When changing these events, update both `platform/subgraph/subgraph.yaml` and
 `platform/subgraph/subgraph.sepolia.yaml`.
+Subgraph schema v5.3.0 also listens to `HarvestCommitmentUpdated` on Campaign
+templates and updates `expectedAnnualHarvestUsd`, `expectedAnnualHarvest`,
+`firstHarvestYear`, and `coverageHarvests`. Keep the Campaign ABI, both network
+manifests, and generated ugraph fixture builds in sync when this event changes.
 
 Lifecycle:
 - Factory bootstraps the campaign + auto-attaches `defaultModules[]` (sale + collateral). Window closes via `Campaign.closeBootstrap()` (one-shot, factory-only).
