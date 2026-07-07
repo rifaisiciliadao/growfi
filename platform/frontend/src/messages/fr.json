@@ -96,7 +96,8 @@
       "status": "Statut",
       "completed": "Terminé",
       "deadline": "Échéance : {days}",
-      "season": "Saison 1 · {count} stakers"
+      "season": "Saison 1 · {count} stakers",
+      "stakedTokens": "Saison 1 · {amount} ${symbol} stakés"
     },
     "state": {
       "funding": "En Collecte",
@@ -323,6 +324,7 @@
     },
     "preview": {
       "title": "Aperçu",
+      "fundingStatus": "Funding",
       "empty": "Nom de la Campagne...",
       "emptyDescription": "La description de ton projet apparaîtra ici.",
       "noImage": "Image",
@@ -457,7 +459,11 @@
       "staking": "Staking…",
       "insufficientBalance": "Solde insuffisant",
       "connectFirst": "Connecter wallet",
-      "noPositions": "Tu n'as aucune position active sur cette campagne."
+      "noPositions": "Tu n'as aucune position active sur cette campagne.",
+      "stakersTitle": "Stakers",
+      "stakersCount": "{count, plural, one {# staker} other {# stakers}}",
+      "stakersEmpty": "Aucun staker actif sur cette campagne pour l'instant.",
+      "activePositions": "{count, plural, one {# position active} other {# positions actives}}"
     },
     "activateCta": {
       "title": "Cap min atteint — prête à activer",
@@ -1544,7 +1550,7 @@
       "fundCta": "Financer la Récolte"
     },
     "hero": {
-      "badge": "Campagnes live · financement transparent",
+      "badge": "Seed round ouvert · GrowFi lève des fonds",
       "titleA": "Finance des projets réels.",
       "titleLand": "terre.",
       "titleB": "Partage des revenus réels.",
@@ -1582,7 +1588,7 @@
           "signal": "Origination",
           "asset": "$CAMPAIGN",
           "title": "Le cultivateur ouvre un marché de récolte",
-          "body": "Le cultivateur lance une campagne avec caps, dates, tokens acceptés et termes de récolte fixés. Tout est visible avant qu’un wallet signe."
+          "body": "Le project owner définit funding goal, tokens acceptés (ETH/USDC/EURC) et termes de paypack."
         },
         {
           "signal": "Escrow",
@@ -1658,7 +1664,7 @@
       "kicker": "Campagnes",
       "title1": "Une campagne, une vraie récolte.",
       "title2": "Finance aujourd'hui, retire à la récolte.",
-      "intro": "Chaque campagne ici tokenise une vraie récolte syntropique. Tu finances en USDC, tu accumules $YIELD pendant la saison et à la fin tu retires le produit physique — ou tes USDC si la récolte ne démarre pas.",
+      "intro": "Chaque campagne ici tokenise un projet productif réel. Tu finances avec les tokens acceptés, obtiens une exposition propre à la campagne et suis des termes transparents jusqu’au settlement.",
       "filters": {
         "all": "Toutes",
         "funding": "Funding",
@@ -1675,8 +1681,8 @@
       "expectedYield": "Rendement attendu",
       "ctaFund": "Financer cette récolte",
       "ctaView": "Voir",
-      "createTitle": "Vous êtes cultivateur syntropique ?",
-      "createBody": "Tokenisez votre prochaine récolte en quelques minutes. Ouvrez votre campagne aux investisseurs alignés avec la régénération.",
+      "createTitle": "Vous avez un projet réel à financer ?",
+      "createBody": "Lancez une campagne pour votre prochain cycle productif ou projet de revenus. Publiez des termes clairs, routez les fonds onchain et ouvrez-la à des investisseurs alignés.",
       "createCta": "Créer une campagne"
     },
     "trust": {
@@ -1740,12 +1746,6 @@
             "percent": "3%",
             "applies": "Chaque achat SKU on-chain.",
             "route": "Réglage global depuis la factory ; le producteur ne peut pas le changer."
-          },
-          "growDirect": {
-            "flow": "Achat direct $GROW",
-            "percent": "10% markup",
-            "applies": "Achat direct de $GROW avec stablecoin.",
-            "route": "Markup sur le floor/reference price ; ce n'est pas une fee protocole."
           }
         }
       },
@@ -1798,7 +1798,7 @@
     "footer": {
       "tagline1": "Finance régénérative",
       "tagline2": "pour une planète vivante.",
-      "about": "GrowFi est construit par Rifai Sicilia DAO. Commodity-agnostic, chain-agnostic, permissionless. N'importe quel cultivateur, n'importe quelle récolte, n'importe quelle chain — aucune approbation requise.",
+      "about": "GrowFi est né de <dao>Rifai Sicilia DAO</dao>.",
       "colProduct": "Produit",
       "colProtocol": "Protocole",
       "colCommunity": "Communauté",
@@ -1813,7 +1813,7 @@
       "linkGithub": "GitHub",
       "linkTwitter": "X (Twitter)",
       "linkInstagram": "Instagram",
-      "copy": "© {year} Rifai Sicilia DAO. Code open-source sous licence MIT.",
+      "copy": "@2026 GrowFi Labs",
       "linkInvestors": "Investisseurs"
     }
   },
@@ -1823,6 +1823,10 @@
     "intro": "Réponses rapides pour l'app publique : comment les fonds circulent, ce qui se passe au soft cap, où vivent les updates et quels frais s'appliquent.",
     "campaignsCta": "Voir les campagnes",
     "items": {
+      "participate": {
+        "title": "Comment participer ?",
+        "body": "Tu peux financer les campagnes actives avec les tokens acceptés comme ETH, USDC ou EURC, ou acheter $GROW pour une exposition plus large au protocole."
+      },
       "campaignFunds": {
         "title": "Où vont les fonds de campagne ?",
         "body": "Les revenus de la vente primaire passent par le contrat de campagne. Les frais du protocole sont routés vers le FeeSplitter ; le net suit la route owner ou split configurée."
@@ -1926,7 +1930,7 @@
       "fees": {
         "kicker": "Economics protocole",
         "title": "La table des frais est explicite par flux.",
-        "body": "GrowFi n'a pas une fee générique unique à 2%. Achats primaires de campagne, settlement de harvest, repayment, ecommerce et achats directs de $GROW sont des flux séparés avec des mécaniques séparées.",
+        "body": "GrowFi n'a pas une fee générique unique à 2%. Achats primaires de campagne, settlement de harvest, repayment et ecommerce sont des flux séparés avec des mécaniques séparées.",
         "headers": {
           "flow": "Flux",
           "percent": "Taux",
@@ -1957,12 +1961,6 @@
             "percent": "3%",
             "applies": "Chaque achat SKU on-chain.",
             "route": "Réglage global depuis la factory ; le producteur ne peut pas le changer."
-          },
-          "growDirect": {
-            "flow": "Achat direct $GROW",
-            "percent": "10% markup",
-            "applies": "Achat direct de $GROW avec stablecoin.",
-            "route": "Markup sur le floor/reference price ; ce n'est pas une fee protocole."
           }
         }
       },

@@ -442,6 +442,7 @@ export default function CampaignDetail({
             campaignTokenAddr &&
             yieldTokenAddr && (
             <StakingPanel
+              campaignAddress={campaignAddress}
               campaignToken={campaignTokenAddr}
               stakingVault={stakingVaultAddr}
               yieldToken={yieldTokenAddr}

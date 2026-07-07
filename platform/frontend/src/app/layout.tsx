@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Script from "next/script";
 import {
   Inter,
   Be_Vietnam_Pro,
@@ -49,7 +50,7 @@ export const metadata: Metadata = {
     "regenerative finance",
     "tokenized harvests",
     "permissionless",
-    "Base",
+    "Ethereum",
     "onchain agriculture",
     "DeFi",
   ],
@@ -85,6 +86,18 @@ export default function RootLayout({
       className={`${inter.variable} ${beVietnamPro.variable} ${plusJakarta.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-surface text-on-surface">
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-PN63LEDTBB"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', 'G-PN63LEDTBB');
+          `}
+        </Script>
         <Providers>
           <ConditionalChrome>{children}</ConditionalChrome>
         </Providers>

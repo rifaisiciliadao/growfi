@@ -16,19 +16,6 @@ type SubmitState =
   | { kind: "ok" }
   | { kind: "err"; message: string };
 
-/**
- * Same content as the previous inline `InviteSection`, but rendered inside
- * a centered modal dialog. The modal is mounted once at the root of the
- * landing page and is opened by:
- *  - the "Sei un coltivatore sintropico?" `CreateCampaignCard` on the
- *    Campaigns section (when the user isn't approved yet)
- *  - the "Richiedi invito" links in the landing `<Nav>` and the in-app
- *    `<Header>` (which navigate to `/?openInvite=1` so the auto-open
- *    effect below catches the query param)
- *  - the `<InviteGate>` wrapper on `/create`, which redirects to
- *    `/?gated=1&reason=<connect|request|pending|rejected>` — the modal
- *    auto-opens and the `reason` selects the right banner copy.
- */
 export function InviteModal() {
   const t = useTranslations("landing.invite");
   const { open, openModal, closeModal } = useInviteModal();

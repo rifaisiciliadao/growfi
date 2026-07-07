@@ -93,7 +93,18 @@ export function LandingFooter() {
               className="mt-6 max-w-sm text-base leading-relaxed"
               style={{ color: "#1a1a1a" }}
             >
-              {t("about")}
+              {t.rich("about", {
+                dao: (chunks) => (
+                  <a
+                    href="https://rifaisicilia.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold underline decoration-black/25 underline-offset-4 transition-colors hover:text-black hover:decoration-black"
+                  >
+                    {chunks}
+                  </a>
+                ),
+              })}
             </p>
           </div>
 
@@ -142,7 +153,7 @@ export function LandingFooter() {
           style={{ borderColor: "#eaeaea" }}
         >
           <p className="text-xs" style={{ color: "#4a4a4a" }}>
-            {t("copy", { year: new Date().getFullYear() })}
+            {t("copy")}
           </p>
         </div>
       </div>

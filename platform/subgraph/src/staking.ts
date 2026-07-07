@@ -10,11 +10,16 @@ import {
 } from "../generated/templates/StakingVault/StakingVault";
 import {
   Position,
+  CampaignStaker,
   Season,
   YieldRateSnapshot,
   Campaign,
   ContractIndex,
+  User,
+  GlobalStats,
 } from "../generated/schema";
+
+const GLOBAL_ID = Bytes.fromUTF8("global");
 
 function campaignFromVault(vaultAddress: Bytes): Campaign | null {
   const idx = ContractIndex.load(vaultAddress);
@@ -28,6 +33,47 @@ function positionId(campaignId: Bytes, pid: BigInt): Bytes {
 
 function seasonEntityId(campaignId: Bytes, sid: BigInt): Bytes {
   return campaignId.concatI32(sid.toI32());
+}
+
+function campaignStakerId(campaignId: Bytes, user: Bytes): Bytes {
+  return campaignId.concat(user);
+}
+
+function loadOrCreateUser(addr: Bytes, timestamp: BigInt): User {
+  let user = User.load(addr);
+  if (user == null) {
+    user = new User(addr);
+    user.purchasesCount = 0;
+    user.positionsCount = 0;
+    user.totalInvested = BigInt.zero();
+    user.firstSeenAt = timestamp;
+
+    const stats = GlobalStats.load(GLOBAL_ID);
+    if (stats != null) {
+      stats.userCount = stats.userCount + 1;
+      stats.save();
+    }
+  }
+  return user;
+}
+
+function loadOrCreateCampaignStaker(
+  campaignId: Bytes,
+  user: Bytes,
+  timestamp: BigInt,
+): CampaignStaker {
+  const id = campaignStakerId(campaignId, user);
+  let staker = CampaignStaker.load(id);
+  if (staker == null) {
+    staker = new CampaignStaker(id);
+    staker.campaign = campaignId;
+    staker.user = user;
+    staker.activePositionCount = 0;
+    staker.totalStaked = BigInt.zero();
+    staker.firstStakedAt = timestamp;
+  }
+  staker.lastUpdatedAt = timestamp;
+  return staker;
 }
 
 export function handleStaked(event: StakedEvent): void {
@@ -50,6 +96,29 @@ export function handleStaked(event: StakedEvent): void {
   pos.createdAtTx = event.transaction.hash;
   pos.save();
 
+  const user = loadOrCreateUser(event.params.user, event.block.timestamp);
+  if (user.positionsCount == 0) {
+    const stats = GlobalStats.load(GLOBAL_ID);
+    if (stats != null) {
+      stats.totalStakers = stats.totalStakers + 1;
+      stats.save();
+    }
+  }
+  user.positionsCount = user.positionsCount + 1;
+  user.save();
+
+  const staker = loadOrCreateCampaignStaker(
+    campaign.id,
+    event.params.user,
+    event.block.timestamp,
+  );
+  if (staker.activePositionCount == 0) {
+    campaign.activeStakerCount = campaign.activeStakerCount + 1;
+  }
+  staker.activePositionCount = staker.activePositionCount + 1;
+  staker.totalStaked = staker.totalStaked.plus(event.params.amount);
+  staker.save();
+
   campaign.totalStaked = event.params.newTotalStaked;
   campaign.currentYieldRate = event.params.newYieldRate;
   campaign.save();
@@ -66,6 +135,23 @@ export function handleUnstaked(event: UnstakedEvent): void {
     pos.unstakedAtTx = event.transaction.hash;
     pos.penaltyBurned = event.params.penaltyAmount;
     pos.save();
+  }
+
+  const staker = CampaignStaker.load(
+    campaignStakerId(campaign.id, event.params.user),
+  );
+  if (staker != null) {
+    if (staker.activePositionCount > 0) {
+      staker.activePositionCount = staker.activePositionCount - 1;
+      if (staker.activePositionCount == 0 && campaign.activeStakerCount > 0) {
+        campaign.activeStakerCount = campaign.activeStakerCount - 1;
+      }
+    }
+    staker.totalStaked = event.params.stakedAmount.gt(staker.totalStaked)
+      ? BigInt.zero()
+      : staker.totalStaked.minus(event.params.stakedAmount);
+    staker.lastUpdatedAt = event.block.timestamp;
+    staker.save();
   }
 
   campaign.totalStaked = event.params.newTotalStaked;

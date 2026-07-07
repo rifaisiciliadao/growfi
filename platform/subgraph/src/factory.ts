@@ -65,6 +65,7 @@ export function handleCampaignCreated(event: CampaignCreatedEvent): void {
   campaign.collateralDrawn = BigInt.zero();
   campaign.currentSupply = BigInt.zero();
   campaign.totalStaked = BigInt.zero();
+  campaign.activeStakerCount = 0;
   campaign.totalRaised = BigInt.zero();
   campaign.treasuryRaised = BigInt.zero();
   campaign.treasuryTokensOut = BigInt.zero();

@@ -11,7 +11,6 @@ const FEE_ROW_KEYS = [
   "harvestDeposit",
   "repayment",
   "ecommerce",
-  "growDirect",
 ] as const;
 
 export function FeeSchedule({ variant = "light" }: FeeScheduleProps) {

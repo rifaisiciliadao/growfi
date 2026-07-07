@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useTranslations } from "next-intl";
+import { erc20Abi, type Address } from "viem";
+import { useReadContract } from "wagmi";
 import { useResolvedCampaignMetadata } from "@/lib/metadata";
 import { CampaignImage } from "./CampaignImage";
 
@@ -15,11 +17,12 @@ export interface CampaignCardProps {
   location: string;
   /** Fallback image if metadata isn't available. */
   image: string;
+  campaignTokenAddress?: string;
   state: CampaignState;
   progress: number;
   yieldRate: number;
   deadline?: string;
-  stakers?: number;
+  stakedTokens?: number;
   /** Optional on-chain pointer to off-chain JSON (set via CampaignRegistry). */
   metadataURI?: string | null;
   metadataVersion?: string | number | null;
@@ -53,11 +56,12 @@ export function CampaignCard({
   address,
   name,
   image,
+  campaignTokenAddress,
   state,
   progress,
   yieldRate,
   deadline,
-  stakers,
+  stakedTokens,
   metadataURI,
   metadataVersion,
 }: CampaignCardProps) {
@@ -74,6 +78,23 @@ export function CampaignCard({
   const resolvedName = metadata?.name || name;
   const resolvedImage = metadata?.image || image || null;
   const resolvedLocation = metadata?.location;
+  const { data: campaignTokenSymbol } = useReadContract({
+    address: campaignTokenAddress as Address | undefined,
+    abi: erc20Abi,
+    functionName: "symbol",
+    query: {
+      enabled: Boolean(campaignTokenAddress),
+      staleTime: Infinity,
+      refetchInterval: false,
+    },
+  });
+  const tokenSymbol = campaignTokenSymbol ?? "CAMPAIGN";
+  const stakedTokensLabel =
+    stakedTokens !== undefined
+      ? stakedTokens.toLocaleString(undefined, {
+          maximumFractionDigits: stakedTokens >= 100 ? 0 : 2,
+        })
+      : null;
 
   return (
     <Link href={`/campaign/${address}`} className="block group">
@@ -134,8 +155,11 @@ export function CampaignCard({
                   deadline &&
                   t("card.deadline", { days: deadline })}
                 {state === "active" &&
-                  stakers &&
-                  t("card.season", { count: stakers })}
+                  stakedTokensLabel &&
+                  t("card.stakedTokens", {
+                    amount: stakedTokensLabel,
+                    symbol: tokenSymbol,
+                  })}
               </div>
             )}
           </div>

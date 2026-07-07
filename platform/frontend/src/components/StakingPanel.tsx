@@ -14,8 +14,16 @@ import { erc20Abi } from "@/contracts/erc20";
 import { Spinner } from "./Spinner";
 import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
+import {
+  isSocialVerificationActive,
+  useBatchProducerProfiles,
+  useCampaignStakers,
+} from "@/lib/subgraph";
+import { useBatchEnsNames } from "@/lib/ens";
+import { SocialVerificationBadge } from "@/components/SocialVerificationBadge";
 
 interface Props {
+  campaignAddress: string;
   campaignToken: Address;
   stakingVault: Address;
   yieldToken: Address;
@@ -32,9 +40,9 @@ type Position = {
 };
 
 const stakingAbi = abis.StakingVault as never;
-const tokenAbi = abis.CampaignToken as never;
 
 export function StakingPanel({
+  campaignAddress,
   campaignToken,
   stakingVault,
   yieldToken,
@@ -400,6 +408,106 @@ export function StakingPanel({
             />
           ))}
         </div>
+      )}
+
+      <CampaignStakersList campaignAddress={campaignAddress} symbol={symbol} />
+    </div>
+  );
+}
+
+function CampaignStakersList({
+  campaignAddress,
+  symbol,
+}: {
+  campaignAddress: string;
+  symbol: string;
+}) {
+  const t = useTranslations("detail.stake");
+  const tProducer = useTranslations("grower");
+  const { data: stakers, isLoading } = useCampaignStakers(campaignAddress);
+  const addresses = (stakers ?? []).map((staker) => staker.user);
+  const { data: profiles } = useBatchProducerProfiles(addresses);
+  const { data: ensNames } = useBatchEnsNames(addresses);
+
+  return (
+    <div className="mt-8 border-t border-outline-variant/15 pt-6">
+      <div className="mb-4 flex items-center justify-between gap-4">
+        <h3 className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface">
+          {t("stakersTitle")}
+        </h3>
+        <span className="text-xs text-on-surface-variant">
+          {t("stakersCount", { count: stakers?.length ?? 0 })}
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div className="space-y-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className="h-9 w-9 animate-pulse rounded-full bg-surface-container-high" />
+              <div className="flex-1 space-y-1.5">
+                <div className="h-3 w-36 animate-pulse rounded bg-surface-container-high" />
+                <div className="h-2.5 w-24 animate-pulse rounded bg-surface-container-high" />
+              </div>
+              <div className="h-4 w-20 animate-pulse rounded bg-surface-container-high" />
+            </div>
+          ))}
+        </div>
+      ) : !stakers || stakers.length === 0 ? (
+        <div className="rounded-xl bg-surface-container-low p-5 text-center text-sm text-on-surface-variant">
+          {t("stakersEmpty")}
+        </div>
+      ) : (
+        <ol className="divide-y divide-outline-variant/10">
+          {stakers.slice(0, 25).map((staker, i) => {
+            const profile = profiles?.get(staker.user.toLowerCase());
+            const ensName = ensNames?.get(staker.user.toLowerCase()) ?? null;
+            const displayName = profile?.name || ensName || tProducer("anonymous");
+            const amount = Number(formatUnits(staker.totalStaked, 18)).toLocaleString(
+              undefined,
+              { maximumFractionDigits: 0 },
+            );
+            return (
+              <li key={staker.user} className="flex items-center gap-3 py-3">
+                <div className="w-6 shrink-0 text-right font-mono text-xs text-on-surface-variant">
+                  {i + 1}
+                </div>
+                {profile?.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={profile.avatar}
+                    alt={displayName}
+                    className="h-9 w-9 shrink-0 rounded-full border border-outline-variant/15 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-fixed text-[11px] font-bold text-on-primary-fixed-variant">
+                    {staker.user.slice(2, 4).toUpperCase()}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1 text-sm font-semibold text-on-surface">
+                    <span className="truncate">{displayName}</span>
+                    <SocialVerificationBadge
+                      verified={isSocialVerificationActive(profile)}
+                      size={12}
+                    />
+                  </div>
+                  <div className="text-[11px] text-on-surface-variant">
+                    {t("activePositions", {
+                      count: staker.activePositionCount,
+                    })}
+                  </div>
+                </div>
+                <div className="shrink-0 text-right text-sm font-bold text-on-surface">
+                  {amount}{" "}
+                  <span className="text-xs text-on-surface-variant">
+                    ${symbol}
+                  </span>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       )}
     </div>
   );

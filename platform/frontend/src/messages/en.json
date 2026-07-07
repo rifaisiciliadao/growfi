@@ -96,7 +96,8 @@
       "status": "Status",
       "completed": "Completed",
       "deadline": "Deadline: {days}",
-      "season": "Season 1 · {count} stakers"
+      "season": "Season 1 · {count} stakers",
+      "stakedTokens": "Season 1 · {amount} ${symbol} staked"
     },
     "state": {
       "funding": "Funding",
@@ -323,6 +324,7 @@
     },
     "preview": {
       "title": "Preview",
+      "fundingStatus": "Funding",
       "empty": "Campaign name...",
       "emptyDescription": "Your project description will appear here.",
       "noImage": "Image",
@@ -457,7 +459,11 @@
       "staking": "Staking…",
       "insufficientBalance": "Insufficient balance",
       "connectFirst": "Connect wallet",
-      "noPositions": "You have no active positions on this campaign."
+      "noPositions": "You have no active positions on this campaign.",
+      "stakersTitle": "Stakers",
+      "stakersCount": "{count, plural, one {# staker} other {# stakers}}",
+      "stakersEmpty": "No active stakers on this campaign yet.",
+      "activePositions": "{count, plural, one {# active position} other {# active positions}}"
     },
     "activateCta": {
       "title": "Min cap reached — ready to activate",
@@ -1544,7 +1550,7 @@
       "fundCta": "Fund the Harvest"
     },
     "hero": {
-      "badge": "Live campaigns · transparent project funding",
+      "badge": "Seed round open · GrowFi is raising now",
       "titleA": "Fund real projects.",
       "titleLand": "land.",
       "titleB": "Share real revenue.",
@@ -1582,7 +1588,7 @@
           "signal": "Origination",
           "asset": "$CAMPAIGN",
           "title": "A project opens a campaign",
-          "body": "Caps, receiver routing, accepted tokens and project terms are visible before any wallet signs."
+          "body": "Project owner sets funding goal, accepted tokens (ETH/USDC/EURC), and paypack terms."
         },
         {
           "signal": "Escrow",
@@ -1658,7 +1664,7 @@
       "kicker": "Campaigns",
       "title1": "One campaign, one real harvest.",
       "title2": "Fund today, redeem at harvest.",
-      "intro": "Every campaign here tokenises a real syntropic harvest. You fund in USDC, earn $YIELD through the season, and at the end you redeem physical product — or USDC back if the harvest doesn't launch.",
+      "intro": "Every campaign here tokenises a real productive project. You fund with accepted tokens, earn campaign-specific exposure, and follow transparent terms from funding to settlement.",
       "filters": {
         "all": "All",
         "funding": "Funding",
@@ -1675,8 +1681,8 @@
       "expectedYield": "Expected yield",
       "ctaFund": "Fund this harvest",
       "ctaView": "View",
-      "createTitle": "Are you a syntropic grower?",
-      "createBody": "Tokenise your next harvest in minutes. Open your campaign to investors aligned with regeneration.",
+      "createTitle": "Have a real project to fund?",
+      "createBody": "Launch a campaign for your next production cycle or revenue project. Share clear terms, route proceeds onchain, and open it to aligned investors.",
       "createCta": "Create campaign"
     },
     "trust": {
@@ -1740,12 +1746,6 @@
             "percent": "3%",
             "applies": "Every on-chain SKU purchase.",
             "route": "Global protocol setting from the factory; producers cannot change it."
-          },
-          "growDirect": {
-            "flow": "Direct $GROW buy",
-            "percent": "10% markup",
-            "applies": "Direct stablecoin purchase of $GROW.",
-            "route": "Price markup over floor/reference; it is not a protocol fee."
           }
         }
       },
@@ -1798,7 +1798,7 @@
     "footer": {
       "tagline1": "Regenerative finance",
       "tagline2": "for a living planet.",
-      "about": "GrowFi is built by Rifai Sicilia DAO. Commodity-agnostic, chain-agnostic, permissionless. Any grower, any harvest, any chain — no approval required.",
+      "about": "GrowFi grew from <dao>Rifai Sicilia DAO</dao>.",
       "colProduct": "Product",
       "colProtocol": "Protocol",
       "colCommunity": "Community",
@@ -1813,7 +1813,7 @@
       "linkGithub": "GitHub",
       "linkTwitter": "X (Twitter)",
       "linkInstagram": "Instagram",
-      "copy": "© {year} Rifai Sicilia DAO. All code open-source under MIT license.",
+      "copy": "@2026 GrowFi Labs",
       "linkInvestors": "Investors"
     }
   },
@@ -1823,6 +1823,10 @@
     "intro": "Short answers for the public app: how campaign funds move, what happens at soft cap, where updates live, and which fees apply.",
     "campaignsCta": "Browse campaigns",
     "items": {
+      "participate": {
+        "title": "How do I participate?",
+        "body": "You can fund active campaigns directly with accepted tokens such as ETH, USDC or EURC, or buy $GROW for broader protocol exposure across multiple campaigns."
+      },
       "campaignFunds": {
         "title": "Where do campaign funds go?",
         "body": "Primary-sale proceeds go through the campaign contract. Protocol fees are routed to the FeeSplitter; net campaign proceeds follow the configured owner or split receiver route."
@@ -1926,7 +1930,7 @@
       "fees": {
         "kicker": "Protocol economics",
         "title": "The fee schedule is explicit per flow.",
-        "body": "GrowFi does not have one generic 2% fee. Primary campaign buys, harvest settlement, repayment, ecommerce and $GROW direct buys are separate flows with separate mechanics.",
+        "body": "GrowFi does not have one generic 2% fee. Primary campaign buys, harvest settlement, repayment and ecommerce are separate flows with separate mechanics.",
         "headers": {
           "flow": "Flow",
           "percent": "Rate",
@@ -1957,12 +1961,6 @@
             "percent": "3%",
             "applies": "Every on-chain SKU purchase.",
             "route": "Global protocol setting from the factory; producers cannot change it."
-          },
-          "growDirect": {
-            "flow": "Direct $GROW buy",
-            "percent": "10% markup",
-            "applies": "Direct stablecoin purchase of $GROW.",
-            "route": "Price markup over floor/reference; it is not a protocol fee."
           }
         }
       },

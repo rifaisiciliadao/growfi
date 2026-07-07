@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { FeeSchedule } from "@/components/FeeSchedule";
 
 const FAQ_ITEMS = [
+  "participate",
   "campaignFunds",
   "softCap",
   "yieldToken",
@@ -16,6 +17,7 @@ const FAQ_ITEMS = [
 
 export default function FaqPage() {
   const t = useTranslations("faq");
+  const tCampaigns = useTranslations("landing.campaigns");
 
   return (
     <div className="min-h-screen bg-surface">
@@ -45,7 +47,7 @@ export default function FaqPage() {
         <FeeSchedule />
       </section>
 
-      <section className="mx-auto grid max-w-7xl gap-4 px-6 pb-24 md:grid-cols-2 md:px-8">
+      <section className="mx-auto grid max-w-7xl gap-4 px-6 pb-10 md:grid-cols-2 md:px-8">
         {FAQ_ITEMS.map((key) => (
           <article key={key} className="app-card rounded-[1.35rem] p-6 md:p-7">
             <h2 className="text-xl font-bold tracking-[-0.035em] text-on-surface">
@@ -56,6 +58,25 @@ export default function FaqPage() {
             </p>
           </article>
         ))}
+      </section>
+
+      <section className="mx-auto max-w-7xl px-6 pb-24 md:px-8">
+        <div className="app-card flex flex-col gap-5 rounded-[1.35rem] p-6 md:flex-row md:items-center md:justify-between md:p-7">
+          <div>
+            <h2 className="text-xl font-bold tracking-[-0.035em] text-on-surface">
+              {tCampaigns("createTitle")}
+            </h2>
+            <p className="mt-2 max-w-2xl text-base leading-7 text-on-surface-variant">
+              {tCampaigns("createBody")}
+            </p>
+          </div>
+          <Link
+            href="/create"
+            className="app-control inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-on-surface px-6 text-sm font-bold text-white hover:bg-black"
+          >
+            {tCampaigns("createCta")}
+          </Link>
+        </div>
       </section>
     </div>
   );

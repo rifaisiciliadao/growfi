@@ -30,6 +30,7 @@ type Campaign @entity(immutable: false) {
 
   currentSupply: BigInt!
   totalStaked: BigInt!
+  activeStakerCount: Int!
   totalRaised: BigInt!                    # USD-18 sum across all buys (direct + treasury)
   treasuryRaised: BigInt!                 # USD-18 sum of buys where buyer == GrowfiTreasury
   treasuryTokensOut: BigInt!              # raw CampaignTokens (18-dec) minted to the Treasury
@@ -60,6 +61,7 @@ type Campaign @entity(immutable: false) {
   acceptedTokens: [AcceptedToken!]! @derivedFrom(field: "campaign")
   purchases: [Purchase!]! @derivedFrom(field: "campaign")
   directIssues: [DirectIssue!]! @derivedFrom(field: "campaign")
+  stakers: [CampaignStaker!]! @derivedFrom(field: "campaign")
   positions: [Position!]! @derivedFrom(field: "campaign")
   seasons: [Season!]! @derivedFrom(field: "campaign")
   sellBackOrders: [SellBackOrder!]! @derivedFrom(field: "campaign")
@@ -283,6 +285,16 @@ type Season @entity(immutable: false) {
   reportedAt: BigInt
 
   claims: [Claim!]! @derivedFrom(field: "season")
+}
+
+type CampaignStaker @entity(immutable: false) {
+  id: Bytes!                              # campaign + user
+  campaign: Campaign!
+  user: Bytes!
+  activePositionCount: Int!
+  totalStaked: BigInt!
+  firstStakedAt: BigInt!
+  lastUpdatedAt: BigInt!
 }
 
 type Position @entity(immutable: false) {

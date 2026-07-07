@@ -60,7 +60,6 @@ export default function CampaignsPage() {
     }
     return list.filter((campaign) => toCampaignState(campaign.state) === filter);
   }, [campaigns, filter]);
-
   const totalRaised = totalRaisedOf(campaigns ?? []);
   const activeCount = (campaigns ?? []).filter(
     (campaign) => toCampaignState(campaign.state) === "active",
@@ -167,17 +166,35 @@ export default function CampaignsPage() {
                 producer={campaign.producer}
                 location=""
                 image="/investors-olive-hero.jpg"
+                campaignTokenAddress={campaign.campaignToken}
                 state={toCampaignState(campaign.state)}
                 progress={progressOf(campaign)}
                 yieldRate={yieldRateOf(campaign)}
                 deadline={deadlineOf(campaign)}
-                stakers={Number(formatUnits(BigInt(campaign.totalStaked), 18))}
+                stakedTokens={Number(formatUnits(BigInt(campaign.totalStaked), 18))}
                 metadataURI={campaign.metadataURI}
                 metadataVersion={campaign.metadataVersion}
               />
             ))}
           </div>
         )}
+
+        <div className="app-card mt-10 flex flex-col gap-5 rounded-[1.35rem] p-6 md:flex-row md:items-center md:justify-between md:p-7">
+          <div>
+            <h2 className="text-xl font-bold tracking-[-0.035em] text-on-surface">
+              {t("createTitle")}
+            </h2>
+            <p className="mt-2 max-w-2xl text-base leading-7 text-on-surface-variant">
+              {t("createBody")}
+            </p>
+          </div>
+          <Link
+            href="/create"
+            className="app-control inline-flex min-h-12 shrink-0 items-center justify-center rounded-full bg-on-surface px-6 text-sm font-bold text-white hover:bg-black"
+          >
+            {t("createCta")}
+          </Link>
+        </div>
       </section>
     </div>
   );

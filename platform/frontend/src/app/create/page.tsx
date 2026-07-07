@@ -824,8 +824,9 @@ export default function CreateCampaign() {
   };
 
   return (
-    <div className="max-w-[1440px] mx-auto px-4 md:px-8 pt-28 pb-20 md:pb-24 flex flex-col lg:flex-row gap-10 md:gap-16">
-      <div className="flex-1 lg:w-3/5 min-w-0">
+    <div className="min-h-screen bg-surface">
+      <div className="mx-auto flex max-w-[1440px] flex-col gap-10 px-4 pb-20 pt-28 md:gap-16 md:px-8 md:pb-24 lg:flex-row">
+        <div className="flex-1 lg:w-3/5 min-w-0">
         <div className="mb-10 md:mb-12 flex items-center justify-between relative">
           <div className="absolute left-0 top-4 w-full h-0.5 bg-surface-container-high -z-10" />
           <div
@@ -1888,8 +1889,7 @@ export default function CreateCampaign() {
                 </div>
               )}
               <div className="absolute top-4 left-4 bg-primary-fixed text-on-primary-fixed-variant px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase">
-                {/* re-use state label from home namespace */}
-                Funding
+                {t("preview.fundingStatus")}
               </div>
             </div>
             <div className="p-6">
@@ -1951,6 +1951,8 @@ export default function CreateCampaign() {
             </p>
           </div>
         </div>
+      </div>
+
       </div>
 
       <style jsx global>{`

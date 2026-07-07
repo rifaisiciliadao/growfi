@@ -143,7 +143,7 @@ export default async function Image() {
             letterSpacing: "0.02em",
           }}
         >
-          <span>Permissionless campaign factory · Base</span>
+          <span>Permissionless campaign factory · Ethereum</span>
           <span>growfi · rifaisicilia.com</span>
         </div>
       </div>

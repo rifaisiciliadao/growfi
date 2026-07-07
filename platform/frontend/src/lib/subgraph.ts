@@ -414,6 +414,84 @@ export function useCampaignInvestors(address: string | undefined) {
   });
 }
 
+export interface CampaignStaker {
+  user: string;
+  totalStaked: bigint;
+  activePositionCount: number;
+  firstStakedTs: number;
+  lastStakedTs: number;
+  seasonIds: string[];
+}
+
+interface RawStakePosition {
+  user: string;
+  amount: string;
+  createdAt: string;
+  seasonId: string;
+}
+
+export function useCampaignStakers(address: string | undefined) {
+  return useQuery({
+    queryKey: ["subgraph", "stakers", address?.toLowerCase()],
+    enabled: !!address,
+    queryFn: async (): Promise<CampaignStaker[]> => {
+      if (!address) return [];
+      const data = await gql<{ positions: RawStakePosition[] }>(
+        `
+        query CampaignStakers($campaign: String!) {
+          positions(
+            where: { campaign: $campaign, active: true }
+            first: 1000
+            orderBy: createdAt
+            orderDirection: asc
+          ) {
+            user
+            amount
+            createdAt
+            seasonId
+          }
+        }
+        `,
+        { campaign: address.toLowerCase() },
+      );
+
+      const byUser = new Map<string, CampaignStaker>();
+      for (const position of data.positions) {
+        const key = position.user.toLowerCase();
+        const ts = Number(position.createdAt);
+        const existing = byUser.get(key);
+        if (existing) {
+          existing.totalStaked += BigInt(position.amount);
+          existing.activePositionCount += 1;
+          existing.firstStakedTs = Math.min(existing.firstStakedTs, ts);
+          existing.lastStakedTs = Math.max(existing.lastStakedTs, ts);
+          if (!existing.seasonIds.includes(position.seasonId)) {
+            existing.seasonIds.push(position.seasonId);
+          }
+        } else {
+          byUser.set(key, {
+            user: position.user,
+            totalStaked: BigInt(position.amount),
+            activePositionCount: 1,
+            firstStakedTs: ts,
+            lastStakedTs: ts,
+            seasonIds: [position.seasonId],
+          });
+        }
+      }
+
+      return Array.from(byUser.values()).sort((a, b) =>
+        a.totalStaked === b.totalStaked
+          ? 0
+          : b.totalStaked > a.totalStaked
+            ? 1
+            : -1,
+      );
+    },
+    refetchInterval: 20_000,
+  });
+}
+
 /**
  * Batch-resolve wallet → producer profile (name + avatar) in one round-trip.
  * Used by the InvestorList widget so each row can show the registered name
