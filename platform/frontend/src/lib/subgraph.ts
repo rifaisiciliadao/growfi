@@ -48,6 +48,18 @@ async function gql<T>(query: string, variables?: Record<string, unknown>): Promi
   return body.data;
 }
 
+async function fetchProjectUpdateMetadata(
+  metadataURI: string,
+): Promise<ProjectUpdateMetadata | null> {
+  try {
+    const res = await fetch(metadataURI, { cache: "force-cache" });
+    if (!res.ok) return null;
+    return (await res.json()) as ProjectUpdateMetadata;
+  } catch {
+    return null;
+  }
+}
+
 export interface SubgraphCampaign {
   id: string;
   producer: string;
@@ -192,14 +204,8 @@ export function useProjectUpdates(campaign: string | undefined) {
       );
       return Promise.all(
         data.projectUpdates.map(async (update) => {
-          try {
-            const res = await fetch(update.metadataURI, { cache: "force-cache" });
-            if (!res.ok) return { ...update, metadata: null };
-            const metadata = (await res.json()) as ProjectUpdateMetadata;
-            return { ...update, metadata };
-          } catch {
-            return { ...update, metadata: null };
-          }
+          const metadata = await fetchProjectUpdateMetadata(update.metadataURI);
+          return { ...update, metadata };
         }),
       );
     },
@@ -1041,6 +1047,19 @@ export type FeedItem =
       user: string;
       campaign: CampaignRef;
       txHash: string | null;
+    }
+  | {
+      kind: "projectUpdate";
+      id: string;
+      timestamp: number;
+      user: string;
+      campaign: CampaignRef;
+      updateId: string;
+      title: string | null;
+      body: string | null;
+      image: string | null;
+      metadataURI: string;
+      txHash: string | null;
     };
 
 const FEED_CAMPAIGN_FIELDS = "id metadataURI metadataVersion";
@@ -1126,6 +1145,15 @@ export function useFeed(limit = 50) {
           metadataURI: string | null;
           metadataVersion: string;
         }>;
+        projectUpdates: Array<{
+          id: string;
+          updateId: string;
+          author: string;
+          metadataURI: string;
+          postedAt: string;
+          transactionHash: string | null;
+          campaign: { id: string; metadataURI: string | null; metadataVersion: string };
+        }>;
       }>(
         `query Feed($limit: Int!) {
           purchases(first: $limit, orderBy: timestamp, orderDirection: desc) {
@@ -1164,6 +1192,15 @@ export function useFeed(limit = 50) {
           }
           campaigns(first: $limit, where: { hidden: false }, orderBy: createdAt, orderDirection: desc) {
             id producer createdAt createdAtTx metadataURI metadataVersion
+          }
+          projectUpdates(first: $limit, where: { hidden: false }, orderBy: postedAt, orderDirection: desc) {
+            id
+            updateId
+            author
+            metadataURI
+            postedAt
+            transactionHash
+            campaign { ${FEED_CAMPAIGN_FIELDS} }
           }
         }`,
         { limit },
@@ -1272,6 +1309,25 @@ export function useFeed(limit = 50) {
           txHash: c.createdAtTx,
         });
       }
+      const projectUpdateItems = await Promise.all(
+        data.projectUpdates.map(async (update): Promise<FeedItem> => {
+        const metadata = await fetchProjectUpdateMetadata(update.metadataURI);
+        return {
+          kind: "projectUpdate",
+          id: `project-update-${update.id}`,
+          timestamp: Number(update.postedAt),
+          user: update.author,
+          campaign: update.campaign,
+          updateId: update.updateId,
+          title: metadata?.title ?? null,
+          body: metadata?.body ?? null,
+          image: metadata?.image ?? null,
+          metadataURI: update.metadataURI,
+          txHash: update.transactionHash,
+        };
+        }),
+      );
+      items.push(...projectUpdateItems);
 
       items.sort((a, b) => b.timestamp - a.timestamp);
       return items.slice(0, limit);

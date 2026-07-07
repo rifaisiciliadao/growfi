@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { formatUnits } from "viem";
 import {
@@ -22,7 +22,8 @@ import { getAddresses } from "@/contracts";
 import { txUrl } from "@/lib/explorer";
 import { getProtocolLabel } from "@/lib/protocolLabels";
 
-const FEED_LIMIT = 30;
+const FEED_LIMIT = 100;
+const FEED_PAGE_SIZE = 10;
 const LEADERBOARD_LIMIT = 20;
 
 // ---- payment-token decimals + symbol lookup (raw paymentAmount on Purchase
@@ -79,6 +80,7 @@ function useProtocolLabels(): Map<string, { label: string; emoji: string }> {
 
 export default function FeedPage() {
   const t = useTranslations("feed");
+  const [page, setPage] = useState(1);
   const { data: feed, isLoading: feedLoading, refetch: refetchFeed } = useFeed(FEED_LIMIT);
   const {
     data: leaderboard,
@@ -96,6 +98,13 @@ export default function FeedPage() {
   const { data: profiles } = useBatchProducerProfiles(addresses);
   const { data: ensNames } = useBatchEnsNames(addresses);
   const protocolLabels = useProtocolLabels();
+  const totalFeedItems = feed?.length ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalFeedItems / FEED_PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = useMemo(() => {
+    const start = (currentPage - 1) * FEED_PAGE_SIZE;
+    return (feed ?? []).slice(start, start + FEED_PAGE_SIZE);
+  }, [currentPage, feed]);
 
   function refetchAll() {
     void refetchFeed();
@@ -146,17 +155,33 @@ export default function FeedPage() {
             ) : !feed || feed.length === 0 ? (
               <EmptyState text={t("activity.empty")} />
             ) : (
-              <ol className="overflow-hidden rounded-[8px] border border-outline-variant/15 bg-surface-container-lowest shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)] divide-y divide-outline-variant/10">
-                {feed.map((item) => (
-                  <FeedRow
-                    key={item.id}
-                    item={item}
-                    profile={profiles?.get(item.user.toLowerCase())}
-                    ens={ensNames?.get(item.user.toLowerCase()) ?? null}
-                    protocolLabel={protocolLabels.get(item.user.toLowerCase())}
+              <>
+                <ol className="overflow-hidden rounded-[8px] border border-outline-variant/15 bg-surface-container-lowest shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)] divide-y divide-outline-variant/10">
+                  {pageItems.map((item) => (
+                    <FeedRow
+                      key={item.id}
+                      item={item}
+                      profile={profiles?.get(item.user.toLowerCase())}
+                      ens={ensNames?.get(item.user.toLowerCase()) ?? null}
+                      protocolLabel={protocolLabels.get(item.user.toLowerCase())}
+                    />
+                  ))}
+                </ol>
+                {totalFeedItems > FEED_PAGE_SIZE && (
+                  <PaginationControls
+                    page={currentPage}
+                    totalPages={totalPages}
+                    previousLabel={t("pagination.previous")}
+                    nextLabel={t("pagination.next")}
+                    pageLabel={t("pagination.page", {
+                      current: currentPage,
+                      total: totalPages,
+                    })}
+                    onPrevious={() => setPage(Math.max(1, currentPage - 1))}
+                    onNext={() => setPage(Math.min(totalPages, currentPage + 1))}
                   />
-                ))}
-              </ol>
+                )}
+              </>
             )}
           </section>
 
@@ -285,6 +310,19 @@ function FeedRow({
             </>
           )}
         </div>
+        {item.kind === "projectUpdate" && (item.body || item.image) && (
+          <div className="mt-2 max-w-2xl rounded-[8px] border border-outline-variant/15 bg-surface-container-low px-3 py-2 text-xs leading-5 text-on-surface-variant">
+            {item.body && <p>{item.body}</p>}
+            {item.image && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={item.image}
+                alt={item.title ?? ""}
+                className="mt-2 max-h-40 w-full max-w-sm rounded-[6px] object-cover"
+              />
+            )}
+          </div>
+        )}
         <div className="text-[11px] text-on-surface-variant mt-0.5 flex items-center gap-2">
           <span>{when}</span>
           {txHash && (
@@ -389,6 +427,12 @@ function renderDescription(
         amount: "",
         preposition: null,
       };
+    case "projectUpdate":
+      return {
+        verb: t("activity.verbs.projectUpdate"),
+        amount: item.title || t("activity.projectUpdateFallback"),
+        preposition: t("activity.prepositions.in"),
+      };
   }
 }
 
@@ -408,6 +452,7 @@ function ActionIcon({
     unstake: { bg: "bg-zinc-50 text-zinc-700", emoji: "🏃" },
     claim: { bg: "bg-orange-50 text-orange-700", emoji: "🌾" },
     campaign: { bg: "bg-primary-fixed text-on-primary-fixed-variant", emoji: "🌳" },
+    projectUpdate: { bg: "bg-violet-50 text-violet-700", emoji: "↗" },
   };
   const cfg = map[kind];
   return (
@@ -416,6 +461,52 @@ function ActionIcon({
       aria-hidden="true"
     >
       {protocolEmoji ?? cfg.emoji}
+    </div>
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+function PaginationControls({
+  page,
+  totalPages,
+  previousLabel,
+  nextLabel,
+  pageLabel,
+  onPrevious,
+  onNext,
+}: {
+  page: number;
+  totalPages: number;
+  previousLabel: string;
+  nextLabel: string;
+  pageLabel: string;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="mt-4 flex flex-col gap-3 rounded-[8px] border border-outline-variant/15 bg-surface-container-lowest p-3 sm:flex-row sm:items-center sm:justify-between">
+      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-on-surface-variant">
+        {pageLabel}
+      </span>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onPrevious}
+          disabled={page <= 1}
+          className="app-control min-h-10 rounded-full border border-outline-variant/25 px-4 text-sm font-semibold text-on-surface disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {previousLabel}
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={page >= totalPages}
+          className="app-control min-h-10 rounded-full border border-outline-variant/25 px-4 text-sm font-semibold text-on-surface disabled:cursor-not-allowed disabled:opacity-45"
+        >
+          {nextLabel}
+        </button>
+      </div>
     </div>
   );
 }

@@ -7,7 +7,9 @@
     "profile": "Profile",
     "connectWallet": "Connect Wallet",
     "connect": "Connect",
-    "investors": "Investors"
+    "investors": "Investors",
+    "campaigns": "Campaigns",
+    "faq": "FAQ"
   },
   "network": {
     "title": "Wrong network",
@@ -33,9 +35,11 @@
         "unstaked": "unstaked",
         "redeemedProduct": "redeemed product",
         "redeemedUsdc": "redeemed",
-        "launched": "launched a new campaign"
+        "launched": "launched a new campaign",
+        "projectUpdate": "posted an update"
       },
       "withPayment": "with {amount}",
+      "projectUpdateFallback": "project update",
       "prepositions": {
         "in": "in",
         "from": "from"
@@ -44,6 +48,11 @@
     "leaderboard": {
       "title": "Top backers",
       "empty": "No backers yet."
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {current} of {total}"
     },
     "relative": {
       "justNow": "just now",
@@ -1455,11 +1464,9 @@
   },
   "footer": {
     "tagline": "© {year} GrowFi. Regenerative Finance for a Living Planet.",
-    "docs": "Docs",
     "github": "GitHub",
-    "discord": "Discord",
-    "terms": "Terms",
-    "privacy": "Privacy",
+    "faq": "FAQ",
+    "campaigns": "Campaigns",
     "investors": "Investors"
   },
   "tx": {
@@ -1537,12 +1544,12 @@
       "fundCta": "Fund the Harvest"
     },
     "hero": {
-      "badge": "Seed round open · GrowFi is raising now",
-      "titleA": "Invest in the",
+      "badge": "Live campaigns · transparent project funding",
+      "titleA": "Fund real projects.",
       "titleLand": "land.",
-      "titleB": "Harvest the",
+      "titleB": "Share real revenue.",
       "titleYield": "yield.",
-      "lead": "We connect investors, growers and consumers to fund the regenerative economy.",
+      "lead": "GrowFi turns productive assets into transparent onchain campaigns.",
       "subtitle1": "Fund real syntropic agroforestry harvests onchain:",
       "subtitleHighlight": "invest in olives, harvest oil",
       "examples": [
@@ -1553,7 +1560,7 @@
         "invest in orchard beehives, harvest honey"
       ],
       "subtitle2": "— redeem physical product at harvest, or get your USDC back, locked in escrow until the soft cap is met.",
-      "ctaFund": "Fund the Harvest",
+      "ctaFund": "Browse campaigns",
       "ctaHow": "See how it works",
       "statOnchain": "Onchain",
       "statOnchainNote": "Factory + 5 proxies per campaign",
@@ -1567,33 +1574,33 @@
     },
     "how": {
       "kicker": "How it works",
-      "title1": "Five steps.",
-      "title2": "One living cycle.",
-      "intro": "GrowFi separates capital flow from harvest delivery. Contracts move funds through explicit states: escrow, activation, staking, redemption and buyback. The user sees a simple harvest, while the protocol keeps the accounting legible.",
+      "title1": "Simple flow.",
+      "title2": "Clear claims.",
+      "intro": "Each campaign keeps the important parts visible: who receives funds, what investors get, and how project updates are tracked.",
       "steps": [
         {
           "signal": "Origination",
           "asset": "$CAMPAIGN",
-          "title": "The grower opens a harvest market",
-          "body": "A grower launches a campaign with fixed caps, dates, accepted tokens and harvest terms. The parameters are visible before any wallet signs."
+          "title": "A project opens a campaign",
+          "body": "Caps, receiver routing, accepted tokens and project terms are visible before any wallet signs."
         },
         {
           "signal": "Escrow",
           "asset": "USDC",
-          "title": "Investors fund with stable capital",
-          "body": "USDC enters contract escrow. If the soft cap is missed, holders burn their campaign tokens and recover funds directly from the contract."
+          "title": "Investors fund transparently",
+          "body": "Stablecoin purchases mint campaign tokens and route proceeds through the configured split."
         },
         {
           "signal": "Season",
           "asset": "$YIELD",
-          "title": "Staked positions accrue harvest claims",
-          "body": "Once active, $CAMPAIGN can be staked through the season. The vault accrues the crop-specific $YIELD token, with earlier participation earning more of the season."
+          "title": "The project keeps reporting",
+          "body": "Updates are posted onchain, with offchain media and signed reactions for the community."
         },
         {
-          "signal": "Settlement",
+          "signal": "Harvest",
           "asset": "Product / USDC",
-          "title": "Harvest delivery becomes an auditable claim",
-          "body": "At harvest, holders burn $YIELD for physical product or their pro-rata USDC settlement. Backend Merkle proofs match the onchain redemption leaf exactly."
+          "title": "The harvest becomes a claim",
+          "body": "At harvest, holders use $YIELD to claim product or receive their USDC share."
         },
         {
           "signal": "Rollover",
@@ -1602,7 +1609,6 @@
           "body": "Holders can restake into the next season or queue a sell-back. Incoming buyers fill exits first-in-first-out before new exposure is created."
         }
       ],
-      "tail": "The protocol is commodity-agnostic: olive oil, cacao, coffee, wine, honey. Higher-trust campaigns can add Silvi Protocol evidence and grower verification without changing the core settlement flow.",
       "ctaSee": "See live campaigns",
       "ledger": {
         "kicker": "Protocol map",
@@ -1694,6 +1700,11 @@
           "label": "Silvi Protocol",
           "value": "via Silvi",
           "detail": "Satellite monitoring + ground-truth verification. Growers can plug in Silvi Protocol to raise campaign trust — public, subgraph-indexed."
+        },
+        {
+          "label": "Escrow",
+          "value": "Automatic refund",
+          "detail": "Funds sit in the Campaign contract until the soft cap is reached. If the deadline passes under-funded, investors burn their campaign tokens and withdraw the exact USDC they paid."
         }
       ],
       "feeTable": {
@@ -1795,7 +1806,7 @@
       "linkCampaigns": "Campaigns",
       "linkProducers": "For growers",
       "linkPortfolio": "Portfolio",
-      "linkDocs": "Documentation",
+      "linkDocs": "FAQ",
       "linkContracts": "Smart contracts",
       "linkSubgraph": "Subgraph",
       "linkWebsite": "Website",
@@ -1804,6 +1815,42 @@
       "linkInstagram": "Instagram",
       "copy": "© {year} Rifai Sicilia DAO. All code open-source under MIT license.",
       "linkInvestors": "Investors"
+    }
+  },
+  "faq": {
+    "kicker": "FAQ",
+    "title": "Protocol facts, fees and project flow.",
+    "intro": "Short answers for the public app: how campaign funds move, what happens at soft cap, where updates live, and which fees apply.",
+    "campaignsCta": "Browse campaigns",
+    "items": {
+      "campaignFunds": {
+        "title": "Where do campaign funds go?",
+        "body": "Primary-sale proceeds go through the campaign contract. Protocol fees are routed to the FeeSplitter; net campaign proceeds follow the configured owner or split receiver route."
+      },
+      "softCap": {
+        "title": "What happens if a campaign misses soft cap?",
+        "body": "Funds remain claimable through the refund path. Investors burn the proportional campaign tokens and recover the payment amount from the contract."
+      },
+      "yieldToken": {
+        "title": "What is the Yield Token?",
+        "body": "$YIELD is the campaign-specific harvest claim token. It accrues while a position is staked and is used at harvest to claim physical product or the campaign's USDC settlement."
+      },
+      "growToken": {
+        "title": "What is the $GROW token?",
+        "body": "$GROW is the protocol token. Its treasury can allocate stablecoin capital across multiple active campaigns, spreading exposure instead of relying on a single harvest. This can reduce concentration risk, but it does not remove campaign, liquidity or market risk."
+      },
+      "projectUpdates": {
+        "title": "Are project updates onchain?",
+        "body": "The update evidence is posted onchain. Rich text and images live in public metadata, and the campaign page plus feed show the indexed update."
+      },
+      "split": {
+        "title": "Can project proceeds be split?",
+        "body": "Yes. Campaign owners can configure a project partner receiver and percentage, while the owner receives the remaining net proceeds."
+      },
+      "silvi": {
+        "title": "What is Silvi Protocol?",
+        "body": "Silvi Protocol is an optional project evidence layer for campaigns that have public monitoring data. When configured, GrowFi links the campaign to the Silvi project view."
+      }
     }
   },
   "notFound": {

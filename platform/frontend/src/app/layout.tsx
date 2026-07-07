@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import {
   Inter,
   Be_Vietnam_Pro,
-  Crimson_Text,
   Plus_Jakarta_Sans,
 } from "next/font/google";
 import { Providers } from "./providers";
@@ -23,16 +22,8 @@ const beVietnamPro = Be_Vietnam_Pro({
 
 const plusJakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
-  weight: ["700", "800"],
+  weight: ["400", "500", "600", "700", "800"],
   variable: "--font-jakarta",
-  display: "swap",
-});
-
-const crimsonText = Crimson_Text({
-  subsets: ["latin"],
-  weight: ["400"],
-  style: ["normal", "italic"],
-  variable: "--font-crimson-text",
   display: "swap",
 });
 
@@ -91,7 +82,7 @@ export default function RootLayout({
   return (
     <html
       lang="it"
-      className={`${inter.variable} ${beVietnamPro.variable} ${plusJakarta.variable} ${crimsonText.variable} h-full antialiased`}
+      className={`${inter.variable} ${beVietnamPro.variable} ${plusJakarta.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans bg-surface text-on-surface">
         <Providers>

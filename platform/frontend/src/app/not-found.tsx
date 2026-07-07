@@ -171,7 +171,7 @@ export default function NotFound() {
           {t("ctaHome")}
         </Link>
         <Link
-          href="/#campaigns"
+          href="/campaigns"
           className="px-6 py-2.5 rounded-full text-sm font-semibold text-on-surface border border-outline-variant/30 hover:bg-surface-container-low transition"
         >
           {t("ctaExplore")}

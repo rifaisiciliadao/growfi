@@ -78,8 +78,8 @@ export function ProductiveAssetCard({
   const perYear = t("perYearShort");
 
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15 space-y-5">
-      <h3 className="text-sm font-semibold text-on-surface">
+    <div className="app-card rounded-[1.35rem] p-6 space-y-5">
+      <h3 className="text-sm font-bold tracking-[-0.01em] text-on-surface">
         {t("title")}
       </h3>
 
@@ -126,7 +126,7 @@ export function ProductiveAssetCard({
       </div>
 
       {/* Collateral + risk band */}
-      <div className="rounded-xl border border-outline-variant/15 p-4 space-y-3">
+      <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low/60 p-4 space-y-3">
         <div className="flex items-baseline justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
             {t("coverage")}
@@ -218,7 +218,7 @@ function Tile({
       >
         {label}
       </div>
-      <div className={compact ? "text-sm font-bold text-on-surface" : "text-base font-bold text-on-surface"}>
+      <div className={compact ? "font-mono text-sm font-bold tabular-nums text-on-surface" : "font-mono text-base font-bold tabular-nums text-on-surface"}>
         {value}
       </div>
     </div>

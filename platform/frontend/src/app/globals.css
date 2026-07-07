@@ -1,43 +1,82 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-primary: #006b2c;
-  --color-primary-container: #00873a;
+  --color-primary: #006f33;
+  --color-primary-container: #0b8a43;
   --color-primary-fixed: #7ffc97;
   --color-primary-fixed-dim: #62df7d;
   --color-on-primary: #ffffff;
   --color-on-primary-fixed-variant: #005320;
 
-  --color-secondary: #0058be;
-  --color-secondary-container: #2170e4;
+  --color-secondary: #224e7c;
+  --color-secondary-container: #326a9f;
 
-  --color-surface: #f7f9fb;
-  --color-surface-bright: #f7f9fb;
-  --color-surface-dim: #d8dadc;
-  --color-surface-container: #eceef0;
-  --color-surface-container-low: #f2f4f6;
-  --color-surface-container-high: #e6e8ea;
-  --color-surface-container-highest: #e0e3e5;
+  --color-surface: #f4f7f2;
+  --color-surface-bright: #fbfcf8;
+  --color-surface-dim: #d9ded6;
+  --color-surface-container: #e9eee5;
+  --color-surface-container-low: #f0f4ed;
+  --color-surface-container-high: #e0e7dd;
+  --color-surface-container-highest: #d6dfd1;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-variant: #e0e3e5;
+  --color-surface-variant: #dde6da;
 
-  --color-on-surface: #191c1e;
-  --color-on-surface-variant: #3e4a3d;
-  --color-outline: #6e7b6c;
-  --color-outline-variant: #bdcaba;
+  --color-on-surface: #141915;
+  --color-on-surface-variant: #465244;
+  --color-outline: #667260;
+  --color-outline-variant: #bdcab8;
 
-  --color-inverse-surface: #2d3133;
+  --color-inverse-surface: #202820;
   --color-inverse-on-surface: #eff1f3;
 
   --color-error: #ba1a1a;
 
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-jakarta), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
   font-family: var(--font-sans);
   background: var(--color-surface);
   color: var(--color-on-surface);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+::selection {
+  background: rgba(0, 111, 51, 0.18);
+  color: var(--color-on-surface);
+}
+
+.app-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(250, 252, 248, 0.9));
+  border: 1px solid color-mix(in oklab, var(--color-outline-variant) 42%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.96) inset,
+    0 24px 70px -46px rgba(14, 35, 17, 0.42);
+}
+
+.app-card-soft {
+  background: color-mix(in oklab, var(--color-surface-container-lowest) 86%, var(--color-surface));
+  border: 1px solid color-mix(in oklab, var(--color-outline-variant) 34%, transparent);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.92) inset,
+    0 18px 48px -38px rgba(14, 35, 17, 0.38);
+}
+
+.app-control {
+  transition:
+    transform 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    color 220ms cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.app-control:active {
+  transform: translateY(1px) scale(0.99);
 }
 
 .regen-gradient {
@@ -148,19 +187,19 @@ body {
   --color-brand-mint: #7ffc97;
 
   --font-header: var(--font-be-vietnam-pro), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-crimson-text), ui-serif, Georgia, 'Times New Roman', serif;
+  --font-body: var(--font-jakarta), var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   --font-accent: var(--font-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-header);
 
   --weight-header: 700;
   --weight-body: 400;
-  --tracking-header: -0.02em;
-  --tracking-body: -0.02em;
+  --tracking-header: -0.04em;
+  --tracking-body: 0;
 }
 
 .landing-root {
   font-family: var(--font-body);
-  font-weight: var(--weight-body);
+  font-weight: 500;
   letter-spacing: var(--tracking-body);
   color: #000;
   -webkit-font-smoothing: antialiased;
@@ -185,10 +224,19 @@ body {
 .landing-root h2 em,
 .landing-root h3 em,
 .landing-root .font-display em {
-  font-family: var(--font-body);
-  font-style: italic;
-  font-weight: var(--weight-body);
-  letter-spacing: 0;
+  font-family: inherit;
+  font-style: normal;
+  font-weight: inherit;
+  letter-spacing: inherit;
+}
+
+.landing-grain {
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(20, 25, 21, 0.14) 0 1px, transparent 1px),
+    radial-gradient(circle at 80% 40%, rgba(20, 25, 21, 0.1) 0 1px, transparent 1px),
+    radial-gradient(circle at 40% 78%, rgba(20, 25, 21, 0.08) 0 1px, transparent 1px);
+  background-size: 19px 19px, 23px 23px, 29px 29px;
+  mix-blend-mode: multiply;
 }
 
 /* Glass surfaces */

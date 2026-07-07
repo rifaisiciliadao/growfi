@@ -27,7 +27,7 @@ export function ConditionalChrome({
     <>
       <Header />
       <NetworkGuard />
-      <main className="flex-grow pt-16">
+      <main className="flex-grow pt-20">
         <InviteGate>{children}</InviteGate>
       </main>
       <Footer />

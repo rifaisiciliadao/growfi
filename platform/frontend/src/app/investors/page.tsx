@@ -155,22 +155,22 @@ export default function InvestorsPage() {
 
   return (
     <div className="bg-[#f6f8f2] text-[#061b31]">
-      <section className="relative isolate overflow-hidden bg-[#06140f] text-white">
+      <section className="relative isolate overflow-hidden bg-[#06140f] pb-16 text-white md:pb-20">
         <img
           src={HERO_IMAGE}
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,17,13,0.96)_0%,rgba(5,17,13,0.84)_38%,rgba(5,17,13,0.28)_76%,rgba(5,17,13,0.06)_100%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-[linear-gradient(0deg,rgba(6,20,15,0.92),rgba(6,20,15,0))]" />
-        <div className="absolute left-0 top-0 h-full w-full bg-[radial-gradient(circle_at_14%_24%,rgba(83,58,253,0.24),transparent_28%),radial-gradient(circle_at_88%_72%,rgba(127,252,151,0.20),transparent_24%)]" />
-        <div className="relative mx-auto grid min-h-[760px] max-w-7xl items-end gap-8 px-4 pb-10 pt-28 md:grid-cols-[1fr_420px] md:px-8 md:pb-14">
-          <div className="max-w-4xl pb-4 md:pb-8">
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,17,13,0.94)_0%,rgba(5,17,13,0.82)_44%,rgba(5,17,13,0.36)_78%,rgba(5,17,13,0.16)_100%)]" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-[linear-gradient(0deg,rgba(6,20,15,0.9),rgba(6,20,15,0))]" />
+        <div className="absolute left-0 top-0 h-full w-full bg-[radial-gradient(circle_at_12%_24%,rgba(83,58,253,0.18),transparent_30%),radial-gradient(circle_at_88%_72%,rgba(127,252,151,0.16),transparent_26%)]" />
+        <div className="relative mx-auto grid min-h-[600px] max-w-7xl items-center gap-8 px-4 pb-12 pt-14 md:grid-cols-[minmax(0,1fr)_380px] md:px-8 md:pb-14 md:pt-16">
+          <div className="max-w-3xl">
             <p className="inline-flex items-center gap-2 rounded-[4px] border border-white/20 bg-white/12 px-3 py-1 text-xs font-semibold uppercase text-emerald-100 backdrop-blur-md">
               <span className="h-1.5 w-1.5 rounded-full bg-[#7ffc97] shadow-[0_0_0_5px_rgba(127,252,151,0.16)]" />
               {chainText("hero.kicker")}
             </p>
-            <h1 className="mt-5 max-w-4xl text-5xl font-semibold leading-[1.02] text-white md:text-7xl">
+            <h1 className="mt-5 max-w-3xl text-5xl font-semibold leading-[1.02] tracking-[-0.04em] text-white md:text-6xl">
               {t("hero.title")}
             </h1>
             <p className="mt-6 max-w-2xl text-base leading-7 text-emerald-50/88 md:text-lg">
@@ -184,14 +184,14 @@ export default function InvestorsPage() {
                 {t("hero.requestCta")}
               </a>
               <Link
-                href="/#campaigns"
+                href="/campaigns"
                 className="inline-flex min-h-[46px] items-center justify-center rounded-[6px] border border-white/25 bg-white/10 px-5 text-sm font-semibold text-white backdrop-blur-md transition-colors hover:bg-white/16"
               >
                 {t("hero.campaignCta")}
               </Link>
             </div>
           </div>
-          <aside className="rounded-[8px] border border-white/16 bg-[#061b31]/70 p-4 shadow-[0_30px_60px_-34px_rgba(0,0,0,0.70)] backdrop-blur-xl md:mb-8">
+          <aside className="rounded-[8px] border border-white/16 bg-[#061b31]/62 p-4 shadow-[0_30px_60px_-34px_rgba(0,0,0,0.70)] backdrop-blur-xl">
             <p className="text-xs font-semibold uppercase text-emerald-200">
               {t("proof.kicker")}
             </p>
@@ -233,19 +233,17 @@ export default function InvestorsPage() {
             </div>
           </aside>
         </div>
-      </section>
 
-      <section className="relative z-10 -mt-8 px-4 md:px-8">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 overflow-hidden rounded-[8px] border border-[#e5edf5] bg-emerald-950/10 shadow-[0_30px_45px_-32px_rgba(50,50,93,0.36),0_18px_36px_-26px_rgba(0,0,0,0.16)] md:grid-cols-3">
+        <div className="relative z-10 mx-auto grid max-w-7xl grid-cols-1 overflow-hidden rounded-[8px] border border-white/14 bg-[#061b31]/56 px-1 py-1 shadow-[0_30px_45px_-32px_rgba(0,0,0,0.55)] backdrop-blur-xl md:grid-cols-3">
           {stats.map((stat) => (
-            <div key={stat.label} className="bg-white px-5 py-6 md:px-6">
-              <div className="text-xs font-semibold uppercase text-[#64748d]">
+            <div key={stat.label} className="border-white/10 px-5 py-5 md:border-r md:px-6 md:last:border-r-0">
+              <div className="text-xs font-semibold uppercase text-white/58">
                 {stat.label}
               </div>
-              <div className="mt-2 text-3xl font-semibold text-[#061b31]">
+              <div className="mt-2 text-2xl font-semibold text-white md:text-3xl">
                 {stat.value}
               </div>
-              <p className="mt-2 text-sm leading-6 text-[#64748d]">{stat.hint}</p>
+              <p className="mt-2 text-sm leading-6 text-white/68">{stat.hint}</p>
             </div>
           ))}
         </div>

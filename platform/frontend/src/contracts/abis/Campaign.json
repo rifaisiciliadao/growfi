@@ -2045,5 +2045,230 @@
     "type": "error",
     "name": "UpdateMissing",
     "inputs": []
+  },
+  {
+    "type": "function",
+    "name": "availableCollateral",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "initializeCollateral",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct CollateralModule.InitParams",
+        "components": [
+          {
+            "name": "expectedAnnualHarvestUsd",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "expectedAnnualHarvest",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "firstHarvestYear",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "coverageHarvests",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "updateHarvestCommitment",
+    "inputs": [
+      {
+        "name": "p",
+        "type": "tuple",
+        "internalType": "struct CollateralModule.InitParams",
+        "components": [
+          {
+            "name": "expectedAnnualHarvestUsd",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "expectedAnnualHarvest",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "firstHarvestYear",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "coverageHarvests",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "event",
+    "name": "CollateralInitialized",
+    "inputs": [
+      {
+        "name": "expectedAnnualHarvestUsd",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "expectedAnnualHarvest",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "firstHarvestYear",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "coverageHarvests",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "HarvestCommitmentUpdated",
+    "inputs": [
+      {
+        "name": "producer",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "previousExpectedAnnualHarvestUsd",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "previousExpectedAnnualHarvest",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "previousFirstHarvestYear",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "previousCoverageHarvests",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "expectedAnnualHarvestUsd",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "expectedAnnualHarvest",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "firstHarvestYear",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "coverageHarvests",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "AlreadyInitialized",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "CollateralAlreadyLocked",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DebtRestructuringStarted",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "DepositWindowOpen",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidHarvestCommitment",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidState",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "NotInCoverage",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "OnlyFactoryBootstrap",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "Reentrant",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "TransferAmountMismatch",
+    "inputs": []
   }
 ]

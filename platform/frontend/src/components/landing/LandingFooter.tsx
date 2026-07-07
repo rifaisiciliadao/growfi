@@ -21,7 +21,7 @@ export function LandingFooter() {
       title: t("colProduct"),
       links: [
         { label: t("linkHow"), href: "#how" },
-        { label: t("linkCampaigns"), href: "#campaigns" },
+        { label: t("linkCampaigns"), href: "/campaigns", internal: true },
         { label: "$GROW", href: "/grow", internal: true },
         { label: t("linkInvestors"), href: "/investors", internal: true },
         { label: t("linkProducers"), href: "/create", internal: true },
@@ -31,7 +31,7 @@ export function LandingFooter() {
     {
       title: t("colProtocol"),
       links: [
-        { label: t("linkDocs"), href: "#" },
+        { label: t("linkDocs"), href: "/faq", internal: true },
         {
           label: t("linkContracts"),
           href: addressUrl(factory),

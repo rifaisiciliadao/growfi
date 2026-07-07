@@ -242,12 +242,13 @@ export default function CampaignDetail({
   return (
     <>
       <section
-        className="relative w-full h-60 md:h-72 flex items-end px-4 md:px-8 lg:px-16 pb-8 md:pb-12 bg-cover bg-center overflow-hidden"
+        className="relative flex h-72 w-full items-end overflow-hidden bg-cover bg-center px-4 pb-8 md:h-[22rem] md:px-8 md:pb-12 lg:px-16"
         style={heroStyle}
       >
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/82 via-black/44 to-black/12" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_76%_18%,rgba(127,252,151,0.18),transparent_28rem)]" />
         <div className="relative z-10 w-full max-w-7xl mx-auto flex flex-col gap-3 md:gap-4">
-          <nav className="flex items-center text-white/70 text-xs font-semibold uppercase tracking-wider min-h-[32px]">
+          <nav className="flex min-h-[32px] items-center text-xs font-bold uppercase tracking-[0.14em] text-white/72">
             <Link href="/" className="inline-flex items-center min-h-[32px] hover:text-white transition-colors">
               {t("breadcrumb")}
             </Link>
@@ -256,18 +257,18 @@ export default function CampaignDetail({
           </nav>
           <div className="flex items-start justify-between flex-wrap gap-3 md:gap-4">
             <div className="min-w-0 flex-1">
-              <h1 className="text-3xl sm:text-4xl md:text-6xl font-extrabold tracking-tight text-white leading-tight break-words">
+              <h1 className="max-w-5xl break-words text-4xl font-extrabold leading-[0.98] tracking-[-0.055em] text-white sm:text-5xl md:text-7xl">
                 {displayName}
               </h1>
               {(displayLocation || displayAssetProduct) && (
-                <p className="text-white/90 mt-2 text-sm md:text-base">
+                <p className="mt-3 text-sm font-medium text-white/88 md:text-base">
                   {[displayAssetProduct, displayLocation]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
               )}
             </div>
-            <span className="inline-flex items-center px-3 md:px-4 py-1.5 md:py-2 rounded-full bg-primary-fixed text-on-primary-fixed-variant text-[10px] md:text-xs font-semibold uppercase tracking-wider backdrop-blur-md shrink-0">
+            <span className="inline-flex shrink-0 items-center rounded-full bg-primary-fixed px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-on-primary-fixed-variant shadow-[0_16px_40px_-24px_rgba(127,252,151,0.9)] backdrop-blur-md md:px-4 md:py-2 md:text-xs">
               {tHome(
                 stateKey === "buyback"
                   ? "state.ended"
@@ -278,13 +279,13 @@ export default function CampaignDetail({
         </div>
       </section>
 
-      <div className="sticky top-16 z-40 bg-surface/90 backdrop-blur-md border-b border-outline-variant/15">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 flex gap-4 md:gap-8 overflow-x-auto no-scrollbar">
+      <div className="sticky top-20 z-40 bg-surface/82 backdrop-blur-xl border-b border-outline-variant/15">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 flex gap-3 md:gap-5 overflow-x-auto no-scrollbar">
           {visibleTabs.map((key) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
-              className={`py-4 text-sm md:text-base font-semibold transition-colors border-b-2 whitespace-nowrap ${
+              className={`app-control py-4 text-sm md:text-base font-bold tracking-[-0.01em] transition-colors border-b-2 whitespace-nowrap ${
                 effectiveTab === key
                   ? "text-primary border-primary"
                   : "text-on-surface-variant border-transparent hover:text-on-surface"
@@ -360,7 +361,7 @@ export default function CampaignDetail({
               )}
 
               {!hasBuyData ? (
-                <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15 text-center text-sm text-on-surface-variant">
+                <div className="app-card rounded-[1.35rem] p-8 text-center text-sm text-on-surface-variant">
                   {t("buy.loadingCampaign")}
                 </div>
               ) : stateIdx === 2 ? (
@@ -482,7 +483,7 @@ export default function CampaignDetail({
             )}
         </div>
 
-        <div className="w-full lg:w-[35%] sticky top-36 flex flex-col gap-4">
+        <aside className="w-full lg:w-[35%] sticky top-40 flex flex-col gap-4">
           <StatsCard
             pricePerToken={pricePerToken}
             maxCap={maxCap}
@@ -513,7 +514,7 @@ export default function CampaignDetail({
           <ProducerCard
             producer={producerAddress}
           />
-        </div>
+        </aside>
       </div>
     </>
   );
@@ -865,13 +866,13 @@ function FundingProgressCard({
   }
 
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15">
+    <div className="app-card rounded-[1.35rem] p-8">
       <h2 className="text-base font-semibold text-on-surface mb-6">
         {t("title")}
       </h2>
       <div className="flex justify-between items-end mb-4">
         <div>
-          <span className="text-3xl font-bold tracking-tight text-on-surface">
+          <span className="font-mono text-3xl font-bold tracking-[-0.04em] tabular-nums text-on-surface">
             ${raisedNum.toLocaleString()}
           </span>
           <span className="text-base text-on-surface-variant ml-2">
@@ -983,14 +984,14 @@ function InfoPanel({
 }) {
   const t = useTranslations("detail.info");
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15">
+    <div className="app-card rounded-[1.35rem] p-8">
       <h2 className="text-2xl font-bold tracking-tight text-on-surface mb-6">
         {t("title")}
       </h2>
       <div className="space-y-4 text-sm text-on-surface-variant leading-relaxed">
         <RichTextContent value={description} fallback={<p>{t("about")}</p>} />
         {location && (
-          <p className="text-on-surface font-medium">📍 {location}</p>
+          <p className="text-on-surface font-semibold">{location}</p>
         )}
         <p>{t("tokens")}</p>
 
@@ -1024,7 +1025,7 @@ function SilviProtocolPanel({ dmrv }: { dmrv: CampaignDmrvMetadata }) {
   const [loaded, setLoaded] = useState(false);
 
   return (
-    <section className="bg-surface-container-lowest rounded-2xl p-6 md:p-8 border border-outline-variant/15">
+    <section className="app-card rounded-[1.35rem] p-6 md:p-8">
       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-primary mb-1">
@@ -1114,7 +1115,7 @@ function StatsCard({
   };
 
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15">
+    <div className="app-card rounded-[1.35rem] p-6">
       <h3 className="text-sm font-semibold text-on-surface mb-4">
         {t("stats")}
       </h3>
@@ -1138,7 +1139,7 @@ function StatsCard({
           <span className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
             {t("yieldRate")}
           </span>
-          <span className="text-2xl font-bold text-primary">
+          <span className="font-mono text-2xl font-bold tabular-nums text-primary">
             {yieldRate > 0 ? `${yieldRate}x` : "—"}
           </span>
         </div>
@@ -1344,7 +1345,7 @@ function Stat({ label, value }: { label: string; value: string }) {
       <div className="text-xs font-semibold uppercase tracking-wider text-on-surface-variant mb-1">
         {label}
       </div>
-      <div className="text-base font-semibold text-on-surface">{value}</div>
+      <div className="font-mono text-base font-semibold tabular-nums text-on-surface">{value}</div>
     </div>
   );
 }
@@ -1376,7 +1377,7 @@ function TokensAcceptedCard({
     tokens.length > 0 ? tokens : PAYMENT_TOKEN_FALLBACK_ADDRESSES;
 
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15">
+    <div className="app-card rounded-[1.35rem] p-6">
       <h3 className="text-sm font-semibold text-on-surface mb-4">
         {t("acceptedTokens")}
       </h3>
@@ -1433,7 +1434,7 @@ function TokenRow({
   const live = isOracle;
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-xl bg-surface-container-low">
+    <div className="flex items-center justify-between rounded-2xl bg-surface-container-low p-3">
       <div className="flex items-center gap-3">
         <div className="w-8 h-8 rounded-full bg-primary-fixed flex items-center justify-center">
           <span className="text-xs font-bold text-on-primary-fixed-variant">
@@ -1475,7 +1476,7 @@ function ProducerCard({ producer }: { producer?: Address }) {
   const initials = (name ?? short).slice(0, 2).toUpperCase();
 
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-6 border border-outline-variant/15">
+    <div className="app-card rounded-[1.35rem] p-6">
       <h3 className="text-sm font-semibold text-on-surface mb-4">
         {t("grower")}
       </h3>

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { ConnectButton } from "@rainbow-me/rainbowkit";
 import { LanguageSwitcher } from "../LanguageSwitcher";
-import { LandingLogo } from "./LandingLogo";
+import { Logo } from "../Logo";
 import { useInviteGate } from "@/lib/inviteGate";
 import { useInviteModal } from "@/lib/inviteModal";
 import { useExpectedChain } from "@/lib/useExpectedChain";
@@ -119,23 +119,24 @@ export function Nav() {
   );
 
   return (
-    <nav className="relative z-20 w-full">
-      <div className="relative mx-auto flex max-w-7xl items-center justify-between px-4 py-5 md:px-8 md:py-6 gap-3">
+    <>
+    <nav className="fixed left-0 top-0 z-50 w-full px-3 pt-3 md:px-5">
+      <div className="relative mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 rounded-full border border-black/10 bg-white/78 px-3 shadow-[0_18px_48px_-36px_rgba(0,0,0,0.45)] backdrop-blur-xl md:px-5">
         <a
           href="#home"
           className="relative z-10 shrink-0 transition-transform duration-200 hover:scale-[1.02]"
         >
-          <LandingLogo />
+          <Logo />
         </a>
 
         <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-5 lg:flex">
-          <a
-            href="#campaigns"
+          <Link
+            href="/campaigns"
             className={desktopLinkClass}
             style={{ fontFamily: "var(--font-header)" }}
           >
-            {tNav("explore")}
-          </a>
+            {t("campaigns")}
+          </Link>
           <Link
             href="/investors"
             className={desktopLinkClass}
@@ -149,6 +150,13 @@ export function Nav() {
             style={{ fontFamily: "var(--font-header)" }}
           >
             $GROW
+          </Link>
+          <Link
+            href="/faq"
+            className={desktopLinkClass}
+            style={{ fontFamily: "var(--font-header)" }}
+          >
+            {tNav("faq")}
           </Link>
         </div>
 
@@ -185,15 +193,15 @@ export function Nav() {
                 role="menu"
                 className="absolute right-0 top-full mt-2 w-60 rounded-lg border border-black/10 bg-white/95 p-1.5 shadow-[0_18px_48px_-28px_rgba(0,0,0,0.45)] backdrop-blur-xl"
               >
-                <a
-                  href="#campaigns"
+                <Link
+                  href="/campaigns"
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={`${menuLinkClass} lg:hidden`}
                   style={{ fontFamily: "var(--font-header)" }}
                 >
-                  {tNav("explore")}
-                </a>
+                  {t("campaigns")}
+                </Link>
                 <Link
                   href="/investors"
                   role="menuitem"
@@ -221,6 +229,15 @@ export function Nav() {
                   style={{ fontFamily: "var(--font-header)" }}
                 >
                   {tNav("feed")}
+                </Link>
+                <Link
+                  href="/faq"
+                  role="menuitem"
+                  onClick={() => setDesktopOpen(false)}
+                  className={menuLinkClass}
+                  style={{ fontFamily: "var(--font-header)" }}
+                >
+                  {tNav("faq")}
                 </Link>
                 <Link
                   href="/portfolio"
@@ -282,16 +299,16 @@ export function Nav() {
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-black/10 bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto mt-2 max-w-7xl rounded-3xl border border-black/10 bg-white/92 shadow-[0_18px_48px_-34px_rgba(0,0,0,0.45)] backdrop-blur-xl md:hidden">
           <div className="mx-auto flex max-w-7xl flex-col gap-1 px-4 py-3">
-            <a
-              href="#campaigns"
+            <Link
+              href="/campaigns"
               onClick={() => setMobileOpen(false)}
               className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors"
               style={{ fontFamily: "var(--font-header)" }}
             >
-              {tNav("explore")}
-            </a>
+              {t("campaigns")}
+            </Link>
             <Link
               href="/feed"
               onClick={() => setMobileOpen(false)}
@@ -299,6 +316,14 @@ export function Nav() {
               style={{ fontFamily: "var(--font-header)" }}
             >
               {tNav("feed")}
+            </Link>
+            <Link
+              href="/faq"
+              onClick={() => setMobileOpen(false)}
+              className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors"
+              style={{ fontFamily: "var(--font-header)" }}
+            >
+              {tNav("faq")}
             </Link>
             <Link
               href="/portfolio"
@@ -354,5 +379,7 @@ export function Nav() {
         </div>
       )}
     </nav>
+    <div className="h-[84px] md:h-[92px]" aria-hidden />
+    </>
   );
 }

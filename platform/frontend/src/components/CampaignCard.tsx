@@ -77,8 +77,8 @@ export function CampaignCard({
 
   return (
     <Link href={`/campaign/${address}`} className="block group">
-      <div className="bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/15 hover:-translate-y-1 transition-transform duration-300">
-        <div className="h-48 bg-surface-container-low relative overflow-hidden">
+      <article className="app-card overflow-hidden rounded-[1.35rem] transition-[transform,box-shadow,border-color] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:border-primary/20 hover:shadow-[0_34px_90px_-54px_rgba(14,35,17,0.62)]">
+        <div className="relative h-56 overflow-hidden bg-surface-container-low">
           {isEnded && (
             <div className="absolute inset-0 bg-surface-variant/40 z-10 mix-blend-multiply" />
           )}
@@ -88,28 +88,30 @@ export function CampaignCard({
             <CampaignImage src={resolvedImage} alt={resolvedName} />
           </div>
           <div
-            className={`absolute top-4 left-4 ${cfg.bg} ${cfg.text} px-3 py-1 rounded-full text-xs font-semibold tracking-wide uppercase shadow-sm backdrop-blur-md ${isEnded ? "z-20" : ""}`}
+            className={`absolute left-4 top-4 ${cfg.bg} ${cfg.text} rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em] shadow-sm backdrop-blur-md ${isEnded ? "z-20" : ""}`}
           >
             {t(`state.${state}`)}
           </div>
         </div>
 
-        <div className="p-6">
-          <h3 className="font-semibold text-on-surface mb-1">{resolvedName}</h3>
+        <div className="p-5 md:p-6">
+          <h3 className="text-lg font-bold leading-tight tracking-[-0.03em] text-on-surface">
+            {resolvedName}
+          </h3>
           {resolvedLocation && (
-            <p className="text-xs text-on-surface-variant mb-4">
+            <p className="mt-1 text-xs font-medium text-on-surface-variant">
               {resolvedLocation}
             </p>
           )}
-          {!resolvedLocation && <div className="mb-4" />}
+          {!resolvedLocation && <div className="mt-1 h-4" />}
 
-          <div className="space-y-4">
+          <div className="mt-5 space-y-4">
             <div>
-              <div className="flex justify-between text-xs font-semibold tracking-wide text-on-surface-variant mb-2">
+              <div className="mb-2 flex justify-between text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
                 <span>{t("card.progress")}</span>
-                <span>{progress}%</span>
+                <span className="font-mono tabular-nums">{progress}%</span>
               </div>
-              <div className="h-1 bg-surface-container-high rounded-full overflow-hidden">
+              <div className="h-1.5 overflow-hidden rounded-full bg-surface-container-high">
                 <div
                   className={`h-full ${cfg.progressColor} rounded-full transition-all duration-700`}
                   style={{ width: `${progress}%` }}
@@ -117,17 +119,17 @@ export function CampaignCard({
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-outline-variant/15">
-              <span className="text-xs font-semibold tracking-wide uppercase text-on-surface-variant">
+            <div className="flex items-end justify-between border-t border-outline-variant/15 pt-4">
+              <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
                 {isEnded ? t("card.status") : t("card.expectedYield")}
               </span>
-              <span className={`font-bold ${cfg.yieldColor}`}>
+              <span className={`font-mono text-2xl font-bold leading-none tabular-nums ${cfg.yieldColor}`}>
                 {isEnded ? t("card.completed") : `${yieldRate}x`}
               </span>
             </div>
 
             {!isEnded && (
-              <div className="text-xs text-on-surface-variant">
+              <div className="min-h-4 text-xs font-medium text-on-surface-variant">
                 {state === "funding" &&
                   deadline &&
                   t("card.deadline", { days: deadline })}
@@ -138,7 +140,7 @@ export function CampaignCard({
             )}
           </div>
         </div>
-      </div>
+      </article>
     </Link>
   );
 }
@@ -150,8 +152,8 @@ export function CampaignCard({
  */
 export function CampaignCardSkeleton() {
   return (
-    <div className="bg-surface-container-lowest rounded-2xl overflow-hidden border border-outline-variant/15">
-      <div className="h-48 bg-surface-container-low animate-pulse" />
+    <div className="app-card overflow-hidden rounded-[1.35rem]">
+      <div className="h-56 bg-surface-container-low animate-pulse" />
       <div className="p-6 space-y-4">
         <div className="h-4 w-3/4 bg-surface-container-low rounded animate-pulse" />
         <div className="h-3 w-1/2 bg-surface-container-low rounded animate-pulse" />

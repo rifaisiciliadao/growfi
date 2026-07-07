@@ -18,6 +18,13 @@ export function Footer() {
         </div>
         <div className="flex flex-wrap justify-center md:justify-end gap-x-2 gap-y-1">
           <Link
+            href="/campaigns"
+            prefetch={false}
+            className="inline-flex items-center min-h-[44px] px-3 text-sm font-semibold text-white hover:text-emerald-300 transition-colors"
+          >
+            {t("campaigns")}
+          </Link>
+          <Link
             href="/investors"
             prefetch={false}
             className="inline-flex items-center min-h-[44px] px-3 text-sm font-semibold text-white hover:text-emerald-300 transition-colors"
@@ -31,17 +38,21 @@ export function Footer() {
           >
             $GROW
           </Link>
-          {(["docs", "github", "discord", "terms", "privacy"] as const).map(
-            (key) => (
-              <a
-                key={key}
-                href="#"
-                className="inline-flex items-center min-h-[44px] px-3 text-sm text-slate-400 hover:text-green-400 transition-colors"
-              >
-                {t(key)}
-              </a>
-            ),
-          )}
+          <Link
+            href="/faq"
+            prefetch={false}
+            className="inline-flex items-center min-h-[44px] px-3 text-sm text-slate-400 hover:text-green-400 transition-colors"
+          >
+            {t("faq")}
+          </Link>
+          <a
+            href="https://github.com/rifaisiciliadao/growfi"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center min-h-[44px] px-3 text-sm text-slate-400 hover:text-green-400 transition-colors"
+          >
+            {t("github")}
+          </a>
         </div>
       </div>
     </footer>

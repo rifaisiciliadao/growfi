@@ -7,7 +7,9 @@
     "profile": "Perfil",
     "connectWallet": "Conectar carteira",
     "connect": "Conectar",
-    "investors": "Investidores"
+    "investors": "Investidores",
+    "campaigns": "Campanhas",
+    "faq": "FAQ"
   },
   "network": {
     "title": "Rede incorreta",
@@ -33,9 +35,11 @@
         "unstaked": "removeu do staking",
         "redeemedProduct": "resgatou produto",
         "redeemedUsdc": "resgatou",
-        "launched": "lançou uma nova campanha"
+        "launched": "lançou uma nova campanha",
+        "projectUpdate": "publicou uma atualização"
       },
       "withPayment": "com {amount}",
+      "projectUpdateFallback": "atualização do projeto",
       "prepositions": {
         "in": "em",
         "from": "de"
@@ -44,6 +48,11 @@
     "leaderboard": {
       "title": "Principais apoiadores",
       "empty": "Ainda não há apoiadores."
+    },
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Próxima",
+      "page": "Página {current} de {total}"
     },
     "relative": {
       "justNow": "agora mesmo",
@@ -1455,11 +1464,9 @@
   },
   "footer": {
     "tagline": "© {year} GrowFi. Finanças regenerativas para um planeta vivo.",
-    "docs": "Docs",
     "github": "GitHub",
-    "discord": "Discord",
-    "terms": "Termos",
-    "privacy": "Privacidade",
+    "faq": "FAQ",
+    "campaigns": "Campanhas",
     "investors": "Investidores"
   },
   "tx": {
@@ -1537,12 +1544,12 @@
       "fundCta": "Financiar a colheita"
     },
     "hero": {
-      "badge": "Rodada seed aberta · GrowFi está captando agora",
-      "titleA": "Invista na",
+      "badge": "Campanhas live · financiamento transparente",
+      "titleA": "Financie projetos reais.",
       "titleLand": "terra.",
-      "titleB": "Colha o",
+      "titleB": "Compartilhe receita real.",
       "titleYield": "rendimento.",
-      "lead": "Conectamos investidores, produtores e consumidores para financiar a economia regenerativa.",
+      "lead": "GrowFi transforma ativos produtivos em campanhas onchain transparentes.",
       "subtitle1": "Financie colheitas agroflorestais sintropicas reais on-chain:",
       "subtitleHighlight": "invista em azeitonas, colha azeite",
       "examples": [
@@ -1553,7 +1560,7 @@
         "invista em colmeias de pomar, colha mel"
       ],
       "subtitle2": "— resgate produto físico na colheita ou receba seu USDC de volta, bloqueado em escrow até o soft cap ser atingido.",
-      "ctaFund": "Financiar a colheita",
+      "ctaFund": "Ver campanhas",
       "ctaHow": "Ver como funciona",
       "statOnchain": "On-chain",
       "statOnchainNote": "Factory + 5 proxies por campanha",
@@ -1590,10 +1597,10 @@
           "body": "Quando ativa, $CAMPAIGN pode ser colocado em staking durante a temporada. O vault acumula o token $YIELD específico da safra, com participação antecipada ganhando mais da temporada."
         },
         {
-          "signal": "Liquidação",
+          "signal": "Colheita",
           "asset": "Produto / USDC",
-          "title": "A entrega da colheita vira um claim auditável",
-          "body": "Na colheita, holders queimam $YIELD por produto físico ou liquidação pro-rata em USDC. Provas Merkle do backend correspondem exatamente à leaf de resgate on-chain."
+          "title": "A colheita vira um claim",
+          "body": "Na colheita, holders usam $YIELD para resgatar produto ou receber sua parte em USDC."
         },
         {
           "signal": "Rollover",
@@ -1602,7 +1609,6 @@
           "body": "Holders podem fazer restake na próxima temporada ou entrar na fila de revenda. Compradores entrantes preenchem saídas primeiro a entrar, primeiro a sair antes de nova exposição ser criada."
         }
       ],
-      "tail": "O protocolo é agnóstico à commodity: azeite, cacau, café, vinho, mel. Campanhas de maior confiança podem adicionar evidência Silvi Protocol e verificação de produtor sem mudar o fluxo central de liquidação.",
       "ctaSee": "Ver campanhas ao vivo",
       "ledger": {
         "kicker": "Mapa do protocolo",
@@ -1694,6 +1700,11 @@
           "label": "Silvi Protocol",
           "value": "via Silvi",
           "detail": "Monitoramento por satélite + verificação em campo. Produtores podem conectar Silvi Protocol para aumentar a confiança da campanha — público e indexado por subgraph."
+        },
+        {
+          "label": "Escrow",
+          "value": "Refund automático",
+          "detail": "Os fundos ficam no contrato Campaign até o soft cap ser alcançado. Se o prazo passar under-funded, investidores queimam seus campaign tokens e retiram exatamente os USDC pagos."
         }
       ],
       "feeTable": {
@@ -1795,7 +1806,7 @@
       "linkCampaigns": "Campanhas",
       "linkProducers": "Para produtores",
       "linkPortfolio": "Portfólio",
-      "linkDocs": "Documentação",
+      "linkDocs": "FAQ",
       "linkContracts": "Smart contracts",
       "linkSubgraph": "Subgraph",
       "linkWebsite": "Website",
@@ -1804,6 +1815,42 @@
       "linkInstagram": "Instagram",
       "copy": "© {year} Rifai Sicilia DAO. Todo o código é open-source sob licença MIT.",
       "linkInvestors": "Investidores"
+    }
+  },
+  "faq": {
+    "kicker": "FAQ",
+    "title": "Fatos do protocolo, taxas e fluxo do projeto.",
+    "intro": "Respostas rápidas para a app pública: como os fundos circulam, o que acontece no soft cap, onde ficam os updates e quais taxas se aplicam.",
+    "campaignsCta": "Ver campanhas",
+    "items": {
+      "campaignFunds": {
+        "title": "Para onde vão os fundos da campanha?",
+        "body": "As receitas da venda primária passam pelo contrato da campanha. As taxas do protocolo vão para o FeeSplitter; o líquido segue a rota do owner ou do split configurado."
+      },
+      "softCap": {
+        "title": "O que acontece se a campanha não atingir o soft cap?",
+        "body": "Os fundos continuam recuperáveis pela rota de refund. Os investidores queimam os campaign tokens proporcionais e recuperam o valor pago pelo contrato."
+      },
+      "yieldToken": {
+        "title": "O que é o Yield Token?",
+        "body": "$YIELD é o token de claim de colheita específico da campanha. Ele acumula enquanto a posição está em staking e, na colheita, é usado para reivindicar produto físico ou o settlement USDC da campanha."
+      },
+      "growToken": {
+        "title": "O que é o token $GROW?",
+        "body": "$GROW é o token do protocolo. Sua treasury pode alocar capital em stablecoin em várias campanhas ativas, distribuindo exposição em vez de depender de uma única colheita. Isso pode reduzir risco de concentração, mas não elimina risco de campanha, liquidez ou mercado."
+      },
+      "projectUpdates": {
+        "title": "Os updates do projeto são onchain?",
+        "body": "A evidência do update é publicada onchain. Texto rico e imagens ficam em metadata pública, e a página da campanha junto com o feed mostram o update indexado."
+      },
+      "split": {
+        "title": "As receitas do projeto podem ser divididas?",
+        "body": "Sim. O owner pode configurar um receiver project partner e uma porcentagem; o owner recebe o restante do líquido."
+      },
+      "silvi": {
+        "title": "O que é Silvi Protocol?",
+        "body": "Silvi Protocol é uma camada opcional de evidência do projeto para campanhas com dados públicos de monitoramento. Quando configurado, GrowFi conecta a campanha à vista Silvi."
+      }
     }
   },
   "notFound": {

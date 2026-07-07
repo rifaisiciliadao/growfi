@@ -66,9 +66,9 @@ export function Header() {
   }, [desktopOpen]);
 
   const linkClass =
-    "text-sm font-medium tracking-wide text-on-surface-variant hover:text-on-surface transition-colors";
+    "text-sm font-semibold tracking-[-0.01em] text-on-surface-variant hover:text-on-surface transition-colors";
   const menuLinkClass =
-    "flex items-center rounded-md px-3 py-2.5 text-sm font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors";
+    "app-control flex items-center rounded-xl px-3 py-2.5 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface";
   const walletControl = (
     <ConnectButton.Custom>
       {({
@@ -81,7 +81,7 @@ export function Header() {
         const ready = mounted;
         const connected = ready && account && chain;
         const pillBase =
-          "h-10 px-3 md:px-4 rounded-full text-xs md:text-sm font-semibold bg-white border border-outline-variant/30 text-on-surface hover:bg-surface-container-low transition-colors flex items-center gap-2 whitespace-nowrap";
+          "app-control h-10 px-3 md:px-4 rounded-full text-xs md:text-sm font-semibold bg-white/88 border border-outline-variant/35 text-on-surface hover:bg-white hover:shadow-[0_14px_34px_-26px_rgba(14,35,17,0.55)] flex items-center gap-2 whitespace-nowrap";
 
         return (
           <div className="flex items-center gap-2" aria-hidden={!ready}>
@@ -140,21 +140,24 @@ export function Header() {
   );
 
   return (
-    <nav className="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-xl border-b border-outline-variant/15">
-      <div className="relative flex justify-between items-center px-4 md:px-8 h-16 max-w-7xl mx-auto w-full gap-2 md:gap-6">
+    <nav className="fixed top-0 z-50 w-full bg-surface px-3 py-3 md:px-5">
+      <div className="app-card relative flex h-16 w-full max-w-7xl items-center justify-between gap-2 rounded-full px-3 md:gap-6 md:px-5 mx-auto backdrop-blur-xl">
         <Link href="/" prefetch={false} className="relative z-10 flex items-center gap-1 shrink-0 min-w-0">
           <Logo />
         </Link>
 
         <div className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-5 lg:flex">
-          <Link href="/" prefetch={false} className={linkClass}>
-            {t("explore")}
+          <Link href="/campaigns" prefetch={false} className={linkClass}>
+            {t("campaigns")}
           </Link>
           <Link href="/investors" prefetch={false} className={linkClass}>
             {t("investors")}
           </Link>
           <Link href="/grow" prefetch={false} className={linkClass}>
             $GROW
+          </Link>
+          <Link href="/faq" prefetch={false} className={linkClass}>
+            {t("faq")}
           </Link>
         </div>
 
@@ -171,34 +174,23 @@ export function Header() {
               aria-expanded={desktopOpen}
               aria-haspopup="menu"
               title="Menu"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant/30 bg-white text-on-surface hover:bg-surface-container-low transition-colors"
+              className="app-control flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant/35 bg-white/88 text-on-surface hover:bg-white hover:shadow-[0_14px_34px_-26px_rgba(14,35,17,0.55)]"
             >
-              {desktopOpen ? (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="18" y1="6" x2="6" y2="18" />
-                  <line x1="6" y1="6" x2="18" y2="18" />
-                </svg>
-              ) : (
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="3" y1="6" x2="21" y2="6" />
-                  <line x1="3" y1="12" x2="21" y2="12" />
-                  <line x1="3" y1="18" x2="21" y2="18" />
-                </svg>
-              )}
+              <MenuGlyph open={desktopOpen} />
             </button>
             {desktopOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-full mt-2 w-60 rounded-lg border border-outline-variant/20 bg-white/95 p-1.5 shadow-[0_18px_48px_-28px_rgba(0,0,0,0.45)] backdrop-blur-xl"
+                className="app-card absolute right-0 top-full mt-3 w-60 rounded-2xl p-1.5 backdrop-blur-xl"
               >
                 <Link
-                  href="/"
+                  href="/campaigns"
                   prefetch={false}
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={`${menuLinkClass} lg:hidden`}
                 >
-                  {t("explore")}
+                  {t("campaigns")}
                 </Link>
                 <Link
                   href="/investors"
@@ -227,6 +219,15 @@ export function Header() {
                   className={menuLinkClass}
                 >
                   {t("feed")}
+                </Link>
+                <Link
+                  href="/faq"
+                  prefetch={false}
+                  role="menuitem"
+                  onClick={() => setDesktopOpen(false)}
+                  className={menuLinkClass}
+                >
+                  {t("faq")}
                 </Link>
                 <Link
                   href="/portfolio"
@@ -266,48 +267,45 @@ export function Header() {
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? "Close mobile menu" : "Open mobile menu"}
             aria-expanded={mobileOpen}
-            className="md:hidden flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant/30 bg-white text-on-surface hover:bg-surface-container-low transition-colors"
+            className="app-control md:hidden flex h-10 w-10 items-center justify-center rounded-full border border-outline-variant/35 bg-white/88 text-on-surface hover:bg-white"
           >
-            {mobileOpen ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="6" x2="21" y2="6" />
-                <line x1="3" y1="12" x2="21" y2="12" />
-                <line x1="3" y1="18" x2="21" y2="18" />
-              </svg>
-            )}
+            <MenuGlyph open={mobileOpen} />
           </button>
         </div>
       </div>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-outline-variant/15 bg-white/95 backdrop-blur-xl">
-          <div className="flex flex-col gap-1 px-4 py-3 max-w-7xl mx-auto">
+        <div className="app-card mt-2 md:hidden rounded-3xl backdrop-blur-xl">
+          <div className="flex flex-col gap-1 px-3 py-3 max-w-7xl mx-auto">
             <Link
-              href="/"
+              href="/campaigns"
               prefetch={false}
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
+              className="app-control rounded-2xl px-3 py-3 text-base font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
             >
-              {t("explore")}
+              {t("campaigns")}
             </Link>
             <Link
               href="/feed"
               prefetch={false}
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
+              className="app-control rounded-2xl px-3 py-3 text-base font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
             >
               {t("feed")}
+            </Link>
+            <Link
+              href="/faq"
+              prefetch={false}
+              onClick={() => setMobileOpen(false)}
+              className="app-control rounded-2xl px-3 py-3 text-base font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
+            >
+              {t("faq")}
             </Link>
             <Link
               href="/portfolio"
               prefetch={false}
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
+              className="app-control rounded-2xl px-3 py-3 text-base font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
             >
               {t("portfolio")}
             </Link>
@@ -315,7 +313,7 @@ export function Header() {
               href="/investors"
               prefetch={false}
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
+              className="app-control rounded-2xl px-3 py-3 text-base font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
             >
               {t("investors")}
             </Link>
@@ -323,7 +321,7 @@ export function Header() {
               href="/grow"
               prefetch={false}
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
+              className="app-control rounded-2xl px-3 py-3 text-base font-semibold text-primary hover:bg-primary-fixed/45"
             >
               $GROW
             </Link>
@@ -332,7 +330,7 @@ export function Header() {
                 href="/create"
                 prefetch={false}
                 onClick={() => setMobileOpen(false)}
-                className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
+                className="app-control rounded-2xl px-3 py-3 text-base font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
               >
                 {t("create")}
               </Link>
@@ -341,7 +339,7 @@ export function Header() {
                 href="/?openInvite=1"
                 prefetch={false}
                 onClick={() => setMobileOpen(false)}
-                className="rounded-lg px-3 py-3 text-base font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface transition-colors"
+                className="app-control rounded-2xl px-3 py-3 text-base font-semibold text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
               >
                 {tInvite("requestSubmit")}
               </Link>
@@ -353,5 +351,27 @@ export function Header() {
         </div>
       )}
     </nav>
+  );
+}
+
+function MenuGlyph({ open }: { open: boolean }) {
+  return (
+    <span className="relative block h-4 w-4" aria-hidden>
+      <span
+        className={`absolute left-0 top-[3px] h-[1.5px] w-4 rounded-full bg-current transition-transform duration-300 ${
+          open ? "translate-y-[5px] rotate-45" : ""
+        }`}
+      />
+      <span
+        className={`absolute left-0 top-[8px] h-[1.5px] w-4 rounded-full bg-current transition-opacity duration-200 ${
+          open ? "opacity-0" : "opacity-100"
+        }`}
+      />
+      <span
+        className={`absolute left-0 top-[13px] h-[1.5px] w-4 rounded-full bg-current transition-transform duration-300 ${
+          open ? "-translate-y-[5px] -rotate-45" : ""
+        }`}
+      />
+    </span>
   );
 }

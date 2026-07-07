@@ -195,11 +195,14 @@ export const addresses: Record<number, ChainAddresses> = {
       (process.env.NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL as Address | undefined) ||
       "0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a",
     proceedsSplitImpl:
-      process.env.NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL as Address | undefined,
+      (process.env.NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL as Address | undefined) ||
+      "0xb57073310911a902b082d4A7d0CD7dA26e27775D",
     directIssueImpl:
-      process.env.NEXT_PUBLIC_DIRECT_ISSUE_IMPL as Address | undefined,
+      (process.env.NEXT_PUBLIC_DIRECT_ISSUE_IMPL as Address | undefined) ||
+      "0x236855EAFb5fbe864E3557f8b621950cBB46d816",
     projectUpdatesImpl:
-      process.env.NEXT_PUBLIC_PROJECT_UPDATES_IMPL as Address | undefined,
+      (process.env.NEXT_PUBLIC_PROJECT_UPDATES_IMPL as Address | undefined) ||
+      "0x43FD484D3e12071a53181c3727354530230bEFCf",
   },
   // Base Mainnet (future)
   8453: {

@@ -29,9 +29,9 @@ export function ProjectUpdatesPanel({
   const updates = useProjectUpdates(campaignAddress);
 
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-6 md:p-8 border border-outline-variant/15">
+    <div className="app-card rounded-[1.35rem] p-6 md:p-8">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold tracking-tight text-on-surface mb-2">
+        <h2 className="text-2xl font-bold tracking-[-0.04em] text-on-surface mb-2">
           {t("title")}
         </h2>
         <p className="text-sm text-on-surface-variant">{t("subtitle")}</p>
@@ -53,7 +53,7 @@ export function ProjectUpdatesPanel({
           ))}
         </div>
       ) : (
-        <div className="rounded-xl bg-surface-container-low p-6 text-center text-sm text-on-surface-variant">
+        <div className="rounded-2xl bg-surface-container-low p-6 text-center text-sm text-on-surface-variant">
           {t("empty")}
         </div>
       )}
@@ -136,10 +136,10 @@ function ProjectUpdateCard({
   };
 
   return (
-    <article className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-5">
+    <article className="rounded-2xl border border-outline-variant/20 bg-surface-container-low p-5 shadow-[0_1px_0_rgba(255,255,255,0.7)_inset]">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-lg font-bold text-on-surface leading-snug">
+          <h3 className="text-lg font-bold leading-snug tracking-[-0.025em] text-on-surface">
             {title}
           </h3>
           <div className="mt-1 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">

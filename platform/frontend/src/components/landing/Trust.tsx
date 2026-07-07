@@ -3,23 +3,11 @@
 import { useTranslations } from "next-intl";
 import { useInView } from "@/lib/landing/useInView";
 
-const ITEM_COUNT = 3;
+const ITEM_COUNT = 4;
 
 export function Trust() {
   const t = useTranslations("landing.trust");
   const { ref, inView } = useInView<HTMLDivElement>();
-  const feeRows = [
-    "campaignBuy",
-    "harvestDeposit",
-    "repayment",
-    "ecommerce",
-    "growDirect",
-  ].map((key) => ({
-    flow: t(`feeTable.rows.${key}.flow`),
-    percent: t(`feeTable.rows.${key}.percent`),
-    applies: t(`feeTable.rows.${key}.applies`),
-    route: t(`feeTable.rows.${key}.route`),
-  }));
 
   return (
     <section
@@ -128,114 +116,6 @@ export function Trust() {
                 );
               })}
             </dl>
-
-            <div
-              className={`reveal reveal-delay-4 ${inView ? "in-view" : ""} mt-10 overflow-hidden rounded-[8px] border`}
-              style={{
-                borderColor: "rgba(255,255,255,0.14)",
-                background: "rgba(255,255,255,0.045)",
-              }}
-            >
-              <div className="border-b border-white/10 px-5 py-4 md:px-6">
-                <p
-                  className="text-xs font-bold uppercase tracking-[0.18em]"
-                  style={{
-                    color: "rgba(255,255,255,0.7)",
-                    fontFamily: "var(--font-header)",
-                  }}
-                >
-                  {t("feeTable.kicker")}
-                </p>
-                <h3 className="font-display mt-2 text-2xl text-white">
-                  {t("feeTable.title")}
-                </h3>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[720px] border-collapse text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-white/10">
-                      <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/62 md:px-6">
-                        {t("feeTable.headers.flow")}
-                      </th>
-                      <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/62 md:px-6">
-                        {t("feeTable.headers.percent")}
-                      </th>
-                      <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/62 md:px-6">
-                        {t("feeTable.headers.applies")}
-                      </th>
-                      <th className="px-5 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white/62 md:px-6">
-                        {t("feeTable.headers.route")}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {feeRows.map((row) => (
-                      <tr
-                        key={row.flow}
-                        className="border-b border-white/10 last:border-b-0"
-                      >
-                        <th className="px-5 py-4 font-semibold text-white md:px-6">
-                          {row.flow}
-                        </th>
-                        <td className="px-5 py-4 font-mono text-base font-semibold text-[#7ffc97] md:px-6">
-                          {row.percent}
-                        </td>
-                        <td className="px-5 py-4 leading-6 text-white/80 md:px-6">
-                          {row.applies}
-                        </td>
-                        <td className="px-5 py-4 leading-6 text-white/80 md:px-6">
-                          {row.route}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div
-              className={`reveal reveal-delay-5 ${inView ? "in-view" : ""} mt-10 rounded-2xl border p-8 transition-all duration-400 hover:border-white/25`}
-              style={{
-                borderColor: "rgba(255,255,255,0.14)",
-                background:
-                  "linear-gradient(135deg, rgba(0,107,44,0.24) 0%, rgba(0,135,58,0.06) 100%)",
-              }}
-            >
-              <div className="flex items-start gap-4">
-                <div
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full"
-                  style={{ background: "rgba(127,252,151,0.16)" }}
-                >
-                  <svg
-                    width="22"
-                    height="22"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="#7ffc97"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                    <path d="M9 12l2 2 4-4" />
-                  </svg>
-                </div>
-                <div>
-                  <h3
-                    className="font-display text-xl"
-                    style={{ color: "#ffffff" }}
-                  >
-                    {t("escrowTitle1")} <em>{t("escrowTitle2")}</em>
-                  </h3>
-                  <p
-                    className="mt-2 text-base leading-relaxed"
-                    style={{ color: "rgba(255,255,255,0.86)" }}
-                  >
-                    {t("escrowBody")}
-                  </p>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
