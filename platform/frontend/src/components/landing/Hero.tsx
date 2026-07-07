@@ -56,13 +56,15 @@ export function Hero() {
           </p>
 
           <p
-            className="animate-fade-rise-delay mt-4 max-w-2xl text-base leading-7 text-[#1f2d1f] sm:text-lg"
+            className="animate-fade-rise-delay mt-4 flex h-[10.5rem] max-w-2xl items-start justify-center text-base leading-6 text-[#1f2d1f] sm:h-[7.25rem] sm:text-lg sm:leading-7 md:h-[5.75rem] lg:h-auto"
             style={{
               textShadow: "0 1px 0 rgba(255,255,255,0.4)",
             }}
           >
-            {t("subtitle1")} <RotatingHighlight count={HERO_EXAMPLES_COUNT} />{" "}
-            {t("subtitle2")}
+            <span>
+              {t("subtitle1")} <RotatingHighlight count={HERO_EXAMPLES_COUNT} />{" "}
+              {t("subtitle2")}
+            </span>
           </p>
 
           <div className="animate-fade-rise-delay-2 mt-10 flex flex-col items-center gap-3 sm:flex-row sm:gap-5">
