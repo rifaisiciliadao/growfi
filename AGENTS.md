@@ -176,6 +176,16 @@ Frontend proceeds split/direct issue support lives in `platform/frontend/src/con
 
 Frontend project-update support lives in `platform/frontend/src/contracts/projectUpdates.ts`, `ProjectUpdatesPanel`, and `ProducerManagePanel`. Campaign pages expose an `updates` tab that reads indexed on-chain updates and fetches the pointed metadata JSON; the manage tab can attach/re-enable `ProjectUpdatesModule`, upload rich-text update metadata, and post the on-chain evidence pointer when `NEXT_PUBLIC_PROJECT_UPDATES_IMPL` is configured for the active chain. Reactions are off-chain: users sign the canonical message from `lib/api.ts::buildProjectUpdateReactionMessage`, and the backend stores at most one emoji per wallet per update.
 
+Public frontend navigation now has dedicated `/campaigns` and `/faq` routes.
+Keep the homepage focused on the compact hero + high-level protocol flow; the
+full campaign catalog belongs on `/campaigns`, and fee schedule/protocol
+explainers belong on `/faq` through `FeeSchedule`. The landing hero uses the
+static `LandingBackdrop` image treatment; do not reintroduce an autoplay video
+background without an explicit request. The shared header/logo sizing should
+stay consistent across the homepage and internal routes. The `/feed` page shows
+both protocol activity and project updates, with client-side pagination over
+the latest indexed events.
+
 User-facing proceeds split copy calls the receiver a "project partner". Keep the
 internal ABI/subgraph names (`promoter`, `promoterBps`,
 `proceedsSplitPromoter*`) unchanged unless the contracts are migrated.
