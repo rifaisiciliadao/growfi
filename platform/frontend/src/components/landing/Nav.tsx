@@ -69,9 +69,9 @@ export function Nav() {
   }, [desktopOpen]);
 
   const desktopLinkClass =
-    "relative text-sm font-bold tracking-wide transition-colors text-[#4a4a4a] hover:text-black";
+    "relative text-sm font-semibold tracking-[-0.01em] text-on-surface-variant transition-colors hover:text-on-surface";
   const menuLinkClass =
-    "flex w-full items-center rounded-md px-3 py-2.5 text-left text-sm font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors";
+    "flex w-full items-center rounded-md px-3 py-2.5 text-left text-sm font-semibold tracking-[-0.01em] text-on-surface-variant transition-colors hover:bg-black/5 hover:text-on-surface";
   const walletControl = (
     <ConnectButton.Custom>
       {({ account, chain, openChainModal, openConnectModal, mounted }) => {
@@ -81,8 +81,7 @@ export function Nav() {
           <button
             type="button"
             onClick={openConnectModal}
-            className="inline-flex items-center rounded-full bg-black px-4 md:px-6 h-10 md:h-11 text-xs md:text-sm font-bold text-white shadow-[0_4px_16px_-4px_rgba(0,0,0,0.25)] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.4)] whitespace-nowrap"
-            style={{ fontFamily: "var(--font-header)" }}
+            className="inline-flex items-center rounded-full bg-black px-4 md:px-6 h-10 md:h-11 text-xs md:text-sm font-semibold text-white shadow-[0_4px_16px_-4px_rgba(0,0,0,0.25)] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.4)] whitespace-nowrap"
           >
             <span className="hidden sm:inline">{t("connectWallet")}</span>
             <span className="sm:hidden">{t("connect")}</span>
@@ -93,8 +92,7 @@ export function Nav() {
             onClick={() => {
               void switchToExpectedChain().catch(() => openChainModal?.());
             }}
-            className="inline-flex items-center rounded-full bg-black px-4 md:px-6 h-10 md:h-11 text-xs md:text-sm font-bold text-white shadow-[0_4px_16px_-4px_rgba(0,0,0,0.25)] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.4)] whitespace-nowrap"
-            style={{ fontFamily: "var(--font-header)" }}
+            className="inline-flex items-center rounded-full bg-black px-4 md:px-6 h-10 md:h-11 text-xs md:text-sm font-semibold text-white shadow-[0_4px_16px_-4px_rgba(0,0,0,0.25)] transition-all duration-300 hover:scale-[1.03] hover:shadow-[0_8px_24px_-4px_rgba(0,0,0,0.4)] whitespace-nowrap"
           >
             {isSwitching
               ? tNetwork("switching")
@@ -103,8 +101,7 @@ export function Nav() {
         ) : (
           <Link
             href={`/grower/${account.address}`}
-            className="inline-flex items-center gap-2 rounded-full bg-white/85 border border-black/15 px-3 md:px-4 h-10 md:h-11 text-xs md:text-sm font-bold text-black backdrop-blur-md transition-all duration-300 hover:bg-white whitespace-nowrap"
-            style={{ fontFamily: "var(--font-header)" }}
+            className="inline-flex items-center gap-2 rounded-full bg-white/85 border border-black/15 px-3 md:px-4 h-10 md:h-11 text-xs md:text-sm font-semibold text-black backdrop-blur-md transition-all duration-300 hover:bg-white whitespace-nowrap"
           >
             <span className="w-6 h-6 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center text-[10px] font-bold shrink-0">
               {account.address.slice(2, 4).toUpperCase()}
@@ -133,28 +130,24 @@ export function Nav() {
           <Link
             href="/campaigns"
             className={desktopLinkClass}
-            style={{ fontFamily: "var(--font-header)" }}
           >
             {t("campaigns")}
           </Link>
           <Link
             href="/investors"
             className={desktopLinkClass}
-            style={{ fontFamily: "var(--font-header)" }}
           >
             {tNav("investors")}
           </Link>
           <Link
             href="/grow"
             className={desktopLinkClass}
-            style={{ fontFamily: "var(--font-header)" }}
           >
             $GROW
           </Link>
           <Link
             href="/faq"
             className={desktopLinkClass}
-            style={{ fontFamily: "var(--font-header)" }}
           >
             {tNav("faq")}
           </Link>
@@ -198,7 +191,6 @@ export function Nav() {
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={`${menuLinkClass} lg:hidden`}
-                  style={{ fontFamily: "var(--font-header)" }}
                 >
                   {t("campaigns")}
                 </Link>
@@ -207,7 +199,6 @@ export function Nav() {
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={`${menuLinkClass} lg:hidden`}
-                  style={{ fontFamily: "var(--font-header)" }}
                 >
                   {tNav("investors")}
                 </Link>
@@ -216,7 +207,6 @@ export function Nav() {
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={`${menuLinkClass} text-emerald-700 hover:text-emerald-800 lg:hidden`}
-                  style={{ fontFamily: "var(--font-header)" }}
                 >
                   $GROW
                 </Link>
@@ -226,7 +216,6 @@ export function Nav() {
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={menuLinkClass}
-                  style={{ fontFamily: "var(--font-header)" }}
                 >
                   {tNav("feed")}
                 </Link>
@@ -235,7 +224,6 @@ export function Nav() {
                   role="menuitem"
                   onClick={() => setDesktopOpen(false)}
                   className={menuLinkClass}
-                  style={{ fontFamily: "var(--font-header)" }}
                 >
                   {tNav("faq")}
                 </Link>
@@ -254,7 +242,6 @@ export function Nav() {
                     role="menuitem"
                     onClick={() => setDesktopOpen(false)}
                     className={menuLinkClass}
-                    style={{ fontFamily: "var(--font-header)" }}
                   >
                     {tNav("create")}
                   </Link>
@@ -267,7 +254,6 @@ export function Nav() {
                       openModal();
                     }}
                     className={menuLinkClass}
-                    style={{ fontFamily: "var(--font-header)" }}
                   >
                     {tInvite("requestSubmit")}
                   </button>
@@ -304,48 +290,42 @@ export function Nav() {
             <Link
               href="/campaigns"
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors"
-              style={{ fontFamily: "var(--font-header)" }}
+              className="rounded-lg px-3 py-3 text-base font-semibold tracking-[-0.01em] text-on-surface-variant transition-colors hover:bg-black/5 hover:text-on-surface"
             >
               {t("campaigns")}
             </Link>
             <Link
               href="/feed"
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors"
-              style={{ fontFamily: "var(--font-header)" }}
+              className="rounded-lg px-3 py-3 text-base font-semibold tracking-[-0.01em] text-on-surface-variant transition-colors hover:bg-black/5 hover:text-on-surface"
             >
               {tNav("feed")}
             </Link>
             <Link
               href="/faq"
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors"
-              style={{ fontFamily: "var(--font-header)" }}
+              className="rounded-lg px-3 py-3 text-base font-semibold tracking-[-0.01em] text-on-surface-variant transition-colors hover:bg-black/5 hover:text-on-surface"
             >
               {tNav("faq")}
             </Link>
             <Link
               href="/portfolio"
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors"
-              style={{ fontFamily: "var(--font-header)" }}
+              className="rounded-lg px-3 py-3 text-base font-semibold tracking-[-0.01em] text-on-surface-variant transition-colors hover:bg-black/5 hover:text-on-surface"
             >
               {tNav("portfolio")}
             </Link>
             <Link
               href="/investors"
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors"
-              style={{ fontFamily: "var(--font-header)" }}
+              className="rounded-lg px-3 py-3 text-base font-semibold tracking-[-0.01em] text-on-surface-variant transition-colors hover:bg-black/5 hover:text-on-surface"
             >
               {tNav("investors")}
             </Link>
             <Link
               href="/grow"
               onClick={() => setMobileOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-emerald-700 hover:bg-emerald-50 transition-colors"
-              style={{ fontFamily: "var(--font-header)" }}
+              className="rounded-lg px-3 py-3 text-base font-semibold tracking-[-0.01em] text-emerald-700 transition-colors hover:bg-emerald-50"
             >
               $GROW
             </Link>
@@ -353,8 +333,7 @@ export function Nav() {
               <Link
                 href="/create"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors"
-                style={{ fontFamily: "var(--font-header)" }}
+                className="rounded-lg px-3 py-3 text-base font-semibold tracking-[-0.01em] text-on-surface-variant transition-colors hover:bg-black/5 hover:text-on-surface"
               >
                 {tNav("create")}
               </Link>
@@ -366,8 +345,7 @@ export function Nav() {
                   setMobileOpen(false);
                   openModal();
                 }}
-                className="rounded-lg px-3 py-3 text-base font-bold tracking-wide text-[#4a4a4a] hover:bg-black/5 hover:text-black transition-colors"
-                style={{ fontFamily: "var(--font-header)" }}
+                className="rounded-lg px-3 py-3 text-base font-semibold tracking-[-0.01em] text-on-surface-variant transition-colors hover:bg-black/5 hover:text-on-surface"
               >
                 {tInvite("requestSubmit")}
               </a>

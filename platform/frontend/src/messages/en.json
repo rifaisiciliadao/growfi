@@ -49,6 +49,11 @@
       "title": "Top backers",
       "empty": "No backers yet."
     },
+    "stakers": {
+      "title": "Top stakers",
+      "empty": "No active stakers yet.",
+      "positions": "{count, plural, one {# position} other {# positions}}"
+    },
     "pagination": {
       "previous": "Previous",
       "next": "Next",
@@ -1120,6 +1125,14 @@
     "circulatingHint": "of {total} total $GROW",
     "treasuryHolds": "Treasury holds",
     "treasuryHoldsHint": "$GROW",
+    "overview": "GROW overview",
+    "actions": {
+      "tabs": {
+        "buy": "Buy",
+        "stake": "Stake",
+        "earn": "Earn"
+      }
+    },
     "curve": {
       "eyebrow": "Bonding curve",
       "title": "$GROW curve",

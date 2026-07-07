@@ -49,6 +49,11 @@
       "title": "Top soutiens",
       "empty": "Aucun soutien pour l'instant."
     },
+    "stakers": {
+      "title": "Top stakers",
+      "empty": "Aucun staker actif pour l'instant.",
+      "positions": "{count, plural, one {# position} other {# positions}}"
+    },
     "pagination": {
       "previous": "Précédent",
       "next": "Suivant",
@@ -1120,6 +1125,14 @@
     "circulatingHint": "sur {total} $GROW au total",
     "treasuryHolds": "Treasury détient",
     "treasuryHoldsHint": "$GROW",
+    "overview": "Aperçu GROW",
+    "actions": {
+      "tabs": {
+        "buy": "Acheter",
+        "stake": "Stake",
+        "earn": "Earn"
+      }
+    },
     "curve": {
       "eyebrow": "Bonding curve",
       "title": "Courbe $GROW",

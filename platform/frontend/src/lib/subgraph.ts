@@ -1442,6 +1442,64 @@ export function useLeaderboard(limit = 20) {
   });
 }
 
+export interface StakerLeaderboardEntry {
+  id: string;
+  totalStaked: string;
+  positionsCount: number;
+}
+
+interface RawGlobalStakePosition {
+  user: string;
+  amount: string;
+}
+
+export function useTopStakers(limit = 20) {
+  return useQuery({
+    queryKey: ["subgraph", "top-stakers", limit],
+    queryFn: async (): Promise<StakerLeaderboardEntry[]> => {
+      const data = await gql<{ positions: RawGlobalStakePosition[] }>(
+        `query TopStakers {
+          positions(first: 1000, where: { active: true }, orderBy: createdAt, orderDirection: desc) {
+            user
+            amount
+          }
+        }`,
+      );
+
+      const byUser = new Map<string, { totalStaked: bigint; positionsCount: number }>();
+      for (const position of data.positions) {
+        const key = position.user.toLowerCase();
+        const current = byUser.get(key);
+        if (current) {
+          current.totalStaked += BigInt(position.amount);
+          current.positionsCount += 1;
+        } else {
+          byUser.set(key, {
+            totalStaked: BigInt(position.amount),
+            positionsCount: 1,
+          });
+        }
+      }
+
+      return Array.from(byUser.entries())
+        .map(([id, entry]) => ({
+          id,
+          totalStaked: entry.totalStaked.toString(),
+          positionsCount: entry.positionsCount,
+        }))
+        .sort((a, b) =>
+          a.totalStaked === b.totalStaked
+            ? 0
+            : BigInt(b.totalStaked) > BigInt(a.totalStaked)
+              ? 1
+              : -1,
+        )
+        .slice(0, limit);
+    },
+    refetchInterval: 30_000,
+  });
+}
+
 export async function findCampaignByName(
   candidate: string,
 ): Promise<string | null> {

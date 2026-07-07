@@ -7,16 +7,19 @@ import { formatUnits } from "viem";
 import {
   useFeed,
   useLeaderboard,
+  useTopStakers,
   useBatchProducerProfiles,
   isSocialVerificationActive,
   type FeedItem,
   type LeaderboardEntry,
+  type StakerLeaderboardEntry,
   type BatchProducerProfile,
 } from "@/lib/subgraph";
 import { useBatchEnsNames } from "@/lib/ens";
 import { useResolvedCampaignMetadata } from "@/lib/metadata";
 import { SocialVerificationBadge } from "@/components/SocialVerificationBadge";
 import { RefreshButton } from "@/components/RefreshButton";
+import { RichTextContent } from "@/components/RichTextContent";
 import { KNOWN_TOKENS } from "@/contracts/tokens";
 import { getAddresses } from "@/contracts";
 import { txUrl } from "@/lib/explorer";
@@ -87,13 +90,19 @@ export default function FeedPage() {
     isLoading: lbLoading,
     refetch: refetchLb,
   } = useLeaderboard(LEADERBOARD_LIMIT);
+  const {
+    data: topStakers,
+    isLoading: stakersLoading,
+    refetch: refetchStakers,
+  } = useTopStakers(LEADERBOARD_LIMIT);
 
   const addresses = useMemo(() => {
     const set = new Set<string>();
     (feed ?? []).forEach((f) => set.add(f.user.toLowerCase()));
     (leaderboard ?? []).forEach((l) => set.add(l.id.toLowerCase()));
+    (topStakers ?? []).forEach((s) => set.add(s.id.toLowerCase()));
     return Array.from(set);
-  }, [feed, leaderboard]);
+  }, [feed, leaderboard, topStakers]);
 
   const { data: profiles } = useBatchProducerProfiles(addresses);
   const { data: ensNames } = useBatchEnsNames(addresses);
@@ -109,21 +118,22 @@ export default function FeedPage() {
   function refetchAll() {
     void refetchFeed();
     void refetchLb();
+    void refetchStakers();
   }
 
   return (
-    <div className="bg-[#f7f9f4]">
-      <div className="max-w-7xl mx-auto px-4 md:px-8 pt-8 md:pt-12 pb-20">
-        <section className="mb-6 rounded-[8px] border border-zinc-200 bg-white p-5 shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)] md:p-6">
+    <div className="min-h-screen bg-surface">
+      <div className="mx-auto max-w-7xl px-6 pb-20 pt-8 md:px-8 md:pt-12">
+        <section className="app-card mb-7 rounded-[1.35rem] p-5 md:p-6">
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-700">
+              <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
                 {t("activity.title")}
               </p>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-zinc-950 md:text-5xl">
+              <h1 className="mt-3 text-4xl font-extrabold leading-[0.95] tracking-[-0.055em] text-on-surface md:text-5xl">
                 {t("title")}
               </h1>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-600 md:text-base">
+              <p className="mt-3 max-w-2xl text-sm font-medium leading-6 text-on-surface-variant md:text-base">
                 {t("subtitle")}
               </p>
             </div>
@@ -133,7 +143,7 @@ export default function FeedPage() {
               className="shrink-0 self-start md:self-auto"
             />
           </div>
-          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-zinc-200 pt-4 md:max-w-md">
+          <div className="mt-6 grid gap-3 border-t border-outline-variant/15 pt-4 sm:grid-cols-3 md:max-w-2xl">
             <FeedStat
               label={t("activity.title")}
               value={feedLoading ? "—" : String(feed?.length ?? 0)}
@@ -141,6 +151,10 @@ export default function FeedPage() {
             <FeedStat
               label={t("leaderboard.title")}
               value={lbLoading ? "—" : String(leaderboard?.length ?? 0)}
+            />
+            <FeedStat
+              label={t("stakers.title")}
+              value={stakersLoading ? "—" : String(topStakers?.length ?? 0)}
             />
           </div>
         </section>
@@ -156,7 +170,7 @@ export default function FeedPage() {
               <EmptyState text={t("activity.empty")} />
             ) : (
               <>
-                <ol className="overflow-hidden rounded-[8px] border border-outline-variant/15 bg-surface-container-lowest shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)] divide-y divide-outline-variant/10">
+                <ol className="overflow-hidden rounded-[1.35rem] border border-outline-variant/15 bg-surface-container-lowest shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)] divide-y divide-outline-variant/10">
                   {pageItems.map((item) => (
                     <FeedRow
                       key={item.id}
@@ -186,7 +200,7 @@ export default function FeedPage() {
           </section>
 
           <aside className="lg:col-span-1">
-            <div className="lg:sticky lg:top-24">
+            <div className="space-y-6 lg:sticky lg:top-24">
               <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-on-surface">
                 {t("leaderboard.title")}
               </h2>
@@ -195,7 +209,7 @@ export default function FeedPage() {
               ) : !leaderboard || leaderboard.length === 0 ? (
                 <EmptyState text={t("leaderboard.empty")} />
               ) : (
-                <ol className="space-y-1 rounded-[8px] border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)]">
+                <ol className="space-y-1 rounded-[1.35rem] border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)]">
                   {leaderboard.map((entry, i) => (
                     <LeaderboardRow
                       key={entry.id}
@@ -208,6 +222,29 @@ export default function FeedPage() {
                   ))}
                 </ol>
               )}
+              <div>
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-on-surface">
+                  {t("stakers.title")}
+                </h2>
+                {stakersLoading ? (
+                  <LeaderboardSkeleton />
+                ) : !topStakers || topStakers.length === 0 ? (
+                  <EmptyState text={t("stakers.empty")} />
+                ) : (
+                  <ol className="space-y-1 rounded-[1.35rem] border border-outline-variant/15 bg-surface-container-lowest p-4 shadow-[0_24px_70px_-55px_rgba(15,23,42,0.45)]">
+                    {topStakers.map((entry, i) => (
+                      <StakerLeaderboardRow
+                        key={entry.id}
+                        rank={i + 1}
+                        entry={entry}
+                        profile={profiles?.get(entry.id.toLowerCase())}
+                        ens={ensNames?.get(entry.id.toLowerCase()) ?? null}
+                        protocolLabel={protocolLabels.get(entry.id.toLowerCase())}
+                      />
+                    ))}
+                  </ol>
+                )}
+              </div>
             </div>
           </aside>
         </div>
@@ -219,10 +256,10 @@ export default function FeedPage() {
 function FeedStat({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">
+      <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-on-surface-variant">
         {label}
       </div>
-      <div className="mt-1 font-mono text-2xl text-zinc-950">{value}</div>
+      <div className="mt-1 text-2xl font-bold tracking-[-0.04em] text-on-surface">{value}</div>
     </div>
   );
 }
@@ -312,7 +349,7 @@ function FeedRow({
         </div>
         {item.kind === "projectUpdate" && (item.body || item.image) && (
           <div className="mt-2 max-w-2xl rounded-[8px] border border-outline-variant/15 bg-surface-container-low px-3 py-2 text-xs leading-5 text-on-surface-variant">
-            {item.body && <p>{item.body}</p>}
+            {item.body && <RichTextContent value={item.body} />}
             {item.image && (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -570,6 +607,92 @@ function LeaderboardRow({
       </div>
       <div className="text-sm font-bold text-on-surface whitespace-nowrap shrink-0">
         {formatUsd18(entry.totalInvested)}
+      </div>
+    </>
+  );
+
+  return (
+    <li>
+      {isProtocol ? (
+        <div className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg">
+          {RowInner}
+        </div>
+      ) : (
+        <Link
+          href={`/grower/${entry.id}`}
+          prefetch={false}
+          className="flex items-center gap-3 py-2 px-2 -mx-2 rounded-lg hover:bg-surface-container-low transition-colors"
+        >
+          {RowInner}
+        </Link>
+      )}
+    </li>
+  );
+}
+
+// ----------------------------------------------------------------------------
+
+function StakerLeaderboardRow({
+  rank,
+  entry,
+  profile,
+  ens,
+  protocolLabel,
+}: {
+  rank: number;
+  entry: StakerLeaderboardEntry;
+  profile: BatchProducerProfile | undefined;
+  ens: string | null;
+  protocolLabel: { label: string; emoji: string } | undefined;
+}) {
+  const t = useTranslations("feed");
+  const tProducer = useTranslations("grower");
+  const displayName =
+    protocolLabel?.label || profile?.name || ens || tProducer("anonymous");
+  const medal =
+    rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : null;
+  const isProtocol = !!protocolLabel;
+
+  const RowInner = (
+    <>
+      <div className="w-6 shrink-0 text-center text-xs font-mono text-on-surface-variant">
+        {medal ?? `#${rank}`}
+      </div>
+      {isProtocol ? (
+        <div className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center text-base shrink-0">
+          {protocolLabel!.emoji}
+        </div>
+      ) : profile?.avatar ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={profile.avatar}
+          alt={displayName}
+          className="w-8 h-8 rounded-full object-cover border border-outline-variant/15 shrink-0"
+        />
+      ) : (
+        <div className="w-8 h-8 rounded-full bg-primary-fixed text-on-primary-fixed-variant flex items-center justify-center text-[10px] font-bold shrink-0">
+          {entry.id.slice(2, 4).toUpperCase()}
+        </div>
+      )}
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-semibold text-on-surface truncate flex items-center gap-1">
+          <span className="truncate">{displayName}</span>
+          {!isProtocol && (
+            <SocialVerificationBadge
+              verified={isSocialVerificationActive(profile)}
+              size={11}
+            />
+          )}
+        </div>
+        <div className="text-[11px] text-on-surface-variant">
+          {t("stakers.positions", { count: entry.positionsCount })}
+        </div>
+      </div>
+      <div className="text-right text-sm font-bold text-on-surface whitespace-nowrap shrink-0">
+        {formatTokens18(entry.totalStaked)}
+        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+          $GROW
+        </div>
       </div>
     </>
   );

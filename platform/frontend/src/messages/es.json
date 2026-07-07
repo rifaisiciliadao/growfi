@@ -49,6 +49,11 @@
       "title": "Top respaldadores",
       "empty": "Sin respaldadores aún."
     },
+    "stakers": {
+      "title": "Top stakers",
+      "empty": "Sin stakers activos aún.",
+      "positions": "{count, plural, one {# posición} other {# posiciones}}"
+    },
     "pagination": {
       "previous": "Anterior",
       "next": "Siguiente",
@@ -1120,6 +1125,14 @@
     "circulatingHint": "de {total} $GROW totales",
     "treasuryHolds": "Treasury tiene",
     "treasuryHoldsHint": "$GROW",
+    "overview": "Resumen GROW",
+    "actions": {
+      "tabs": {
+        "buy": "Comprar",
+        "stake": "Stake",
+        "earn": "Earn"
+      }
+    },
     "curve": {
       "eyebrow": "Bonding curve",
       "title": "Curva $GROW",

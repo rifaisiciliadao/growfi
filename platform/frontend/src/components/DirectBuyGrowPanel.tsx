@@ -314,13 +314,13 @@ export function DirectBuyGrowPanel() {
     salePrice === 0n ? "—" : formatUsd18(salePrice, 4, 6);
 
   return (
-    <div className="rounded-[8px] border border-zinc-200 bg-white p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.65)] md:p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <div className="app-card rounded-[1.35rem] p-5 md:p-6">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
             {t("salePriceHint", { markup: markupPct.toLocaleString() })}
           </p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950 sm:text-2xl">
+          <h2 className="mt-2 text-2xl font-bold tracking-[-0.04em] text-on-surface">
             {t("title")}
           </h2>
         </div>
@@ -340,17 +340,17 @@ export function DirectBuyGrowPanel() {
         </div>
       )}
 
-      <div className="-mx-5 mb-5 border-y border-zinc-200 bg-[#f6f8f4] px-5 py-4 md:-mx-6 md:px-6">
+      <div className="mb-5 rounded-2xl border border-outline-variant/25 bg-surface-container-low px-4 py-3.5">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+            <div className="text-xs font-bold uppercase tracking-[0.14em] text-on-surface-variant">
               {t("salePrice")}
             </div>
-            <div className="mt-1 font-mono text-3xl text-zinc-950">
+            <div className="mt-1 text-3xl font-bold tracking-[-0.04em] text-on-surface">
               {formattedSalePrice}
             </div>
           </div>
-          <div className="pb-1 text-right text-[11px] leading-4 text-zinc-500">
+          <div className="pb-1 text-right text-xs leading-5 text-on-surface-variant">
             {selected?.symbol ?? "USDC"}
             <br />
             OK
@@ -359,7 +359,7 @@ export function DirectBuyGrowPanel() {
       </div>
 
       <div className="mb-1 flex items-baseline justify-between">
-        <label className="block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+        <label className="block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
           {t("payWith")}
         </label>
         {faucetEnabled && isConnected && selected && (
@@ -369,7 +369,7 @@ export function DirectBuyGrowPanel() {
             disabled={
               tx.kind === "minting-sig" || tx.kind === "minting-chain"
             }
-            className="text-xs font-medium text-emerald-700 hover:underline disabled:cursor-not-allowed disabled:text-zinc-400"
+            className="text-xs font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:text-on-surface-variant/50"
           >
             {tx.kind === "minting-sig"
               ? t("confirmInWallet")
@@ -379,16 +379,16 @@ export function DirectBuyGrowPanel() {
           </button>
         )}
       </div>
-      <div className="mb-4 flex gap-1 rounded-[8px] border border-zinc-200 bg-zinc-100 p-1">
+      <div className="mb-4 flex gap-1 rounded-full border border-outline-variant/25 bg-surface-container-low p-1">
         {stableOptions.map((s) => (
           <button
             key={s.symbol}
             type="button"
             onClick={() => setSelectedSym(s.symbol)}
-            className={`flex-1 rounded-[6px] px-3 py-2 text-sm font-semibold transition ${
+            className={`flex-1 rounded-full px-3 py-2 text-sm font-semibold transition ${
               selectedSym === s.symbol
-                ? "bg-white text-zinc-950 shadow-sm"
-                : "text-zinc-500 hover:text-zinc-800"
+                ? "bg-white text-on-surface shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface"
             }`}
           >
             {s.symbol}
@@ -396,30 +396,30 @@ export function DirectBuyGrowPanel() {
         ))}
       </div>
 
-      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+      <label className="mb-1 block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
         {t("youPay")}
       </label>
-      <div className="mb-3 flex min-h-[54px] overflow-hidden rounded-[8px] border border-zinc-300 bg-white focus-within:border-emerald-600">
+      <div className="mb-3 flex min-h-[54px] overflow-hidden rounded-2xl border border-outline-variant/25 bg-white focus-within:border-primary">
         <input
           type="text"
           inputMode="decimal"
           value={paymentInput}
           onChange={(e) => setPaymentInput(e.target.value)}
           placeholder="0.00"
-          className="min-w-0 flex-1 px-3 py-2 font-mono text-lg text-zinc-950 outline-none"
+          className="min-w-0 flex-1 px-4 py-2 text-lg font-semibold tracking-[-0.02em] text-on-surface outline-none"
         />
-        <div className="flex w-20 items-center justify-center border-l border-zinc-200 bg-zinc-50 text-sm font-semibold text-zinc-600">
+        <div className="flex w-20 items-center justify-center border-l border-outline-variant/20 bg-surface-container-low text-sm font-semibold text-on-surface-variant">
           {selected?.symbol}
         </div>
       </div>
-      <div className="mb-4 flex items-center justify-between gap-3 text-xs text-zinc-500">
+      <div className="mb-4 flex items-center justify-between gap-3 text-xs text-on-surface-variant">
         <button
           type="button"
           onClick={() =>
             selected && setPaymentInput(formatUnits(balance, selected.decimals))
           }
           disabled={!selected}
-          className="min-h-[28px] -mx-2 rounded-[6px] px-2 text-left transition hover:bg-zinc-100 hover:text-emerald-700 disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-zinc-500"
+          className="min-h-[28px] -mx-2 rounded-full px-2 text-left transition hover:bg-surface-container-low hover:text-primary disabled:cursor-default disabled:hover:bg-transparent disabled:hover:text-on-surface-variant"
         >
           {t("balance")}:{" "}
           <span className="font-mono">
@@ -432,13 +432,13 @@ export function DirectBuyGrowPanel() {
         )}
       </div>
 
-      <div className="mb-4 border-t border-zinc-200 pt-4">
+      <div className="mb-4 border-t border-outline-variant/15 pt-4">
         <div className="flex items-end justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
               {t("youReceive")}
             </div>
-            <div className="mt-1 font-mono text-3xl text-emerald-900">
+            <div className="mt-1 text-3xl font-bold tracking-[-0.04em] text-on-surface">
               {growOut === 0n
                 ? "—"
                 : Number(formatUnits(growOut, 18)).toLocaleString(undefined, {
@@ -446,7 +446,7 @@ export function DirectBuyGrowPanel() {
                   })}
             </div>
           </div>
-          <div className="pb-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+          <div className="pb-1 text-xs font-bold uppercase tracking-[0.16em] text-primary">
             $GROW
           </div>
         </div>
@@ -466,7 +466,7 @@ export function DirectBuyGrowPanel() {
               insufficientBalance ||
               salePrice === 0n))
         }
-        className="flex w-full items-center justify-center gap-2 rounded-[8px] bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-on-surface px-5 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-outline-variant"
       >
         {isBusy && <Spinner />}
         {!isConnected

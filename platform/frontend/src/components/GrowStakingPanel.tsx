@@ -246,51 +246,51 @@ export function GrowStakingPanel() {
   }
 
   return (
-    <div className="rounded-[8px] border border-zinc-200 bg-white p-5 shadow-[0_24px_70px_-52px_rgba(15,23,42,0.65)] md:p-6">
-      <div className="mb-5 flex items-start justify-between gap-4">
+    <div className="app-card rounded-[1.35rem] p-5 md:p-6">
+      <div className="mb-4 flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
             {t("pendingUsdc")}
           </p>
-          <h2 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950 sm:text-2xl">
+          <h2 className="mt-2 text-2xl font-bold tracking-[-0.04em] text-on-surface">
             {t("title")}
           </h2>
         </div>
-        <span className="max-w-[132px] rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1 text-right text-[11px] font-medium leading-4 text-zinc-500 sm:max-w-[150px]">
+        <span className="max-w-[150px] rounded-full border border-outline-variant/25 bg-surface-container-low px-3 py-1 text-right text-[11px] font-semibold leading-4 text-on-surface-variant">
           {t("totalStaked", {
             amount: totalStakedGrow,
           })}
         </span>
       </div>
-      <p className="mb-5 text-sm leading-6 text-zinc-600">{t("blurb")}</p>
+      <p className="mb-5 text-sm leading-6 text-on-surface-variant">{t("blurb")}</p>
 
-      <div className="-mx-5 mb-5 border-y border-zinc-200 bg-[#f6f8f4] px-5 py-4 md:-mx-6 md:px-6">
-        <div className="mb-4 border-b border-emerald-900/10 pb-4">
+      <div className="mb-5 rounded-2xl border border-outline-variant/25 bg-surface-container-low px-4 py-3.5">
+        <div className="mb-4 border-b border-outline-variant/15 pb-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+              <div className="text-xs font-bold uppercase tracking-[0.16em] text-primary">
                 {t("rewardBalance")}
               </div>
-              <div className="mt-1 flex items-baseline gap-2 font-mono text-4xl leading-none text-zinc-950">
+              <div className="mt-1 flex items-baseline gap-2 text-4xl font-bold leading-none tracking-[-0.05em] text-on-surface">
                 {earnedUsdc}
-                <span className="text-sm font-semibold text-zinc-500">USDC</span>
+                <span className="text-sm font-semibold tracking-normal text-on-surface-variant">USDC</span>
               </div>
             </div>
-            <p className="max-w-[260px] text-xs leading-5 text-zinc-500">
+            <p className="max-w-[260px] text-xs leading-5 text-on-surface-variant">
               {t("rewardBalanceHint")}
             </p>
           </div>
         </div>
         <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
               {t("multiplier")}
             </div>
-            <div className="mt-1 font-mono text-2xl text-emerald-700">
+            <div className="mt-1 text-2xl font-bold tracking-[-0.04em] text-primary">
               {staked === 0n ? "—" : `${(liveMulPct / 100).toFixed(2)}×`}
             </div>
             {storedMul !== liveMul && staked > 0n && (
-              <div className="mt-1 text-[10px] leading-4 text-zinc-500">
+              <div className="mt-1 text-[10px] leading-4 text-on-surface-variant">
                 {t("multiplierStored", {
                   value: (storedMulPct / 100).toFixed(2),
                 })}
@@ -298,10 +298,10 @@ export function GrowStakingPanel() {
             )}
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
               {t("timeToCap")}
             </div>
-            <div className="mt-1 font-mono text-2xl text-zinc-950">
+            <div className="mt-1 text-2xl font-bold tracking-[-0.04em] text-on-surface">
               {staked === 0n
                 ? "—"
                 : secondsUntilCap === 0
@@ -310,16 +310,16 @@ export function GrowStakingPanel() {
             </div>
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+            <div className="text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
               {t("distribution")}
             </div>
-            <div className="mt-1 font-mono text-2xl text-zinc-950">
+            <div className="mt-1 text-2xl font-bold tracking-[-0.04em] text-on-surface">
               {rewardRate > 0n && periodSecondsLeft > 0
                 ? `${Math.ceil(periodSecondsLeft / 86400)}d`
                 : "—"}
             </div>
             {rewardRate > 0n && periodSecondsLeft > 0 && (
-              <div className="mt-1 text-[10px] leading-4 text-zinc-500">
+              <div className="mt-1 text-[10px] leading-4 text-on-surface-variant">
                 {t("distEndsIn", {
                   days: Math.ceil(periodSecondsLeft / 86400),
                 })}
@@ -327,25 +327,25 @@ export function GrowStakingPanel() {
             )}
           </div>
         </div>
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-200">
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-outline-variant/25">
           <div
-            className="h-full rounded-full bg-emerald-600"
+            className="h-full rounded-full bg-primary"
             style={{ width: `${rampProgressPct}%` }}
           />
         </div>
       </div>
 
-      <div className="mb-3 flex gap-1 rounded-[8px] border border-zinc-200 bg-zinc-100 p-1 text-sm font-semibold">
+      <div className="mb-3 flex gap-1 rounded-full border border-outline-variant/25 bg-surface-container-low p-1 text-sm font-semibold">
         <button
           type="button"
           onClick={() => {
             setTab("stake");
             setAmountInput("");
           }}
-          className={`flex-1 rounded-[6px] px-3 py-2 transition ${
+          className={`flex-1 rounded-full px-3 py-2 transition ${
             tab === "stake"
-              ? "bg-white text-zinc-950 shadow-sm"
-              : "text-zinc-500"
+              ? "bg-white text-on-surface shadow-sm"
+              : "text-on-surface-variant"
           }`}
         >
           {t("stakeTab")}
@@ -356,10 +356,10 @@ export function GrowStakingPanel() {
             setTab("withdraw");
             setAmountInput("");
           }}
-          className={`flex-1 rounded-[6px] px-3 py-2 transition ${
+          className={`flex-1 rounded-full px-3 py-2 transition ${
             tab === "withdraw"
-              ? "bg-white text-zinc-950 shadow-sm"
-              : "text-zinc-500"
+              ? "bg-white text-on-surface shadow-sm"
+              : "text-on-surface-variant"
           }`}
         >
           {t("withdrawTab")}
@@ -372,17 +372,17 @@ export function GrowStakingPanel() {
         </div>
       )}
 
-      <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-zinc-500">
+      <label className="mb-1 block text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
         {tab === "stake" ? t("amountToStake") : t("amountToWithdraw")}
       </label>
-      <div className="mb-3 flex min-h-[54px] overflow-hidden rounded-[8px] border border-zinc-300 bg-white focus-within:border-emerald-600">
+      <div className="mb-3 flex min-h-[54px] overflow-hidden rounded-2xl border border-outline-variant/25 bg-white focus-within:border-primary">
         <input
           type="text"
           inputMode="decimal"
           value={amountInput}
           onChange={(e) => setAmountInput(e.target.value)}
           placeholder="0.00"
-          className="min-w-0 flex-1 px-3 py-2 font-mono text-lg text-zinc-950 outline-none"
+          className="min-w-0 flex-1 px-4 py-2 text-lg font-semibold tracking-[-0.02em] text-on-surface outline-none"
         />
         <button
           type="button"
@@ -393,12 +393,12 @@ export function GrowStakingPanel() {
                 : formatUnits(staked, 18),
             )
           }
-          className="border-l border-zinc-200 bg-zinc-50 px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
+          className="border-l border-outline-variant/20 bg-surface-container-low px-3 text-xs font-semibold text-on-surface-variant hover:bg-white"
         >
           {t("max")}
         </button>
       </div>
-      <div className="mb-4 grid grid-cols-2 gap-2 text-xs text-zinc-500">
+      <div className="mb-4 grid grid-cols-2 gap-2 text-xs text-on-surface-variant">
         <span className="text-right">
           {t("wallet")}:{" "}
           <span className="font-mono">{walletGrow}</span>{" "}
@@ -420,7 +420,7 @@ export function GrowStakingPanel() {
         type="button"
         onClick={handleStakeOrWithdraw}
         disabled={!isConnected || isBusy || amount === 0n || insufficient}
-        className="mb-2 flex w-full items-center justify-center gap-2 rounded-[8px] bg-emerald-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-zinc-300"
+        className="mb-2 flex w-full items-center justify-center gap-2 rounded-full bg-on-surface px-5 py-3 text-sm font-semibold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-outline-variant"
       >
         {isBusy && tx.kind !== "claiming-sig" && tx.kind !== "claiming-chain" && (
           <Spinner />
@@ -446,7 +446,7 @@ export function GrowStakingPanel() {
         type="button"
         onClick={handleClaim}
         disabled={!isConnected || isBusy || earned === 0n}
-        className="flex w-full items-center justify-center gap-2 rounded-[8px] border border-emerald-600 bg-white px-4 py-2.5 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-50 disabled:cursor-not-allowed disabled:border-zinc-300 disabled:text-zinc-400"
+        className="flex w-full items-center justify-center gap-2 rounded-full border border-outline-variant/30 bg-white px-5 py-2.5 text-sm font-semibold text-on-surface transition hover:bg-surface-container-low disabled:cursor-not-allowed disabled:text-on-surface-variant/50"
       >
         {(tx.kind === "claiming-sig" || tx.kind === "claiming-chain") && (
           <Spinner />
