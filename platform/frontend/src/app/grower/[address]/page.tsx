@@ -1,20 +1,22 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useAccount, useDisconnect, useReadContract, useWriteContract } from "wagmi";
 import { useQueryClient } from "@tanstack/react-query";
-import type { Address } from "viem";
+import { formatUnits, type Address } from "viem";
 import { useTxNotify } from "@/lib/useTxNotify";
 import {
   useSubgraphProducer,
   useProducerCampaigns,
   useProducerIndexed,
+  useUserPortfolio,
   isSocialVerificationActive,
   SOCIAL_VERIFICATION_ENABLED,
   type SubgraphCampaign,
   type SubgraphProducer,
+  type UserPortfolio,
 } from "@/lib/subgraph";
 import {
   useProducerProfile,
@@ -56,6 +58,9 @@ export default function ProducerPage({
   );
   const { data: campaigns, isLoading: campaignsLoading } =
     useProducerCampaigns(isValid ? producerAddress : undefined);
+  const { data: portfolio, isLoading: portfolioLoading } = useUserPortfolio(
+    isValid ? producerAddress : undefined,
+  );
   // ENS reverse-lookup against mainnet — cheap, cached. Used as the
   // display name when there's no internal profile but the wallet has a
   // public ENS identity (e.g. turinglabs.eth). Social verification is NOT
@@ -82,6 +87,10 @@ export default function ProducerPage({
     producerLoading || (!!producer?.profileURI && profileLoading);
   const displayName =
     protocolLabel || profile?.name || ensName || t("anonymous");
+  const showCampaignsSection = campaignsLoading || Boolean(campaigns?.length);
+  const pageTopPadding = profile?.cover
+    ? "pt-24 md:pt-28"
+    : "pt-12";
 
   const [editing, setEditing] = useState(false);
 
@@ -94,7 +103,7 @@ export default function ProducerPage({
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-8 pt-28 pb-20">
+    <div className={`max-w-7xl mx-auto px-4 md:px-8 pb-20 ${pageTopPadding}`}>
       {isSelfProfile && (
         <ProducerAggregateDashboard producerAddress={producerAddress} />
       )}
@@ -233,39 +242,352 @@ export default function ProducerPage({
 
       {isSelfProfile && <DisconnectLink />}
 
-      <section>
-        <h2 className="text-xl font-bold text-on-surface mb-4">
-          {t("campaignsTitle")}
-        </h2>
-        {campaignsLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[0, 1, 2].map((i) => (
-              <div
-                key={i}
-                className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 overflow-hidden"
-              >
-                <div className="h-32 bg-surface-container-high animate-pulse" />
-                <div className="p-4 space-y-2">
-                  <div className="h-4 w-2/3 rounded bg-surface-container-high animate-pulse" />
-                  <div className="h-3 w-1/3 rounded bg-surface-container-high animate-pulse" />
+      {showCampaignsSection && (
+        <section className="mb-12">
+          <h2 className="text-xl font-bold text-on-surface mb-4">
+            {t("campaignsTitle")}
+          </h2>
+          {campaignsLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 overflow-hidden"
+                >
+                  <div className="h-32 bg-surface-container-high animate-pulse" />
+                  <div className="p-4 space-y-2">
+                    <div className="h-4 w-2/3 rounded bg-surface-container-high animate-pulse" />
+                    <div className="h-3 w-1/3 rounded bg-surface-container-high animate-pulse" />
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        ) : !campaigns || campaigns.length === 0 ? (
-          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 text-center text-sm text-on-surface-variant">
-            {t("noCampaigns")}
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {campaigns.map((c) => (
-              <CampaignThumb key={c.id} campaign={c} />
-            ))}
-          </div>
-        )}
-      </section>
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {campaigns?.map((c) => (
+                <CampaignThumb key={c.id} campaign={c} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      <WalletExposure
+        portfolio={portfolio}
+        isLoading={portfolioLoading}
+      />
     </div>
   );
+}
+
+function WalletExposure({
+  portfolio,
+  isLoading,
+}: {
+  portfolio: UserPortfolio | undefined;
+  isLoading: boolean;
+}) {
+  const t = useTranslations("grower.wallet");
+  const { investments, staking, totals } = useMemo(() => {
+    const investmentMap = new Map<string, InvestmentAggregate>();
+    const stakingMap = new Map<string, StakingAggregate>();
+
+    for (const purchase of portfolio?.purchases ?? []) {
+      const current = investmentMap.get(purchase.campaign.id);
+      const tokens = BigInt(purchase.campaignTokensOut);
+      const value = (tokens * BigInt(purchase.campaign.pricePerToken || "0")) / 10n ** 18n;
+      const timestamp = Number(purchase.timestamp);
+      if (current) {
+        current.tokens += tokens;
+        current.value += value;
+        current.count += 1;
+        current.lastTimestamp = Math.max(current.lastTimestamp, timestamp);
+      } else {
+        investmentMap.set(purchase.campaign.id, {
+          campaign: purchase.campaign,
+          tokens,
+          value,
+          count: 1,
+          lastTimestamp: timestamp,
+        });
+      }
+    }
+
+    for (const position of portfolio?.positions ?? []) {
+      const current = stakingMap.get(position.campaign.id);
+      const amount = BigInt(position.amount);
+      if (current) {
+        current.amount += amount;
+        current.count += 1;
+        current.seasons.add(position.seasonId);
+      } else {
+        stakingMap.set(position.campaign.id, {
+          campaign: position.campaign,
+          amount,
+          count: 1,
+          seasons: new Set([position.seasonId]),
+        });
+      }
+    }
+
+    const investments = Array.from(investmentMap.values()).sort((a, b) =>
+      b.value > a.value ? 1 : b.value < a.value ? -1 : 0,
+    );
+    const staking = Array.from(stakingMap.values()).sort((a, b) =>
+      b.amount > a.amount ? 1 : b.amount < a.amount ? -1 : 0,
+    );
+
+    return {
+      investments,
+      staking,
+      totals: {
+        invested: investments.reduce((sum, item) => sum + item.value, 0n),
+        staked: staking.reduce((sum, item) => sum + item.amount, 0n),
+      },
+    };
+  }, [portfolio]);
+
+  return (
+    <section className="mb-12">
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+            {t("eyebrow")}
+          </p>
+          <h2 className="mt-1 text-xl font-bold tracking-[-0.03em] text-on-surface">
+            {t("title")}
+          </h2>
+        </div>
+        {!isLoading && (
+          <div className="flex flex-wrap gap-2 text-xs font-semibold text-on-surface-variant">
+            <span className="rounded-full border border-outline-variant/15 bg-surface-container-lowest px-3 py-1.5">
+              {t("investedTotal", { value: formatUsd18(totals.invested) })}
+            </span>
+            <span className="rounded-full border border-outline-variant/15 bg-surface-container-lowest px-3 py-1.5">
+              {t("stakedTotal", { value: formatTokenAmount(totals.staked) })}
+            </span>
+          </div>
+        )}
+      </div>
+
+      <div className="grid gap-5 lg:grid-cols-2">
+        <ExposurePane
+          title={t("investmentsTitle")}
+          subtitle={t("investmentsSubtitle")}
+          isLoading={isLoading}
+          empty={t("noInvestments")}
+        >
+          {investments.map((investment) => (
+            <InvestmentCard key={investment.campaign.id} investment={investment} />
+          ))}
+        </ExposurePane>
+
+        <ExposurePane
+          title={t("stakingTitle")}
+          subtitle={t("stakingSubtitle")}
+          isLoading={isLoading}
+          empty={t("noStaking")}
+        >
+          {staking.map((stake) => (
+            <StakingCard key={stake.campaign.id} stake={stake} />
+          ))}
+        </ExposurePane>
+      </div>
+    </section>
+  );
+}
+
+function ExposurePane({
+  title,
+  subtitle,
+  isLoading,
+  empty,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  isLoading: boolean;
+  empty: string;
+  children: React.ReactNode;
+}) {
+  const items = Array.isArray(children) ? children.filter(Boolean) : children;
+  const hasItems = Array.isArray(items) ? items.length > 0 : Boolean(items);
+
+  return (
+    <div className="rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-5 shadow-[0_24px_70px_-58px_rgba(14,35,17,0.55)]">
+      <div className="mb-4">
+        <h3 className="text-base font-bold tracking-[-0.02em] text-on-surface">
+          {title}
+        </h3>
+        <p className="mt-1 text-xs leading-5 text-on-surface-variant">
+          {subtitle}
+        </p>
+      </div>
+      {isLoading ? (
+        <div className="space-y-3">
+          {[0, 1].map((i) => (
+            <div
+              key={i}
+              className="h-24 animate-pulse rounded-xl bg-surface-container-high"
+            />
+          ))}
+        </div>
+      ) : hasItems ? (
+        <div className="space-y-3">{children}</div>
+      ) : (
+        <div className="rounded-xl bg-surface-container-low px-4 py-6 text-center text-sm text-on-surface-variant">
+          {empty}
+        </div>
+      )}
+    </div>
+  );
+}
+
+interface InvestmentAggregate {
+  campaign: UserPortfolio["purchases"][number]["campaign"];
+  tokens: bigint;
+  value: bigint;
+  count: number;
+  lastTimestamp: number;
+}
+
+interface StakingAggregate {
+  campaign: UserPortfolio["positions"][number]["campaign"];
+  amount: bigint;
+  count: number;
+  seasons: Set<string>;
+}
+
+function InvestmentCard({
+  investment,
+}: {
+  investment: InvestmentAggregate;
+}) {
+  const t = useTranslations("grower.wallet");
+  const { data: meta } = useResolvedCampaignMetadata(
+    investment.campaign.id,
+    investment.campaign.metadataURI,
+    investment.campaign.metadataVersion,
+  );
+
+  return (
+    <Link
+      href={`/campaign/${investment.campaign.id}`}
+      className="block rounded-xl border border-outline-variant/15 bg-surface-container-low p-4 transition hover:-translate-y-0.5 hover:bg-surface-container-high"
+    >
+      <ExposureCardHeader
+        image={meta?.image}
+        name={meta?.name || shortCampaign(investment.campaign.id)}
+        state={investment.campaign.state}
+      />
+      <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+        <MiniMetric label={t("value")} value={formatUsd18(investment.value)} />
+        <MiniMetric label={t("tokens")} value={formatTokenAmount(investment.tokens)} />
+        <MiniMetric label={t("buys")} value={String(investment.count)} />
+      </div>
+      <div className="mt-3 text-xs text-on-surface-variant">
+        {t("lastBuy", {
+          date: new Date(investment.lastTimestamp * 1000).toLocaleDateString(),
+        })}
+      </div>
+    </Link>
+  );
+}
+
+function StakingCard({ stake }: { stake: StakingAggregate }) {
+  const t = useTranslations("grower.wallet");
+  const { data: meta } = useResolvedCampaignMetadata(
+    stake.campaign.id,
+    stake.campaign.metadataURI,
+    stake.campaign.metadataVersion,
+  );
+  const seasons = Array.from(stake.seasons)
+    .sort((a, b) => Number(a) - Number(b))
+    .join(", ");
+
+  return (
+    <Link
+      href={`/campaign/${stake.campaign.id}?tab=stake`}
+      className="block rounded-xl border border-outline-variant/15 bg-surface-container-low p-4 transition hover:-translate-y-0.5 hover:bg-surface-container-high"
+    >
+      <ExposureCardHeader
+        image={meta?.image}
+        name={meta?.name || shortCampaign(stake.campaign.id)}
+        state={stake.campaign.state}
+      />
+      <div className="mt-4 grid grid-cols-3 gap-3 text-sm">
+        <MiniMetric label={t("staked")} value={formatTokenAmount(stake.amount)} />
+        <MiniMetric label={t("positions")} value={String(stake.count)} />
+        <MiniMetric label={t("seasons")} value={seasons || "—"} />
+      </div>
+    </Link>
+  );
+}
+
+function ExposureCardHeader({
+  image,
+  name,
+  state,
+}: {
+  image?: string | null;
+  name: string;
+  state: string;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      {image ? (
+        <img
+          src={image}
+          alt=""
+          className="h-12 w-12 shrink-0 rounded-xl object-cover"
+        />
+      ) : (
+        <div className="h-12 w-12 shrink-0 rounded-xl bg-primary-fixed" />
+      )}
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-sm font-bold text-on-surface">
+          {name}
+        </div>
+        <div className="mt-1 flex items-center gap-2">
+          <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+            {state}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MiniMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <div className="truncate text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+        {label}
+      </div>
+      <div className="mt-1 truncate font-mono text-sm font-bold text-on-surface">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function shortCampaign(address: string) {
+  return `Campaign ${address.slice(0, 6)}…${address.slice(-4)}`;
+}
+
+function formatTokenAmount(value: bigint) {
+  const amount = Number(formatUnits(value, 18));
+  return amount.toLocaleString(undefined, {
+    maximumFractionDigits: amount >= 100 ? 0 : 2,
+  });
+}
+
+function formatUsd18(value: bigint) {
+  const amount = Number(formatUnits(value, 18));
+  return `$${amount.toLocaleString(undefined, {
+    maximumFractionDigits: amount >= 100 ? 0 : 2,
+  })}`;
 }
 
 function SocialProfileLinks({

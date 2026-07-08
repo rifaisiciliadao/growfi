@@ -203,6 +203,9 @@ The `/grow` action area keeps Buy/Stake/Earn on the left and the Treasury
 exposure card on the right at the same grid height. The exposure card combines
 direct Treasury CampaignToken balances with active Treasury staking positions;
 `% staked` means staked CampaignTokens divided by total CampaignTokens owned.
+Grower profile pages show created campaigns first, then public wallet
+investment/staking exposure from `useUserPortfolio`; do not render an empty
+campaigns section when a grower has not created visible campaigns.
 The internal `<Header>` is fixed and transparent at the wrapper level; only the
 rounded `app-card` nav should paint a background. Campaign detail pages opt out
 of the global top padding in `ConditionalChrome` so the hero image starts behind

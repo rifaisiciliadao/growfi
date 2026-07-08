@@ -642,7 +642,13 @@ export function useCampaignSeasons(campaignId: string | undefined) {
 export interface UserPortfolio {
   purchases: Array<{
     id: string;
-    campaign: { id: string; pricePerToken: string; state: string };
+    campaign: {
+      id: string;
+      pricePerToken: string;
+      state: string;
+      metadataURI: string | null;
+      metadataVersion: string;
+    };
     paymentToken: string;
     paymentAmount: string;
     campaignTokensOut: string;
@@ -697,7 +703,7 @@ export function useUserPortfolio(user: string | undefined) {
             first: 100
           ) {
             id
-            campaign { id pricePerToken state }
+            campaign { id pricePerToken state metadataURI metadataVersion }
             paymentToken
             paymentAmount
             campaignTokensOut
