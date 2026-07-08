@@ -1,16 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useReadContracts } from "wagmi";
 import { formatUnits, type Address } from "viem";
 import { useTranslations } from "next-intl";
 import { abis, CHAIN_ID, getAddresses } from "@/contracts";
+import { erc20Abi } from "@/contracts/erc20";
 import { DirectBuyGrowPanel } from "@/components/DirectBuyGrowPanel";
 import { EscrowClaimPanel } from "@/components/EscrowClaimPanel";
 import { GrowStakingPanel } from "@/components/GrowStakingPanel";
 import { Flywheel } from "@/components/grow/Flywheel";
 import {
   useGrowTreasuryStakingAllocations,
+  useSubgraphCampaigns,
+  type SubgraphCampaign,
   type GrowTreasuryStakingAllocation,
 } from "@/lib/subgraph";
 import { useResolvedCampaignMetadata } from "@/lib/metadata";
@@ -96,7 +99,7 @@ export default function GrowDashboard() {
   return (
     <div className="min-h-screen bg-surface">
       <div className="mx-auto max-w-7xl px-6 pb-20 pt-8 md:px-8 md:pt-12">
-        <section className="grid gap-7 pb-7 lg:grid-cols-[0.92fr_0.48fr] lg:items-center">
+        <section className="grid gap-7 pb-7 lg:grid-cols-[minmax(0,1fr)_minmax(360px,0.48fr)] lg:items-center">
           <header>
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
               GrowFi Protocol
@@ -126,8 +129,6 @@ export default function GrowDashboard() {
           </aside>
         </section>
 
-        <GrowStakingAllocationSection treasury={a.growTreasury} />
-
         <section>
           <div className="mb-4 inline-flex max-w-full gap-1 rounded-full border border-outline-variant/30 bg-white/75 p-1 shadow-[0_18px_60px_-50px_rgba(14,35,17,0.65)] backdrop-blur-xl">
             {actionTabs.map((tab) => (
@@ -146,9 +147,16 @@ export default function GrowDashboard() {
             ))}
           </div>
 
-          {activeTab === "buy" && <DirectBuyGrowPanel />}
-          {activeTab === "stake" && <GrowStakingPanel />}
-          {activeTab === "earn" && <EscrowClaimPanel />}
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_400px] xl:items-stretch">
+            <div className="min-w-0">
+              {activeTab === "buy" && <DirectBuyGrowPanel />}
+              {activeTab === "stake" && <GrowStakingPanel />}
+              {activeTab === "earn" && <EscrowClaimPanel />}
+            </div>
+            <aside className="min-w-0">
+              <GrowTreasuryOwnershipCard treasury={a.growTreasury} />
+            </aside>
+          </div>
         </section>
 
         <Flywheel />
@@ -157,79 +165,157 @@ export default function GrowDashboard() {
   );
 }
 
-function GrowStakingAllocationSection({
+function GrowTreasuryOwnershipCard({
   treasury,
 }: {
   treasury?: string;
 }) {
   const t = useTranslations("grow.stakingAllocation");
-  const { data: allocations, isLoading } = useGrowTreasuryStakingAllocations(
-    treasury,
-    12,
+  const [page, setPage] = useState(0);
+  const { data: campaigns, isLoading: campaignsLoading } = useSubgraphCampaigns();
+  const { data: stakingAllocations, isLoading: stakingLoading } =
+    useGrowTreasuryStakingAllocations(
+      treasury,
+      100,
+    );
+
+  const balanceContracts = useMemo(
+    () => {
+      if (!treasury) return [];
+      return (campaigns ?? []).map((campaign) => ({
+        abi: erc20Abi,
+        address: campaign.campaignToken as Address,
+        chainId: WAGMI_CHAIN_ID,
+        functionName: "balanceOf",
+        args: [treasury as Address],
+      }));
+    },
+    [campaigns, treasury],
   );
-  const totalStaked = (allocations ?? []).reduce(
-    (sum, allocation) => sum + BigInt(allocation.amount),
-    0n,
+
+  const { data: balanceReads, isLoading: balancesLoading } = useReadContracts({
+    contracts: balanceContracts,
+    query: {
+      enabled: Boolean(treasury && balanceContracts.length > 0),
+      refetchInterval: 15_000,
+    },
+  });
+
+  const ownership = useMemo(
+    () =>
+      buildTreasuryOwnership(
+        campaigns ?? [],
+        stakingAllocations ?? [],
+        balanceReads,
+      ),
+    [campaigns, stakingAllocations, balanceReads],
   );
-  const largest = (allocations ?? []).reduce(
-    (max, allocation) =>
-      BigInt(allocation.amount) > max ? BigInt(allocation.amount) : max,
-    0n,
+  const isLoading = campaignsLoading || stakingLoading || balancesLoading;
+  const pageSize = 4;
+  const pageCount = Math.max(1, Math.ceil(ownership.holdings.length / pageSize));
+  const safePage = Math.min(page, pageCount - 1);
+  const pageStart = safePage * pageSize;
+  const visibleHoldings = ownership.holdings.slice(
+    pageStart,
+    pageStart + pageSize,
   );
-  const largestShare =
-    totalStaked > 0n ? Number((largest * 10_000n) / totalStaked) / 100 : 0;
+  const pageEnd = Math.min(pageStart + visibleHoldings.length, ownership.holdings.length);
 
   return (
-    <section className="mb-7 rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-[0_28px_80px_-58px_rgba(14,35,17,0.55)] md:p-6">
-      <div className="grid gap-6 lg:grid-cols-[0.72fr_1fr] lg:items-start">
-        <header>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
-            {t("eyebrow")}
-          </p>
-          <h2 className="mt-3 text-3xl font-extrabold leading-[0.98] tracking-[-0.055em] text-on-surface md:text-4xl">
-            {t("title")}
-          </h2>
-          <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-on-surface-variant md:text-base">
-            {t("subtitle")}
-          </p>
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            <AllocationMetric
-              label={t("total")}
-              value={totalStaked > 0n ? formatGrowAmount(totalStaked) : "—"}
-            />
-            <AllocationMetric
-              label={t("largest")}
-              value={totalStaked > 0n ? `${formatPercent(largestShare)}` : "—"}
-            />
+    <section className="app-card flex h-full min-h-[34rem] flex-col rounded-[1.35rem] p-4 md:p-5">
+      <header>
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+          {t("eyebrow")}
+        </p>
+        <div className="mt-2 flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-extrabold tracking-[-0.04em] text-on-surface">
+              {t("title")}
+            </h2>
+            <p className="mt-1 text-xs font-medium leading-5 text-on-surface-variant">
+              {t("subtitle")}
+            </p>
           </div>
-        </header>
-
-        <div className="rounded-[1rem] border border-outline-variant/18 bg-surface-container-low p-3">
-          {isLoading ? (
-            <div className="space-y-3">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="h-16 animate-pulse rounded-xl bg-surface-container"
-                />
-              ))}
+          <div className="shrink-0 text-right">
+            <div className="text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+              {t("total")}
             </div>
-          ) : !allocations || allocations.length === 0 || totalStaked === 0n ? (
-            <div className="rounded-xl bg-surface-container px-4 py-8 text-center text-sm font-medium text-on-surface-variant">
-              {t("empty")}
+            <div className="mt-0.5 font-mono text-xl font-bold text-on-surface">
+              {ownership.totalOwned > 0n
+                ? formatGrowAmount(ownership.totalOwned)
+                : "—"}
             </div>
-          ) : (
-            <div className="space-y-2">
-              {allocations.map((allocation) => (
-                <GrowStakingAllocationRow
-                  key={allocation.campaign.id}
-                  allocation={allocation}
-                  totalStaked={totalStaked}
-                />
-              ))}
-            </div>
-          )}
+          </div>
         </div>
+      </header>
+
+      <div className="mt-4 grid grid-cols-2 gap-2">
+        <AllocationMetric
+          label={t("value")}
+          value={ownership.totalValue > 0n ? formatUsd18Compact(ownership.totalValue) : "—"}
+        />
+        <AllocationMetric
+          label={t("stakedPercent")}
+          value={ownership.totalOwned > 0n ? formatPercent(ownership.stakedShare) : "—"}
+        />
+      </div>
+
+      <div className="mt-3 flex flex-1 flex-col rounded-[1rem] border border-outline-variant/18 bg-surface-container-low p-2">
+        {isLoading ? (
+          <div className="space-y-2">
+            {[0, 1, 2].map((i) => (
+              <div
+                key={i}
+                className="h-16 animate-pulse rounded-xl bg-surface-container"
+              />
+            ))}
+          </div>
+        ) : visibleHoldings.length === 0 || ownership.totalBasis === 0n ? (
+          <div className="rounded-xl bg-surface-container px-4 py-6 text-center text-sm font-medium text-on-surface-variant">
+            {t("empty")}
+          </div>
+        ) : (
+          <>
+            <div className="flex-1 space-y-2">
+              {visibleHoldings.map((holding) => (
+                <GrowTreasuryOwnershipRow
+                  key={holding.campaign.id}
+                  holding={holding}
+                  totalBasis={ownership.totalBasis}
+                />
+              ))}
+            </div>
+            <div className="mt-3 flex items-center justify-between border-t border-outline-variant/15 pt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+              <span>
+                {t("page", {
+                  from: ownership.holdings.length === 0 ? 0 : pageStart + 1,
+                  to: pageEnd,
+                  total: ownership.holdings.length,
+                })}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPage((current) => Math.max(0, current - 1))}
+                  disabled={safePage === 0}
+                  className="rounded-full border border-outline-variant/20 px-2 py-1 text-on-surface transition hover:bg-surface-container-high disabled:opacity-35"
+                >
+                  {t("previous")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPage((current) => Math.min(pageCount - 1, current + 1))
+                  }
+                  disabled={safePage >= pageCount - 1}
+                  className="rounded-full border border-outline-variant/20 px-2 py-1 text-on-surface transition hover:bg-surface-container-high disabled:opacity-35"
+                >
+                  {t("next")}
+                </button>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </section>
   );
@@ -254,35 +340,107 @@ function AllocationMetric({
   );
 }
 
-function GrowStakingAllocationRow({
-  allocation,
-  totalStaked,
+interface TreasuryCampaignHolding {
+  campaign: SubgraphCampaign;
+  direct: bigint;
+  staked: bigint;
+  owned: bigint;
+  value: bigint;
+  basis: bigint;
+}
+
+function buildTreasuryOwnership(
+  campaigns: SubgraphCampaign[],
+  stakingAllocations: GrowTreasuryStakingAllocation[],
+  balanceReads:
+    | readonly { result?: unknown; status?: string }[]
+    | undefined,
+) {
+  const stakedByCampaign = new Map<string, bigint>();
+  for (const allocation of stakingAllocations) {
+    stakedByCampaign.set(
+      allocation.campaign.id.toLowerCase(),
+      BigInt(allocation.amount),
+    );
+  }
+
+  const holdings = campaigns
+    .map((campaign, index): TreasuryCampaignHolding => {
+      const direct =
+        balanceReads?.[index]?.status === "success"
+          ? ((balanceReads[index].result as bigint | undefined) ?? 0n)
+          : 0n;
+      const staked = stakedByCampaign.get(campaign.id.toLowerCase()) ?? 0n;
+      const owned = direct + staked;
+      const pricePerToken = BigInt(campaign.pricePerToken || "0");
+      const value = (owned * pricePerToken) / 10n ** 18n;
+      return {
+        campaign,
+        direct,
+        staked,
+        owned,
+        value,
+        basis: value > 0n ? value : owned,
+      };
+    })
+    .filter((holding) => holding.owned > 0n)
+    .sort((a, b) => {
+      if (a.basis === b.basis) return 0;
+      return b.basis > a.basis ? 1 : -1;
+    });
+
+  const totalOwned = holdings.reduce((sum, holding) => sum + holding.owned, 0n);
+  const totalStaked = holdings.reduce((sum, holding) => sum + holding.staked, 0n);
+  const totalValue = holdings.reduce((sum, holding) => sum + holding.value, 0n);
+  const totalBasis = holdings.reduce((sum, holding) => sum + holding.basis, 0n);
+  const stakedShare =
+    totalOwned > 0n ? Number((totalStaked * 10_000n) / totalOwned) / 100 : 0;
+
+  return {
+    holdings,
+    totalOwned,
+    totalStaked,
+    totalValue,
+    totalBasis,
+    stakedShare,
+  };
+}
+
+function GrowTreasuryOwnershipRow({
+  holding,
+  totalBasis,
 }: {
-  allocation: GrowTreasuryStakingAllocation;
-  totalStaked: bigint;
+  holding: TreasuryCampaignHolding;
+  totalBasis: bigint;
 }) {
   const t = useTranslations("grow.stakingAllocation");
   const { data: metadata } = useResolvedCampaignMetadata(
-    allocation.campaign.id,
-    allocation.campaign.metadataURI,
-    allocation.campaign.metadataVersion,
+    holding.campaign.id,
+    holding.campaign.metadataURI,
+    holding.campaign.metadataVersion,
   );
-  const amount = BigInt(allocation.amount);
-  const share = totalStaked > 0n ? Number((amount * 10_000n) / totalStaked) / 100 : 0;
+  const share =
+    totalBasis > 0n ? Number((holding.basis * 10_000n) / totalBasis) / 100 : 0;
   const width = Math.max(2, Math.min(100, share));
   const name =
     metadata?.name ||
-    `Campaign ${allocation.campaign.id.slice(0, 6)}...${allocation.campaign.id.slice(-4)}`;
+    `Campaign ${holding.campaign.id.slice(0, 6)}...${holding.campaign.id.slice(-4)}`;
 
   return (
-    <article className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-3">
+    <article className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest px-3 py-2.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="truncate text-sm font-bold tracking-[-0.02em] text-on-surface">
             {name}
           </div>
-          <div className="mt-1 text-xs font-medium text-on-surface-variant">
-            {t("staked", { amount: formatGrowAmount(amount) })}
+          <div className="mt-1 text-xs font-medium leading-5 text-on-surface-variant">
+            {t("owned", { amount: formatGrowAmount(holding.owned) })}
+            {holding.staked > 0n && (
+              <span className="text-on-surface-variant/75">
+                {" · "}
+                {t("staked", { amount: formatGrowAmount(holding.staked) })}
+              </span>
+            )}
           </div>
         </div>
         <div className="shrink-0 text-right">
@@ -290,11 +448,11 @@ function GrowStakingAllocationRow({
             {formatPercent(share)}
           </div>
           <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
-            {allocation.campaign.state}
+            {holding.value > 0n ? formatUsd18Compact(holding.value) : holding.campaign.state}
           </div>
         </div>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-container">
+      <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-container">
         <div
           className="h-full rounded-full bg-primary"
           style={{ width: `${width}%` }}
@@ -302,6 +460,14 @@ function GrowStakingAllocationRow({
       </div>
     </article>
   );
+}
+
+function formatUsd18Compact(value: bigint) {
+  if (value === 0n) return "—";
+  const amount = Number(formatUnits(value, 18));
+  return `$${amount.toLocaleString(undefined, {
+    maximumFractionDigits: amount >= 100 ? 0 : 2,
+  })}`;
 }
 
 function Stat({

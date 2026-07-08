@@ -297,7 +297,7 @@ export default function CampaignDetail({
       </div>
 
       {isProducerViewing && hasCampaignData && (
-        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pt-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pt-4">
           <ActivateCtaBanner
             campaignAddress={campaignAddress}
             currentState={stateIdx}
@@ -309,7 +309,7 @@ export default function CampaignDetail({
       )}
 
       {isProducerViewing && metadataMissing && (
-        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pt-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pt-4">
           <LinkMetadataBanner
             campaignAddress={campaignAddress}
             currentName={displayName}
@@ -318,7 +318,7 @@ export default function CampaignDetail({
       )}
 
       {isProducerViewing && hasOnChainData && sgCampaign && (
-        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pt-6">
+        <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pt-4">
           <CollateralMissingBanner
             currentState={stateIdx}
             annualHarvestUsd18={BigInt(
@@ -331,7 +331,7 @@ export default function CampaignDetail({
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 py-5 md:py-8 flex flex-col lg:flex-row gap-8 md:gap-12 items-start">
+      <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pb-5 pt-4 md:pb-8 md:pt-5 flex flex-col lg:flex-row gap-8 md:gap-12 items-start">
         <div className="w-full lg:w-[65%] flex flex-col gap-6">
           {effectiveTab === "invest" && (
             <>
@@ -476,6 +476,7 @@ export default function CampaignDetail({
                 campaignAddress={campaignAddress}
                 harvestManager={harvestManagerAddr}
                 stakingVault={stakingVaultAddr}
+                metadata={metadata ?? null}
                 currentState={stateIdx}
                 minProductClaim={BigInt(sgCampaign.minProductClaim)}
                 seasonDuration={BigInt(sgCampaign.seasonDuration)}

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useAccount,
   useReadContract,
@@ -53,8 +54,10 @@ import {
   fetchSnapshot,
   generateMerkleTree,
   uploadImage,
+  uploadMetadata,
   uploadProjectUpdateMetadata,
 } from "@/lib/api";
+import type { CampaignMetadata } from "@/lib/metadata";
 import { EcommerceModuleManager } from "./EcommerceShopPanel";
 import { Spinner } from "./Spinner";
 import { RichTextEditor } from "./RichTextEditor";
@@ -73,11 +76,26 @@ interface Props {
   campaignAddress: Address;
   harvestManager: Address;
   stakingVault: Address;
+  metadata: CampaignMetadata | null;
   /** Campaign.state enum — 0=Funding, 1=Active, 2=Buyback, 3=Ended */
   currentState: number;
   minProductClaim: bigint;
   seasonDuration: bigint;
 }
+
+type ManageTab =
+  | "info"
+  | "lifecycle"
+  | "parameters"
+  | "split"
+  | "issue"
+  | "updates"
+  | "collateral"
+  | "repayment"
+  | "debt"
+  | "ecommerce"
+  | "tokens"
+  | "obligations";
 
 const harvestAbi = abis.HarvestManager as never;
 const USDC_DECIMALS = 6;
@@ -117,11 +135,13 @@ export function ProducerManagePanel({
   campaignAddress,
   harvestManager,
   stakingVault,
+  metadata,
   currentState,
   minProductClaim,
   seasonDuration,
 }: Props) {
   const t = useTranslations("detail.manage");
+  const [activeTab, setActiveTab] = useState<ManageTab>("info");
   const { data: seasons, refetch: refetchSeasons } =
     useCampaignSeasons(campaignAddress);
 
@@ -134,9 +154,23 @@ export function ProducerManagePanel({
   const pendingReport = (seasons ?? []).filter(
     (s) => !s.active && !s.reported,
   );
+  const tabs: Array<{ id: ManageTab; label: string; count?: number }> = [
+    { id: "info", label: t("projectInfoTitle") },
+    { id: "lifecycle", label: t("lifecycleTitle"), count: pendingReport.length },
+    { id: "parameters", label: t("parametersTitle") },
+    { id: "split", label: t("proceedsSplitTitle") },
+    { id: "issue", label: t("directIssueTitle") },
+    { id: "updates", label: t("projectUpdatesTitle") },
+    { id: "collateral", label: t("collateralTitle") },
+    { id: "repayment", label: t("repaymentTitle") },
+    { id: "debt", label: t("debtRestructuringTitle") },
+    { id: "ecommerce", label: t("ecommerceTitle") },
+    { id: "tokens", label: t("acceptedTokensTitle") },
+    { id: "obligations", label: t("usdcObligationsTitle"), count: reportedSeasons.length },
+  ];
 
   return (
-    <div className="bg-surface-container-lowest rounded-2xl p-8 border border-outline-variant/15">
+    <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-4 md:p-5">
       <div className="mb-6">
         <h2 className="text-2xl font-bold tracking-tight text-on-surface mb-2">
           {t("title")}
@@ -144,128 +178,397 @@ export function ProducerManagePanel({
         <p className="text-sm text-on-surface-variant">{t("subtitle")}</p>
       </div>
 
-      <LifecycleSection
-        campaignAddress={campaignAddress}
-        stakingVault={stakingVault}
-        currentState={currentState}
-        seasons={seasons ?? []}
-        seasonDuration={seasonDuration}
-        onChange={() => refetchSeasons()}
-      />
+      <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
+        <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-outline-variant/15 bg-surface-container-low p-2 lg:sticky lg:top-36 lg:flex-col lg:overflow-visible">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex min-h-10 shrink-0 items-center justify-between gap-3 rounded-xl px-3 text-left text-sm font-bold transition ${
+                activeTab === tab.id
+                  ? "bg-on-surface text-white shadow-[0_14px_30px_-22px_rgba(0,0,0,0.75)]"
+                  : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              }`}
+            >
+              <span>{tab.label}</span>
+              {tab.count ? (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] ${
+                    activeTab === tab.id
+                      ? "bg-white/15 text-white"
+                      : "bg-surface-container-high text-on-surface-variant"
+                  }`}
+                >
+                  {tab.count}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </nav>
 
-      {pendingReport.length > 0 && (
-        <section className="mt-8">
-          <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-            {t("pendingReportTitle")}
-          </h3>
-          <div className="space-y-4">
-            {pendingReport.map((season) => (
-              <ReportHarvestCard
-                key={season.id}
+        <div className="min-w-0">
+          {activeTab === "info" && (
+            <ManagePane title={t("projectInfoTitle")}>
+              <ProjectInfoManager
                 campaignAddress={campaignAddress}
-                harvestManager={harvestManager}
-                season={season}
-                minProductClaim={minProductClaim}
-                onReported={() => refetchSeasons()}
+                metadata={metadata}
               />
-            ))}
-          </div>
-        </section>
+            </ManagePane>
+          )}
+
+          {activeTab === "lifecycle" && (
+            <ManagePane title={t("lifecycleTitle")}>
+              <LifecycleSection
+                campaignAddress={campaignAddress}
+                stakingVault={stakingVault}
+                currentState={currentState}
+                seasons={seasons ?? []}
+                seasonDuration={seasonDuration}
+                onChange={() => refetchSeasons()}
+              />
+              {pendingReport.length > 0 && (
+                <section className="mt-6">
+                  <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-on-surface-variant">
+                    {t("pendingReportTitle")}
+                  </h3>
+                  <div className="space-y-4">
+                    {pendingReport.map((season) => (
+                      <ReportHarvestCard
+                        key={season.id}
+                        campaignAddress={campaignAddress}
+                        harvestManager={harvestManager}
+                        season={season}
+                        minProductClaim={minProductClaim}
+                        onReported={() => refetchSeasons()}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+            </ManagePane>
+          )}
+
+          {activeTab === "parameters" && (
+            <ManagePane title={t("parametersTitle")}>
+              <ParametersEditor
+                campaignAddress={campaignAddress}
+                currentState={currentState}
+              />
+            </ManagePane>
+          )}
+
+          {activeTab === "split" && (
+            <ManagePane title={t("proceedsSplitTitle")}>
+              <ProceedsSplitManager campaignAddress={campaignAddress} />
+            </ManagePane>
+          )}
+
+          {activeTab === "issue" && (
+            <ManagePane title={t("directIssueTitle")}>
+              <DirectIssueManager
+                campaignAddress={campaignAddress}
+                currentState={currentState}
+              />
+            </ManagePane>
+          )}
+
+          {activeTab === "updates" && (
+            <ManagePane title={t("projectUpdatesTitle")}>
+              <ProjectUpdatesManager campaignAddress={campaignAddress} />
+            </ManagePane>
+          )}
+
+          {activeTab === "collateral" && (
+            <ManagePane title={t("collateralTitle")}>
+              <CollateralSection
+                campaignAddress={campaignAddress}
+                currentState={currentState}
+              />
+            </ManagePane>
+          )}
+
+          {activeTab === "repayment" && (
+            <ManagePane title={t("repaymentTitle")}>
+              <RepaymentModuleManager campaignAddress={campaignAddress} />
+            </ManagePane>
+          )}
+
+          {activeTab === "debt" && (
+            <ManagePane title={t("debtRestructuringTitle")}>
+              <DebtRestructuringModuleManager campaignAddress={campaignAddress} />
+            </ManagePane>
+          )}
+
+          {activeTab === "ecommerce" && (
+            <ManagePane title={t("ecommerceTitle")}>
+              <EcommerceModuleManager campaignAddress={campaignAddress} />
+            </ManagePane>
+          )}
+
+          {activeTab === "tokens" && (
+            <ManagePane title={t("acceptedTokensTitle")}>
+              <AcceptedTokensManager campaignAddress={campaignAddress} />
+            </ManagePane>
+          )}
+
+          {activeTab === "obligations" && (
+            <ManagePane title={t("usdcObligationsTitle")}>
+              {reportedSeasons.length === 0 ? (
+                <div className="bg-surface-container-low rounded-xl p-6 text-center text-sm text-on-surface-variant">
+                  {t("noObligations")}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {reportedSeasons.map((season) => (
+                    <ObligationCard
+                      key={season.id}
+                      season={season}
+                      campaignAddress={campaignAddress}
+                      harvestManager={harvestManager}
+                    />
+                  ))}
+                </div>
+              )}
+            </ManagePane>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ManagePane({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section>
+      <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-on-surface-variant">
+        {title}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+function ProjectInfoManager({
+  campaignAddress,
+  metadata,
+}: {
+  campaignAddress: Address;
+  metadata: CampaignMetadata | null;
+}) {
+  const t = useTranslations("detail.manage.projectInfo");
+  const tx = useTranslations("tx");
+  const notify = useTxNotify();
+  const queryClient = useQueryClient();
+  const { registry } = getAddresses();
+  const { writeContractAsync } = useWriteContract();
+  const [name, setName] = useState(metadata?.name ?? "");
+  const [description, setDescription] = useState(metadata?.description ?? "");
+  const [location, setLocation] = useState(metadata?.location ?? "");
+  const [productType, setProductType] = useState(metadata?.productType ?? "");
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(
+    metadata?.image ?? null,
+  );
+  const [stage, setStage] = useState<
+    | { kind: "idle" }
+    | { kind: "uploading" }
+    | { kind: "signing" }
+    | { kind: "confirming" }
+    | { kind: "indexing" }
+    | { kind: "error"; message: string }
+  >({ kind: "idle" });
+
+  useEffect(() => {
+    setName(metadata?.name ?? "");
+    setDescription(metadata?.description ?? "");
+    setLocation(metadata?.location ?? "");
+    setProductType(metadata?.productType ?? "");
+    setImagePreview(metadata?.image ?? null);
+    setImageFile(null);
+  }, [
+    metadata?.description,
+    metadata?.image,
+    metadata?.location,
+    metadata?.name,
+    metadata?.productType,
+  ]);
+
+  const busy = stage.kind !== "idle" && stage.kind !== "error";
+  const statusText =
+    stage.kind === "uploading"
+      ? t("uploading")
+      : stage.kind === "signing"
+        ? t("signing")
+        : stage.kind === "confirming"
+          ? t("confirming")
+          : stage.kind === "indexing"
+            ? t("indexing")
+            : t("save");
+
+  const handleImage = (file: File) => {
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleSubmit = async () => {
+    if (!name.trim()) {
+      setStage({ kind: "error", message: t("nameRequired") });
+      return;
+    }
+    if (!hasRichTextContent(description)) {
+      setStage({ kind: "error", message: t("descriptionRequired") });
+      return;
+    }
+
+    try {
+      setStage({ kind: "uploading" });
+      let imageUrl = metadata?.image ?? undefined;
+      if (imageFile) {
+        const uploaded = await uploadImage(imageFile);
+        imageUrl = uploaded.url;
+      }
+      const uploadedMetadata = await uploadMetadata({
+        name: name.trim(),
+        description: prepareRichTextForStorage(description),
+        location: location.trim(),
+        productType: productType.trim(),
+        imageUrl,
+        dmrv: metadata?.dmrv ?? null,
+      });
+
+      setStage({ kind: "signing" });
+      const hash = await writeContractAsync({
+        address: registry,
+        abi: abis.CampaignRegistry as never,
+        functionName: "setMetadata",
+        args: [campaignAddress, uploadedMetadata.url],
+      });
+      setStage({ kind: "confirming" });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") throw new Error("setMetadata reverted");
+      notify.success(tx("setMetadataConfirmed"), hash);
+
+      setStage({ kind: "indexing" });
+      await queryClient.invalidateQueries({
+        queryKey: ["subgraph", "campaign", campaignAddress.toLowerCase()],
+      });
+      await queryClient.invalidateQueries({ queryKey: ["campaign-metadata"] });
+      setStage({ kind: "idle" });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/user (rejected|denied)/i.test(msg)) {
+        setStage({ kind: "idle" });
+      } else {
+        setStage({ kind: "error", message: msg });
+        notify.error(tx("setMetadataFailed"), err);
+      }
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-5">
+      <p className="mb-4 text-xs leading-5 text-on-surface-variant">
+        {t("subtitle")}
+      </p>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        <label>
+          <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+            {t("name")}
+          </span>
+          <input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={busy}
+            className="input"
+            placeholder={t("namePlaceholder")}
+          />
+        </label>
+
+        <label>
+          <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+            {t("location")}
+          </span>
+          <input
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            disabled={busy}
+            className="input"
+            placeholder={t("locationPlaceholder")}
+          />
+        </label>
+      </div>
+
+      <label className="mt-4 block">
+        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+          {t("productType")}
+        </span>
+        <input
+          value={productType}
+          onChange={(e) => setProductType(e.target.value)}
+          disabled={busy}
+          className="input"
+          placeholder={t("productTypePlaceholder")}
+        />
+      </label>
+
+      <div className="mt-4">
+        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+          {t("description")}
+        </span>
+        <RichTextEditor
+          value={description}
+          onChange={setDescription}
+          placeholder={t("descriptionPlaceholder")}
+          disabled={busy}
+        />
+      </div>
+
+      <label className="mt-4 block">
+        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+          {t("image")}
+        </span>
+        <input
+          type="file"
+          accept="image/*"
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) handleImage(file);
+          }}
+          disabled={busy}
+          className="text-sm text-on-surface-variant"
+        />
+        {imagePreview && (
+          <img
+            src={imagePreview}
+            alt=""
+            className="mt-3 h-28 w-full rounded-xl border border-outline-variant/15 object-cover"
+          />
+        )}
+      </label>
+
+      {stage.kind === "error" && (
+        <div className="mt-4 break-words text-sm text-error">
+          {stage.message}
+        </div>
       )}
 
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          {t("parametersTitle")}
-        </h3>
-        <ParametersEditor
-          campaignAddress={campaignAddress}
-          currentState={currentState}
-        />
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          {t("proceedsSplitTitle")}
-        </h3>
-        <ProceedsSplitManager campaignAddress={campaignAddress} />
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          {t("directIssueTitle")}
-        </h3>
-        <DirectIssueManager
-          campaignAddress={campaignAddress}
-          currentState={currentState}
-        />
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          {t("projectUpdatesTitle")}
-        </h3>
-        <ProjectUpdatesManager campaignAddress={campaignAddress} />
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          Producer Collateral
-        </h3>
-        <CollateralSection
-          campaignAddress={campaignAddress}
-          currentState={currentState}
-        />
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          {t("repaymentTitle")}
-        </h3>
-        <RepaymentModuleManager campaignAddress={campaignAddress} />
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          {t("debtRestructuringTitle")}
-        </h3>
-        <DebtRestructuringModuleManager campaignAddress={campaignAddress} />
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          {t("ecommerceTitle")}
-        </h3>
-        <EcommerceModuleManager campaignAddress={campaignAddress} />
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          {t("acceptedTokensTitle")}
-        </h3>
-        <AcceptedTokensManager campaignAddress={campaignAddress} />
-      </section>
-
-      <section className="mt-8">
-        <h3 className="text-sm font-bold text-on-surface-variant uppercase tracking-wider mb-4">
-          {t("usdcObligationsTitle")}
-        </h3>
-        {reportedSeasons.length === 0 ? (
-          <div className="bg-surface-container-low rounded-xl p-6 text-center text-sm text-on-surface-variant">
-            {t("noObligations")}
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {reportedSeasons.map((season) => (
-              <ObligationCard
-                key={season.id}
-                season={season}
-                campaignAddress={campaignAddress}
-                harvestManager={harvestManager}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      <button
+        type="button"
+        onClick={handleSubmit}
+        disabled={busy || !name.trim()}
+        className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-on-surface px-5 text-sm font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {busy && <Spinner size={14} />}
+        {statusText}
+      </button>
     </div>
   );
 }

@@ -185,6 +185,11 @@ Frontend proceeds split/direct issue support lives in `platform/frontend/src/con
 
 Frontend project-update support lives in `platform/frontend/src/contracts/projectUpdates.ts`, `ProjectUpdatesPanel`, and `ProducerManagePanel`. Campaign pages expose an `updates` tab that reads indexed on-chain updates and fetches the pointed metadata JSON; the manage tab can attach/re-enable `ProjectUpdatesModule`, upload rich-text update metadata, and post the on-chain evidence pointer when `NEXT_PUBLIC_PROJECT_UPDATES_IMPL` is configured for the active chain. Reactions are off-chain: users sign the canonical message from `lib/api.ts::buildProjectUpdateReactionMessage`, and the backend stores at most one emoji per wallet per update.
 
+`ProducerManagePanel` is organized as vertical tabs on desktop, with each
+module in its own pane. The `Project info` pane updates campaign metadata by
+uploading a new metadata JSON and calling `CampaignRegistry.setMetadata`; it
+preserves existing metadata fields such as `dmrv` unless the user changes them.
+
 Public frontend navigation now has dedicated `/campaigns` and `/faq` routes.
 Keep the homepage focused on the compact hero + high-level protocol flow; the
 full campaign catalog belongs on `/campaigns`, and fee schedule/protocol
@@ -194,6 +199,10 @@ background without an explicit request. The shared header/logo sizing should
 stay consistent across the homepage and internal routes. The `/feed` page shows
 both protocol activity and project updates, with client-side pagination over
 the latest indexed events plus separate top backer and top staker sidebars.
+The `/grow` action area keeps Buy/Stake/Earn on the left and the Treasury
+exposure card on the right at the same grid height. The exposure card combines
+direct Treasury CampaignToken balances with active Treasury staking positions;
+`% staked` means staked CampaignTokens divided by total CampaignTokens owned.
 The internal `<Header>` is fixed and transparent at the wrapper level; only the
 rounded `app-card` nav should paint a background. Campaign detail pages opt out
 of the global top padding in `ConditionalChrome` so the hero image starts behind
