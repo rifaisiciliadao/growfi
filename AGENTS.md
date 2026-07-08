@@ -194,6 +194,17 @@ background without an explicit request. The shared header/logo sizing should
 stay consistent across the homepage and internal routes. The `/feed` page shows
 both protocol activity and project updates, with client-side pagination over
 the latest indexed events plus separate top backer and top staker sidebars.
+The internal `<Header>` is fixed and transparent at the wrapper level; only the
+rounded `app-card` nav should paint a background. Campaign detail pages opt out
+of the global top padding in `ConditionalChrome` so the hero image starts behind
+the rounded nav instead of showing a full-width empty band.
+
+The campaign detail route is split intentionally: `app/campaign/[address]/page.tsx`
+is a server wrapper that generates per-campaign metadata/OpenGraph/Twitter
+previews from the subgraph + metadata JSON, while the interactive wallet UI
+lives in `CampaignDetailClient.tsx`. Keep campaign preview fetching in
+`platform/frontend/src/lib/campaignPreview.ts`; do not move wallet hooks into
+the server route.
 
 User-facing proceeds split copy calls the receiver a "project partner". Keep the
 internal ABI/subgraph names (`promoter`, `promoterBps`,
@@ -203,8 +214,9 @@ Campaign metadata descriptions may contain sanitized rich HTML, not only plain
 text. Use `RichTextEditor` for authoring, `RichTextContent` for rendering, and
 `platform/frontend/src/lib/richText.ts` before upload/render. The allowed tag set
 is intentionally small (`p`, `br`, `strong`, `em`, `u`, `s`, `ul`, `ol`, `li`,
-`blockquote`, `h3`); do not render metadata descriptions with raw
-`dangerouslySetInnerHTML` directly.
+`blockquote`, `h3`, `a`). Only `http`/`https` links are allowed; plain text URLs
+are linkified at render time without mutating stored metadata. Do not render
+metadata descriptions with raw `dangerouslySetInnerHTML` directly.
 
 Campaign metadata may also carry optional Silvi Protocol links under `dmrv`:
 `{ provider: "silvi", projectId, url, embedUrl, geojsonUrl, linkedAt }`.
@@ -474,11 +486,12 @@ Tier thresholds are snapshotted on the first non-excluded buy per campaign, so l
 
 **Treasury-staked CT valuation** (2026-06-29): once the Treasury stakes CampaignTokens into a campaign's `StakingVault`, those CT no longer appear in `CampaignToken.balanceOf(treasury)`. `Treasury.intrinsicFloorPrice()` must therefore count both idle CT held directly by the Treasury and active staking positions returned by `StakingVault.getPositions(treasury)` / `positions(id)`. Only active positions owned by the Treasury count; inactive or foreign positions are ignored. Regression tests live in `test/GrowfiTreasury.t.sol`.
 
-**Frontend `/grow` page** (full i18n EN/IT/ES/FR via `next-intl`, namespace `grow.*`):
+**Frontend `/grow` page** (full i18n EN/IT/ES/FR/PT via `next-intl`, namespace `grow.*`):
 - `DirectBuyGrowPanel` — multi-stable selector + faucet button (chainId 31337/84532/11155111 — both `MockUSDC` and `MockStablecoin` expose public `mint` on test deployments), salePrice quote, depeg banner when Treasury.getStablecoinPriceUsd18 reverts, slippage cap +5%, two-step approve+buy.
 - `EscrowClaimPanel` — iterates subgraph campaigns, reads `Minter.getEscrow + campaignStates` per campaign, shows `Pending` / `ready to claim` / `voided` per row. Until subgraph indexes a `UserEscrow` entity, the iteration is client-side multicall (acceptable for ≤100 campaigns).
 - `GrowStakingPanel` — stake/withdraw tabs, prominent accrued USDC reward balance from `GrowfiStakingPool.earned(account)`, multiplier live vs stored, countdown to 2.0× cap, reward-window status, dedicated claim button, withdraw-resets-streak warning.
-- `BondingCurve` — compact read-only panel shown directly below `DirectBuyGrowPanel` on `/grow`. It reads live floor, markup, and circulating supply, renders the direct-sale curve shape, and intentionally avoids textual future price projections. The display floor is `Treasury.intrinsicFloorPrice()` when non-zero, otherwise `GrowfiToken.effectiveReferencePrice()` so the page mirrors the direct-sale fallback path while the on-chain floor is temporarily zero. This is the direct-sale price curve, not the campaign-reward `GrowfiMinter` tier curve.
+- The operational surface is tabbed as Buy / Stake / Earn. Buy mounts `DirectBuyGrowPanel`, Stake mounts `GrowStakingPanel`, and Earn mounts `EscrowClaimPanel`.
+- `GrowStakingAllocationSection` — reads active `Position` rows where `user == growTreasury` via `useGrowTreasuryStakingAllocations` and groups them by campaign. It shows Treasury campaign-token staking exposure and largest-position share so the page can explain risk dispersion without hardcoded campaign data.
 - `Flywheel` — 4-step 2×2 cyclic diagram explaining the flywheel (Buy → Treasury auto-allocates → Harvest yield flows back → Stakers earn / floor pumps → loop). Mounted below the 3 panels on `/grow`.
 - Stats strip on `/grow`: Floor + Circulating always; Treasury holds **only when > 0** (zero is noise).
 - `FundingProgressCard` on `/campaign/[address]` renders **two-segment funding bar** (direct backers + Treasury auto-alloc), sourcing the split from subgraph `treasuryRaised` / `treasuryTokensOut` with on-chain `CT.balanceOf(treasury)` fallback.

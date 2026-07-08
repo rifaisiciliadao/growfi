@@ -140,7 +140,7 @@ export function Header() {
   );
 
   return (
-    <nav className="fixed top-0 z-50 w-full bg-surface px-3 py-3 md:px-5">
+    <nav className="fixed top-0 z-50 w-full bg-transparent px-3 py-3 md:px-5">
       <div className="app-card relative flex h-16 w-full max-w-7xl items-center justify-between gap-2 rounded-full px-3 md:gap-6 md:px-5 mx-auto backdrop-blur-xl">
         <Link href="/" prefetch={false} className="relative z-10 flex items-center gap-1 shrink-0 min-w-0">
           <Logo />

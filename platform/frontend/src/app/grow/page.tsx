@@ -9,6 +9,11 @@ import { DirectBuyGrowPanel } from "@/components/DirectBuyGrowPanel";
 import { EscrowClaimPanel } from "@/components/EscrowClaimPanel";
 import { GrowStakingPanel } from "@/components/GrowStakingPanel";
 import { Flywheel } from "@/components/grow/Flywheel";
+import {
+  useGrowTreasuryStakingAllocations,
+  type GrowTreasuryStakingAllocation,
+} from "@/lib/subgraph";
+import { useResolvedCampaignMetadata } from "@/lib/metadata";
 
 const treasuryAbi = abis.GrowTreasury as never;
 const tokenAbi = abis.GrowToken as never;
@@ -121,6 +126,8 @@ export default function GrowDashboard() {
           </aside>
         </section>
 
+        <GrowStakingAllocationSection treasury={a.growTreasury} />
+
         <section>
           <div className="mb-4 inline-flex max-w-full gap-1 rounded-full border border-outline-variant/30 bg-white/75 p-1 shadow-[0_18px_60px_-50px_rgba(14,35,17,0.65)] backdrop-blur-xl">
             {actionTabs.map((tab) => (
@@ -147,6 +154,153 @@ export default function GrowDashboard() {
         <Flywheel />
       </div>
     </div>
+  );
+}
+
+function GrowStakingAllocationSection({
+  treasury,
+}: {
+  treasury?: string;
+}) {
+  const t = useTranslations("grow.stakingAllocation");
+  const { data: allocations, isLoading } = useGrowTreasuryStakingAllocations(
+    treasury,
+    12,
+  );
+  const totalStaked = (allocations ?? []).reduce(
+    (sum, allocation) => sum + BigInt(allocation.amount),
+    0n,
+  );
+  const largest = (allocations ?? []).reduce(
+    (max, allocation) =>
+      BigInt(allocation.amount) > max ? BigInt(allocation.amount) : max,
+    0n,
+  );
+  const largestShare =
+    totalStaked > 0n ? Number((largest * 10_000n) / totalStaked) / 100 : 0;
+
+  return (
+    <section className="mb-7 rounded-[1.35rem] border border-outline-variant/20 bg-surface-container-lowest p-5 shadow-[0_28px_80px_-58px_rgba(14,35,17,0.55)] md:p-6">
+      <div className="grid gap-6 lg:grid-cols-[0.72fr_1fr] lg:items-start">
+        <header>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-primary">
+            {t("eyebrow")}
+          </p>
+          <h2 className="mt-3 text-3xl font-extrabold leading-[0.98] tracking-[-0.055em] text-on-surface md:text-4xl">
+            {t("title")}
+          </h2>
+          <p className="mt-3 max-w-xl text-sm font-medium leading-6 text-on-surface-variant md:text-base">
+            {t("subtitle")}
+          </p>
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <AllocationMetric
+              label={t("total")}
+              value={totalStaked > 0n ? formatGrowAmount(totalStaked) : "—"}
+            />
+            <AllocationMetric
+              label={t("largest")}
+              value={totalStaked > 0n ? `${formatPercent(largestShare)}` : "—"}
+            />
+          </div>
+        </header>
+
+        <div className="rounded-[1rem] border border-outline-variant/18 bg-surface-container-low p-3">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-16 animate-pulse rounded-xl bg-surface-container"
+                />
+              ))}
+            </div>
+          ) : !allocations || allocations.length === 0 || totalStaked === 0n ? (
+            <div className="rounded-xl bg-surface-container px-4 py-8 text-center text-sm font-medium text-on-surface-variant">
+              {t("empty")}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {allocations.map((allocation) => (
+                <GrowStakingAllocationRow
+                  key={allocation.campaign.id}
+                  allocation={allocation}
+                  totalStaked={totalStaked}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AllocationMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-outline-variant/20 bg-surface-container-low px-4 py-3">
+      <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+        {label}
+      </div>
+      <div className="mt-1 text-2xl font-bold tracking-[-0.04em] text-on-surface">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function GrowStakingAllocationRow({
+  allocation,
+  totalStaked,
+}: {
+  allocation: GrowTreasuryStakingAllocation;
+  totalStaked: bigint;
+}) {
+  const t = useTranslations("grow.stakingAllocation");
+  const { data: metadata } = useResolvedCampaignMetadata(
+    allocation.campaign.id,
+    allocation.campaign.metadataURI,
+    allocation.campaign.metadataVersion,
+  );
+  const amount = BigInt(allocation.amount);
+  const share = totalStaked > 0n ? Number((amount * 10_000n) / totalStaked) / 100 : 0;
+  const width = Math.max(2, Math.min(100, share));
+  const name =
+    metadata?.name ||
+    `Campaign ${allocation.campaign.id.slice(0, 6)}...${allocation.campaign.id.slice(-4)}`;
+
+  return (
+    <article className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container-lowest p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-sm font-bold tracking-[-0.02em] text-on-surface">
+            {name}
+          </div>
+          <div className="mt-1 text-xs font-medium text-on-surface-variant">
+            {t("staked", { amount: formatGrowAmount(amount) })}
+          </div>
+        </div>
+        <div className="shrink-0 text-right">
+          <div className="font-mono text-sm font-bold text-primary">
+            {formatPercent(share)}
+          </div>
+          <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.12em] text-on-surface-variant">
+            {allocation.campaign.state}
+          </div>
+        </div>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-container">
+        <div
+          className="h-full rounded-full bg-primary"
+          style={{ width: `${width}%` }}
+        />
+      </div>
+    </article>
   );
 }
 
@@ -183,4 +337,17 @@ function formatWholeGrow(value: bigint) {
   return Number(formatUnits(value, 18)).toLocaleString(undefined, {
     maximumFractionDigits: 0,
   });
+}
+
+function formatGrowAmount(value: bigint) {
+  const amount = Number(formatUnits(value, 18));
+  return amount.toLocaleString(undefined, {
+    maximumFractionDigits: amount >= 100 ? 0 : 2,
+  });
+}
+
+function formatPercent(value: number) {
+  return `${value.toLocaleString(undefined, {
+    maximumFractionDigits: value >= 10 ? 0 : 1,
+  })}%`;
 }

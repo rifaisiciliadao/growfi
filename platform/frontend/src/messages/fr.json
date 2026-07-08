@@ -1126,6 +1126,15 @@
     "treasuryHolds": "Treasury détient",
     "treasuryHoldsHint": "$GROW",
     "overview": "Aperçu GROW",
+    "stakingAllocation": {
+      "eyebrow": "Staking Treasury",
+      "title": "Risque réparti entre campagnes",
+      "subtitle": "Le Treasury $GROW stake des campaign tokens sur plusieurs projets actifs, afin de ne pas concentrer l'exposition sur une seule campagne.",
+      "total": "Total stake",
+      "largest": "Plus forte exposition",
+      "staked": "{amount} campaign tokens stakés",
+      "empty": "Aucune allocation active du Treasury en staking n'est encore indexée."
+    },
     "actions": {
       "tabs": {
         "buy": "Acheter",

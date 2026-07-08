@@ -1500,6 +1500,94 @@ export function useTopStakers(limit = 20) {
   });
 }
 
+export interface GrowTreasuryStakingAllocation {
+  campaign: {
+    id: string;
+    metadataURI: string | null;
+    metadataVersion: string;
+    state: SubgraphCampaign["state"];
+  };
+  amount: string;
+  positionsCount: number;
+}
+
+interface RawTreasuryStakePosition {
+  campaign: {
+    id: string;
+    metadataURI: string | null;
+    metadataVersion: string;
+    state: SubgraphCampaign["state"];
+  };
+  amount: string;
+}
+
+export function useGrowTreasuryStakingAllocations(
+  treasury: string | undefined,
+  limit = 20,
+) {
+  return useQuery({
+    queryKey: ["subgraph", "grow-treasury-staking-allocations", treasury?.toLowerCase(), limit],
+    enabled: !!treasury,
+    queryFn: async (): Promise<GrowTreasuryStakingAllocation[]> => {
+      if (!treasury) return [];
+      const data = await gql<{ positions: RawTreasuryStakePosition[] }>(
+        `query GrowTreasuryStakingAllocations($treasury: Bytes!) {
+          positions(
+            first: 1000
+            where: { user: $treasury, active: true }
+            orderBy: createdAt
+            orderDirection: desc
+          ) {
+            amount
+            campaign {
+              id
+              metadataURI
+              metadataVersion
+              state
+            }
+          }
+        }`,
+        { treasury: treasury.toLowerCase() },
+      );
+
+      const byCampaign = new Map<
+        string,
+        { campaign: RawTreasuryStakePosition["campaign"]; amount: bigint; positionsCount: number }
+      >();
+      for (const position of data.positions) {
+        const key = position.campaign.id.toLowerCase();
+        const existing = byCampaign.get(key);
+        if (existing) {
+          existing.amount += BigInt(position.amount);
+          existing.positionsCount += 1;
+        } else {
+          byCampaign.set(key, {
+            campaign: position.campaign,
+            amount: BigInt(position.amount),
+            positionsCount: 1,
+          });
+        }
+      }
+
+      return Array.from(byCampaign.values())
+        .map((entry) => ({
+          campaign: entry.campaign,
+          amount: entry.amount.toString(),
+          positionsCount: entry.positionsCount,
+        }))
+        .sort((a, b) =>
+          a.amount === b.amount
+            ? 0
+            : BigInt(b.amount) > BigInt(a.amount)
+              ? 1
+              : -1,
+        )
+        .slice(0, limit);
+    },
+    refetchInterval: 30_000,
+  });
+}
+
 export async function findCampaignByName(
   candidate: string,
 ): Promise<string | null> {

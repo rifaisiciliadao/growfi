@@ -1126,6 +1126,15 @@
     "treasuryHolds": "Treasury holds",
     "treasuryHoldsHint": "$GROW",
     "overview": "GROW overview",
+    "stakingAllocation": {
+      "eyebrow": "Treasury staking",
+      "title": "Risk spread across campaigns",
+      "subtitle": "$GROW Treasury stakes campaign tokens across active projects, so harvest exposure is not concentrated in one campaign.",
+      "total": "Total staked",
+      "largest": "Largest exposure",
+      "staked": "{amount} campaign tokens staked",
+      "empty": "No active Treasury staking allocation is indexed yet."
+    },
     "actions": {
       "tabs": {
         "buy": "Buy",

@@ -13,6 +13,7 @@ export function ConditionalChrome({
 }) {
   const pathname = usePathname();
   const isLanding = pathname === "/";
+  const isCampaignDetail = pathname.startsWith("/campaign/");
 
   if (isLanding) {
     return (
@@ -27,7 +28,7 @@ export function ConditionalChrome({
     <>
       <Header />
       <NetworkGuard />
-      <main className="flex-grow pt-20">
+      <main className={`flex-grow ${isCampaignDetail ? "pt-0" : "pt-20"}`}>
         <InviteGate>{children}</InviteGate>
       </main>
       <Footer />
