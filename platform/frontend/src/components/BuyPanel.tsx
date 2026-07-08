@@ -94,6 +94,29 @@ const PAYMENT_TOKEN_FALLBACK_ADDRESSES = getEnabledTokens(CHAIN_ID).map(
 
 const MOCK_USDC_DECIMALS = 6;
 const MOCK_USDC_MINT_AMOUNT = 10_000n * 10n ** BigInt(MOCK_USDC_DECIMALS); // 10,000 mUSDC
+const RAW_TOKEN_SCALE = 10n ** 18n;
+
+function divCeil(value: bigint, divisor: bigint): bigint {
+  if (divisor === 0n) return 0n;
+  return value === 0n ? 0n : (value + divisor - 1n) / divisor;
+}
+
+function sanitizeAmountInput(value: string, decimals: number): string {
+  const normalized = value.replace(",", ".").replace(/[^\d.]/g, "");
+  const [wholeRaw, ...fractionParts] = normalized.split(".");
+  const whole = wholeRaw.replace(/^0+(?=\d)/, "");
+  if (decimals === 0) return whole;
+  if (fractionParts.length === 0) return whole;
+  const fraction = fractionParts.join("").slice(0, Math.max(0, decimals));
+  return `${whole || "0"}.${fraction}`;
+}
+
+function formatTokenInputAmount(value: bigint, decimals: number): string {
+  const formatted = formatUnits(value, decimals);
+  return formatted.includes(".")
+    ? formatted.replace(/\.?0+$/u, "")
+    : formatted;
+}
 
 export function BuyPanel({
   campaignAddress,
@@ -203,6 +226,9 @@ export function BuyPanel({
   }, [selectedIdx, tokens.length]);
 
   const [payAmount, setPayAmount] = useState("10");
+  const handlePayAmountChange = (value: string) => {
+    setPayAmount(sanitizeAmountInput(value, selected?.decimals ?? 18));
+  };
 
   // 3) Compute quote via view function `getPrice`
   const parsedAmount = useMemo(() => {
@@ -285,6 +311,24 @@ export function BuyPanel({
   const allowance = (balanceAllowance?.[1]?.result as bigint) ?? 0n;
   const requiredPayment = isClamped ? effectivePayment : parsedAmount;
   const needsApproval = requiredPayment > 0n && allowance < requiredPayment;
+
+  const maxPaymentAmount = useMemo(() => {
+    if (!selected || balance === 0n || remainingCap === 0n) return 0n;
+
+    const capPayment =
+      selected.pricingMode === 0 && selected.fixedRate > 0n
+        ? divCeil(remainingCap * selected.fixedRate, RAW_TOKEN_SCALE)
+        : pricePerToken > 0n
+          ? divCeil(remainingCap * pricePerToken, RAW_TOKEN_SCALE)
+          : balance;
+
+    return capPayment > 0n && capPayment < balance ? capPayment : balance;
+  }, [balance, pricePerToken, remainingCap, selected]);
+
+  const handleMaxPayment = () => {
+    if (!selected || maxPaymentAmount === 0n) return;
+    setPayAmount(formatTokenInputAmount(maxPaymentAmount, selected.decimals));
+  };
 
   // Tx state — imperative flow in each handler, no receipt useEffect races.
   const [status, setStatus] = useState<TxStatus>({ kind: "idle" });
@@ -543,13 +587,7 @@ export function BuyPanel({
                         {t("mint", { amount: "10,000" })}
                       </button>
                     )}
-                  <button
-                    onClick={() =>
-                      selected &&
-                      setPayAmount(formatUnits(balance, selected.decimals))
-                    }
-                    className="inline-flex items-center min-h-[32px] px-2 -mx-2 text-xs text-on-surface-variant hover:text-primary transition-colors"
-                  >
+                  <span className="text-xs text-on-surface-variant">
                     {t("balance", {
                       amount: selected
                         ? Number(
@@ -558,14 +596,24 @@ export function BuyPanel({
                         : "0",
                       token: selected?.symbol ?? "",
                     })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleMaxPayment}
+                    disabled={!selected || maxPaymentAmount === 0n || inFlight}
+                    className="inline-flex min-h-[30px] items-center rounded-full border border-outline-variant/20 bg-surface-container-highest px-2.5 text-[11px] font-bold uppercase tracking-[0.12em] text-on-surface transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    MAX
                   </button>
                 </div>
               </div>
               <div className="flex justify-between items-center">
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
+                  min="0"
                   value={payAmount}
-                  onChange={(e) => setPayAmount(e.target.value)}
+                  onChange={(e) => handlePayAmountChange(e.target.value)}
                   className="bg-transparent border-none outline-none text-3xl font-bold text-on-surface w-full p-0 focus:ring-0"
                   placeholder="0.00"
                 />

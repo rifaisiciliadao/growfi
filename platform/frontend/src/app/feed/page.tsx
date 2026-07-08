@@ -299,26 +299,26 @@ function FeedRow({
   const txHash = item.txHash;
 
   return (
-    <li className="flex items-center gap-3 px-4 md:px-5 py-3 hover:bg-surface-container-low transition-colors">
+    <li className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-3 px-4 py-4 transition-colors hover:bg-surface-container-low md:grid-cols-[3rem_minmax(0,1fr)] md:px-5">
       <ActionIcon kind={item.kind} protocolEmoji={protocolLabel?.emoji} />
-      <div className="flex-1 min-w-0">
-        <div className="text-sm text-on-surface">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 text-[15px] leading-6 text-on-surface">
           {isProtocol ? (
-            <span className="font-semibold inline-flex items-center gap-1">
-              <span>{displayName}</span>
+            <span className="inline-flex max-w-full items-center gap-1 font-semibold leading-6">
+              <span className="truncate">{displayName}</span>
             </span>
           ) : (
             <Link
               href={`/grower/${item.user}`}
               prefetch={false}
-              className="font-semibold hover:underline inline-flex items-center gap-1"
+              className="inline-flex max-w-full items-center gap-1.5 font-semibold leading-6 hover:underline"
             >
               {profile?.avatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={profile.avatar}
                   alt=""
-                  className="w-4 h-4 rounded-full object-cover inline-block align-text-bottom"
+                  className="h-5 w-5 shrink-0 rounded-full border border-outline-variant/15 object-cover"
                 />
               ) : null}
               <span className="truncate">{displayName}</span>
@@ -327,22 +327,27 @@ function FeedRow({
                 size={11}
               />
             </Link>
-          )}{" "}
-          {description.verb}{" "}
-          <span className="font-semibold">{description.amount}</span>
+          )}
+          <span className="text-on-surface-variant">{description.verb}</span>
+          {description.amount && (
+            <span className="font-semibold text-on-surface">
+              {description.amount}
+            </span>
+          )}
           {description.detail && (
-            <span className="text-on-surface-variant"> {description.detail}</span>
+            <span className="text-on-surface-variant">{description.detail}</span>
           )}
           {description.preposition && campaign && campaignName && (
             <>
-              {" "}
-              {description.preposition}{" "}
+              <span className="text-on-surface-variant">
+                {description.preposition}
+              </span>
               <Link
                 href={`/campaign/${campaign.id}`}
                 prefetch={false}
-                className="font-semibold text-primary hover:underline"
+                className="min-w-0 max-w-full font-semibold text-primary hover:underline"
               >
-                {campaignName}
+                <span className="truncate">{campaignName}</span>
               </Link>
             </>
           )}
@@ -360,7 +365,7 @@ function FeedRow({
             )}
           </div>
         )}
-        <div className="text-[11px] text-on-surface-variant mt-0.5 flex items-center gap-2">
+        <div className="mt-1 flex items-center gap-2 text-[11px] leading-4 text-on-surface-variant">
           <span>{when}</span>
           {txHash && (
             <>
@@ -494,7 +499,7 @@ function ActionIcon({
   const cfg = map[kind];
   return (
     <div
-      className={`w-9 h-9 rounded-full flex items-center justify-center text-base shrink-0 ${cfg.bg}`}
+      className={`mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-lg ${cfg.bg}`}
       aria-hidden="true"
     >
       {protocolEmoji ?? cfg.emoji}

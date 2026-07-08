@@ -10,6 +10,7 @@ const ALLOWED_TAGS = new Set([
   "li",
   "blockquote",
   "h3",
+  "a",
 ]);
 
 const TAG_ALIASES: Record<string, string> = {
@@ -27,6 +28,39 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+function safeLinkHref(value: string) {
+  const href = decodeBasicEntities(value).trim();
+  try {
+    const url = new URL(href);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function hrefFromTag(rawTag: string) {
+  const href = rawTag.match(/\bhref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i);
+  return safeLinkHref(href?.[1] ?? href?.[2] ?? href?.[3] ?? "");
+}
+
+function linkifyText(value: string) {
+  return escapeHtml(value).replace(/\bhttps?:\/\/[^\s<]+/gi, (match) => {
+    let text = match;
+    let suffix = "";
+    while (/[),.;:!?]$/u.test(text)) {
+      suffix = `${text.slice(-1)}${suffix}`;
+      text = text.slice(0, -1);
+    }
+
+    const href = safeLinkHref(text);
+    if (!href) return match;
+
+    return `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer nofollow" class="text-primary font-semibold underline underline-offset-4">${text}</a>${suffix}`;
+  });
 }
 
 function decodeBasicEntities(value: string) {
@@ -47,11 +81,12 @@ export function sanitizeRichText(input: string) {
 
   let output = "";
   let lastIndex = 0;
+  let droppedAnchorDepth = 0;
   const tagRe = /<\/?[^>]+>/g;
 
   for (const match of source.matchAll(tagRe)) {
     const index = match.index ?? lastIndex;
-    output += escapeHtml(source.slice(lastIndex, index));
+    output += linkifyText(source.slice(lastIndex, index));
 
     const rawTag = match[0];
     const parsed = rawTag.match(/^<\s*(\/?)\s*([a-z0-9]+)/i);
@@ -63,6 +98,21 @@ export function sanitizeRichText(input: string) {
       if (ALLOWED_TAGS.has(tag)) {
         if (tag === "br") {
           output += "<br />";
+        } else if (tag === "a") {
+          if (closing) {
+            if (droppedAnchorDepth > 0) {
+              droppedAnchorDepth -= 1;
+            } else {
+              output += "</a>";
+            }
+          } else {
+            const href = hrefFromTag(rawTag);
+            if (href) {
+              output += `<a href="${escapeHtml(href)}" target="_blank" rel="noopener noreferrer nofollow" class="text-primary font-semibold underline underline-offset-4">`;
+            } else {
+              droppedAnchorDepth += 1;
+            }
+          }
         } else {
           output += closing ? `</${tag}>` : `<${tag}>`;
         }
@@ -72,7 +122,7 @@ export function sanitizeRichText(input: string) {
     lastIndex = index + rawTag.length;
   }
 
-  output += escapeHtml(source.slice(lastIndex));
+  output += linkifyText(source.slice(lastIndex));
   return output.trim();
 }
 
@@ -83,7 +133,7 @@ export function plainTextToRichHtml(input: string) {
     .map((paragraph) =>
       paragraph
         .split(/\n/)
-        .map((line) => escapeHtml(line))
+        .map((line) => linkifyText(line))
         .join("<br />"),
     )
     .filter((paragraph) => paragraph.trim().length > 0);
@@ -92,7 +142,7 @@ export function plainTextToRichHtml(input: string) {
 }
 
 export function isRichTextHtml(input: string) {
-  return /<\/?(p|br|strong|b|em|i|u|s|ul|ol|li|blockquote|h1|h2|h3|div)\b/i.test(
+  return /<\/?(p|br|strong|b|em|i|u|s|ul|ol|li|blockquote|h1|h2|h3|div|a)\b/i.test(
     input,
   );
 }
