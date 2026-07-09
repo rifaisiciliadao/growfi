@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { erc20Abi, type Address } from "viem";
 import { useReadContract } from "wagmi";
 import { useResolvedCampaignMetadata } from "@/lib/metadata";
@@ -66,6 +66,7 @@ export function CampaignCard({
   metadataVersion,
 }: CampaignCardProps) {
   const t = useTranslations("home");
+  const locale = useLocale();
   const cfg = stateConfig[state];
   const isEnded = state === "ended";
 
@@ -90,11 +91,7 @@ export function CampaignCard({
   });
   const tokenSymbol = campaignTokenSymbol ?? "CAMPAIGN";
   const stakedTokensLabel =
-    stakedTokens !== undefined
-      ? stakedTokens.toLocaleString(undefined, {
-          maximumFractionDigits: stakedTokens >= 100 ? 0 : 2,
-        })
-      : null;
+    stakedTokens !== undefined ? formatStakedTokens(stakedTokens, locale) : null;
 
   return (
     <Link href={`/campaign/${address}`} className="block group">
@@ -167,6 +164,34 @@ export function CampaignCard({
       </article>
     </Link>
   );
+}
+
+function formatStakedTokens(value: number, locale: string) {
+  if (!Number.isFinite(value) || value <= 0) {
+    return "0";
+  }
+
+  if (value >= 1_000_000) {
+    return `${formatCompactUnit(value / 1_000_000, locale)}M`;
+  }
+
+  if (value >= 10_000) {
+    return `${Math.round(value / 1_000).toLocaleString(locale)}K`;
+  }
+
+  if (value >= 1_000) {
+    return `${formatCompactUnit(value / 1_000, locale)}K`;
+  }
+
+  return value.toLocaleString(locale, {
+    maximumFractionDigits: value >= 100 ? 0 : 2,
+  });
+}
+
+function formatCompactUnit(value: number, locale: string) {
+  return value.toLocaleString(locale, {
+    maximumFractionDigits: value >= 10 ? 0 : 1,
+  });
 }
 
 /**
