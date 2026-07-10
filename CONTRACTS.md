@@ -5,7 +5,7 @@
 **Factory deployed:** 2026-06-16 at block `25328624` · **Security rollout:**
 2026-07-10, blocks `25501399`-`25501432` · **ProducerRegistry V2 and EAS:**
 2026-07-10, blocks `25502651`-`25502666` · **On-chain inventory verified at
-block:** `25502782` ·
+block:** `25503260` ·
 **Owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55`
 
 The values in this section are a live-state inventory, not deployment-script

@@ -39,8 +39,9 @@ resumable after a partial execution.
 
 ## Current deployment gates
 
-The contract and ProducerRegistry V2 broadcasts are complete. Remaining gates
-apply only to application configuration and controlled end-to-end validation:
+The contract, ProducerRegistry V2, UGraph, and application rollouts are
+complete. The remaining operational gates are PAT rotation and the first
+grower-authorized social attestation:
 
 - [x] Full Solidity suite passes.
 - [x] Mainnet-fork rollout preserves live state.
@@ -48,7 +49,8 @@ apply only to application configuration and controlled end-to-end validation:
 - [x] Backend tests and TypeScript build pass.
 - [x] Frontend production build and lint pass.
 - [x] ProducerRegistry V2 migration and EAS registration pass on a mainnet fork.
-- [x] DigitalOcean `default` context authenticates and validates `.do/app.yaml`.
+- [x] The production `.do/app.yaml` validates through authenticated
+  DigitalOcean API access.
 - [x] Owner credential derives exactly to the live owner EOA.
 - [x] Exact contract rollout simulation passed at block `25501389`.
 - [x] Contract rollout completed in blocks `25501399`-`25501432`.
@@ -60,13 +62,22 @@ apply only to application configuration and controlled end-to-end validation:
 - [x] Production app ownership resolved: `growfi-mainnet`, id
   `9e4019f4-8dbc-4170-8546-ce7d8579e3a4`, under the DigitalOcean RIFAI team
   selector `i=b9d43f`.
-- [ ] Restore a local `doctl` context for the RIFAI team before changing the
-  live spec. The saved `turinglabs` credential currently returns HTTP 401 and
-  `default` belongs to a different team.
+- [x] The live spec was fetched and updated through authenticated RIFAI API
+  access without relying on the stale saved contexts (`turinglabs` returns 401;
+  `default` belongs to another team).
 - [x] Dedicated backend verifier `0x5e55B7b90F26C980eFaCa5556D56350Ff2157B7c`
   created, funded, and granted on ProducerRegistry V2.
 - [x] ProducerRegistry V2 deployed and all three legacy profiles migrated.
 - [x] Canonical GrowFi EAS schema registered on Ethereum mainnet.
+- [x] UGraph `latest` serves v5.3.2 with both registry data sources and no
+  indexing errors.
+- [x] DigitalOcean deployment `32431930-419a-4f78-b312-4224ab0bc044` is active
+  on commit `ca87507`, with mainnet chain/Registry V2, sponsored EAS relay, and
+  the public social UI enabled.
+- [x] The live challenge endpoint returns chain 1 and ProducerRegistry V2; an
+  invalid wallet signature returns HTTP 401 before proof retrieval or gas use.
+- [ ] Complete one valid grower-authorized verification and reconcile its EAS
+  UID with the ProducerRegistry event and indexed producer row.
 
 Never create a replacement DigitalOcean app while the existing app ownership is
 unresolved. That risks splitting production domains, secrets, and Spaces data
@@ -248,6 +259,10 @@ at deploy block `25502657`; both write the same producer entity ids.
 
 ## Phase 4 — deploy the application with EAS disabled
 
+**Status: completed.** The first V2-aware application deployment kept both EAS
+publishing and the public social UI disabled while Registry V2 routing, UGraph,
+and the hardened verification endpoints were checked independently.
+
 Use a DigitalOcean context authenticated for the RIFAI team. Confirm the
 existing production app before doing anything else:
 
@@ -289,6 +304,22 @@ Confirm health, logs, Merkle publication authorization, SSRF rejection, and
 challenge signature validation while no sponsored EAS transaction can be sent.
 
 ## Phase 5 — enable EAS, then the public UI
+
+**Status: enabled in production on 2026-07-10.** DigitalOcean deployment
+`32431930-419a-4f78-b312-4224ab0bc044` is active on commit `ca87507`. Its remote
+spec explicitly uses chain 1, ProducerRegistry V2, canonical mainnet EAS and
+SchemaRegistry addresses, encrypted challenge/verifier secrets,
+`SOCIAL_EAS_ENABLED=true`, and
+`NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION=true`.
+
+Runtime smoke checks returned a campaign-bound website challenge with chain 1
+and Registry V2, and rejected an intentionally invalid EIP-191 signature with
+HTTP 401 before proof retrieval or any sponsored transaction. The public bundle
+queries the v5.3.2 social fields. No user attestation was minted as part of the
+deployment itself: the first valid end-to-end acceptance still requires the
+campaign producer to sign the challenge and publish its code on the selected
+public profile. Record and reconcile the resulting EAS UID before closing the
+last deployment gate above.
 
 Enable `SOCIAL_EAS_ENABLED=true` while keeping
 `NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION=false`. Run one controlled verification
