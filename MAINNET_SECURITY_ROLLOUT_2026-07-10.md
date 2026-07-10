@@ -28,7 +28,7 @@ phase deploys a V2 replacement and trustlessly imports legacy producer state.
 - Factory proxy: `0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2`
 - Factory and ProxyAdmin owner EOA: `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55`
 - Legacy ProducerRegistry: `0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5`
-- ProducerRegistry V2: emitted by the EAS preparation broadcast
+- ProducerRegistry V2: `0x267901bB08cb864b204D92185Fac8d6f9dee0F98`
 - EAS: `0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587`
 - EAS SchemaRegistry: `0xA7b39296258348C78294F95B872b282326A97BDF`
 - Social schema UID: `0x78422879833ca667e9b3ea79d6aaa24328d751493bbd42c92d271d7e94f40caa`
@@ -39,8 +39,8 @@ resumable after a partial execution.
 
 ## Current deployment gates
 
-The contract broadcast is complete. The unchecked gates now apply to the EAS
-replacement and application phases only:
+The contract and ProducerRegistry V2 broadcasts are complete. Remaining gates
+apply only to application configuration and controlled end-to-end validation:
 
 - [x] Full Solidity suite passes.
 - [x] Mainnet-fork rollout preserves live state.
@@ -60,10 +60,13 @@ replacement and application phases only:
 - [x] Production app ownership resolved: `growfi-mainnet`, id
   `9e4019f4-8dbc-4170-8546-ce7d8579e3a4`, under the DigitalOcean RIFAI team
   selector `i=b9d43f`.
-- [ ] Authenticate a local `doctl` context for the RIFAI team before changing
-  the live spec. The saved `default` context belongs to a different team.
-- [ ] Create or select a dedicated funded backend verifier wallet and record its
-  public address as `SOCIAL_VERIFIER_ADDRESS`.
+- [ ] Restore a local `doctl` context for the RIFAI team before changing the
+  live spec. The saved `turinglabs` credential currently returns HTTP 401 and
+  `default` belongs to a different team.
+- [x] Dedicated backend verifier `0x5e55B7b90F26C980eFaCa5556D56350Ff2157B7c`
+  created, funded, and granted on ProducerRegistry V2.
+- [x] ProducerRegistry V2 deployed and all three legacy profiles migrated.
+- [x] Canonical GrowFi EAS schema registered on Ethereum mainnet.
 
 Never create a replacement DigitalOcean app while the existing app ownership is
 unresolved. That risks splitting production domains, secrets, and Spaces data
@@ -192,12 +195,13 @@ the rollout and record every implementation address and transaction hash in
 
 ## Phase 3 — replace ProducerRegistry and prepare EAS on mainnet
 
-**Status: not broadcast.** A fresh post-upgrade fork simulation passed at block
-`25501478`, including all three legacy profile migrations and the expected
-schema UID. The live SchemaRegistry still returns a zero UID for the GrowFi
-schema, so no mainnet GrowFi social schema or ProducerRegistry V2 is being
-represented as deployed. The simulation used the owner only as an ephemeral
-fork verifier; production must use a separate backend verifier wallet.
+**Status: completed successfully on 2026-07-10.** ProducerRegistry V2 was
+deployed at `0x267901bB08cb864b204D92185Fac8d6f9dee0F98` in block `25502657`.
+All three legacy profiles were imported with their exact URI and version, the
+dedicated backend verifier was granted in block `25502664`, and the canonical
+GrowFi schema was registered in block `25502666` with UID
+`0x78422879833ca667e9b3ea79d6aaa24328d751493bbd42c92d271d7e94f40caa`.
+The complete transaction ledger is recorded in `CONTRACTS.md`.
 
 The legacy ProducerRegistry does not expose any social-verifier selector and is
 not upgradeable. The preparation script deploys `GrowfiProducerRegistryV2`,
@@ -205,10 +209,10 @@ imports the three currently indexed producer profiles directly from the fixed
 legacy registry, grants the dedicated verifier, and registers the canonical
 schema if it does not already exist. It does not publish a user attestation.
 
-Re-query the mainnet subgraph immediately before broadcast. If another producer
-profile has appeared, add it to the migration list or call the permissionless
-`migrateLegacyProducer(address)` function after deployment. Migration data is
-read from the fixed legacy contract and cannot be supplied by the caller.
+The mainnet subgraph was queried immediately before broadcast and returned
+exactly the three migrated producer rows. Future legacy rows can still be
+imported permissionlessly through `migrateLegacyProducer(address)`; migration
+data is read from the fixed legacy contract and cannot be supplied by callers.
 
 First simulate:
 
@@ -232,16 +236,15 @@ forge script \
   -vvvv
 ```
 
-Record the emitted V2 address immediately. If the broadcast partially completes,
-set `MAINNET_PRODUCER_REGISTRY_V2_ADDRESS` to that address before rerunning the
-same script so it resumes instead of deploying another registry.
+The resumable broadcast artifact is stored under
+`broadcast/RegisterMainnetSocialEAS.s.sol/1/`. Future dry runs must set
+`MAINNET_PRODUCER_REGISTRY_V2_ADDRESS` to the deployed V2 address so they do not
+create another registry.
 
-Verify the schema UID, all migrated profile URIs and versions, and
-`isSocialVerifier(SOCIAL_VERIFIER_ADDRESS)` on V2 before configuring the
-backend. Update the subgraph with a second ProducerRegistry data source at the
-V2 address and deployment block while retaining the legacy data source. Both
-sources write the same producer entity ids, preserving old profiles while V2
-events add social state and future profile revisions.
+The schema UID, migrated profile URIs and versions, V2 owner, fixed legacy
+registry, and verifier grant were verified independently against two mainnet
+RPC providers. Subgraph `5.3.2` retains the legacy source and adds the V2 source
+at deploy block `25502657`; both write the same producer entity ids.
 
 ## Phase 4 — deploy the application with EAS disabled
 
@@ -250,7 +253,7 @@ existing production app before doing anything else:
 
 ```bash
 doctl apps get 9e4019f4-8dbc-4170-8546-ce7d8579e3a4 \
-  --context rifai \
+  --context turinglabs \
   --format ID,Spec.Name,DefaultIngress
 doctl apps spec validate .do/app.yaml
 ```

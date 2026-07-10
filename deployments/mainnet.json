@@ -1,7 +1,7 @@
 {
   "network": "ethereum-mainnet",
   "chainId": 1,
-  "verifiedAtBlock": 25501436,
+  "verifiedAtBlock": 25502782,
   "factoryDeployBlock": 25328624,
   "owner": "0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55",
   "factory": {
@@ -72,7 +72,26 @@
     "legacyProducerRegistry": {
       "address": "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5",
       "codeHash": "0x60d59915561fc288147762aac56b940cf4add9195bf332a4fd5d349b731f9233"
+    },
+    "producerRegistryV2": {
+      "address": "0x267901bB08cb864b204D92185Fac8d6f9dee0F98",
+      "codeHash": "0xe3703b0223be36742ad83d389faedb01e929359b1c47b2e23af8408c3cbb8fc0",
+      "deployBlock": 25502657,
+      "legacyRegistry": "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5",
+      "socialVerifier": "0x5e55B7b90F26C980eFaCa5556D56350Ff2157B7c",
+      "migratedProducers": [
+        "0x06a2608413384F4B9a52576f4f79ceb358c7FC42",
+        "0xC3FFeb3560EE7FF68C46c1D4162Ed61497ec5268",
+        "0xE6c30AD5AeE7AD22e9F39D51d67667587cdD05A1"
+      ]
     }
+  },
+  "socialEas": {
+    "schemaUid": "0x78422879833ca667e9b3ea79d6aaa24328d751493bbd42c92d271d7e94f40caa",
+    "schema": "string protocol,address grower,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce",
+    "revocable": true,
+    "registrationBlock": 25502666,
+    "registrationTx": "0xe831af965c87c10b65e9a75ae510d27f6e6a6947134dcc10647a239d15ccd828"
   },
   "modules": [
     {

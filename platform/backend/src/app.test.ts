@@ -194,6 +194,19 @@ describe("buildDefaultDeps social onchain wiring", () => {
     assert.equal(deps.socialOnchainAttester, null);
   });
 
+  it("replaces a stale mainnet legacy registry setting with V2", () => {
+    process.env.CHAIN_ID = "1";
+    process.env.PRODUCER_REGISTRY_ADDRESS =
+      "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5";
+
+    const deps = buildDefaultDeps();
+
+    assert.equal(
+      deps.socialRegistryAddress,
+      getAddress("0x267901bB08cb864b204D92185Fac8d6f9dee0F98"),
+    );
+  });
+
   it("allows Sepolia EAS to be explicitly disabled", () => {
     process.env.CHAIN_ID = "11155111";
     process.env.SOCIAL_VERIFIER_PRIVATE_KEY = TEST_VERIFIER_PRIVATE_KEY;

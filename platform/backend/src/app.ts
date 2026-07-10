@@ -41,6 +41,10 @@ import {
 } from "./social-verification.js";
 
 const SEPOLIA_CHAIN_ID = 11155111;
+const LEGACY_MAINNET_PRODUCER_REGISTRY =
+  "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5";
+const MAINNET_PRODUCER_REGISTRY =
+  "0x267901bB08cb864b204D92185Fac8d6f9dee0F98";
 
 export interface AppConfig {
   spacesBucket: string;
@@ -150,9 +154,16 @@ export function buildDefaultDeps(): AppDeps {
   const socialVerifierPrivateKey =
     (process.env.SOCIAL_VERIFIER_PRIVATE_KEY as `0x${string}` | undefined) ||
     null;
-  const socialRegistryAddress =
+  const configuredSocialRegistryAddress =
     addressFromEnv(process.env.PRODUCER_REGISTRY_ADDRESS) ||
     addressFromEnv(process.env.NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS);
+  const socialRegistryAddress =
+    socialChainId === 1 &&
+    (!configuredSocialRegistryAddress ||
+      configuredSocialRegistryAddress.toLowerCase() ===
+        LEGACY_MAINNET_PRODUCER_REGISTRY.toLowerCase())
+      ? getAddress(MAINNET_PRODUCER_REGISTRY)
+      : configuredSocialRegistryAddress;
   const socialOnchainAttester = buildDefaultSocialOnchainAttester({
     chainId: socialChainId,
     verifierPrivateKey: socialVerifierPrivateKey,

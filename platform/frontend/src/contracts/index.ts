@@ -52,6 +52,22 @@ type ChainAddresses = {
 };
 
 const ZERO: Address = "0x0000000000000000000000000000000000000000";
+const LEGACY_MAINNET_PRODUCER_REGISTRY =
+  "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5";
+const MAINNET_PRODUCER_REGISTRY: Address =
+  "0x267901bB08cb864b204D92185Fac8d6f9dee0F98";
+
+function mainnetProducerRegistryAddress(): Address {
+  const configured = process.env
+    .NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS as Address | undefined;
+  if (
+    !configured ||
+    configured.toLowerCase() === LEGACY_MAINNET_PRODUCER_REGISTRY.toLowerCase()
+  ) {
+    return MAINNET_PRODUCER_REGISTRY;
+  }
+  return configured;
+}
 
 export const addresses: Record<number, ChainAddresses> = {
   // Local anvil — every address comes from .env.local at boot
@@ -167,9 +183,7 @@ export const addresses: Record<number, ChainAddresses> = {
     registry:
       (process.env.NEXT_PUBLIC_REGISTRY_ADDRESS as Address) ||
       "0xA3AEb95Ff4555E266aa1366000204a75FaD4142B",
-    producerRegistry:
-      (process.env.NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS as Address) ||
-      "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5",
+    producerRegistry: mainnetProducerRegistryAddress(),
     growToken:
       (process.env.NEXT_PUBLIC_GROW_TOKEN as Address | undefined) ||
       "0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725",

@@ -3,8 +3,9 @@
 ## Ethereum Mainnet (chain 1) — current production state
 
 **Factory deployed:** 2026-06-16 at block `25328624` · **Security rollout:**
-2026-07-10, blocks `25501399`-`25501432` · **On-chain inventory verified at
-block:** `25501436` ·
+2026-07-10, blocks `25501399`-`25501432` · **ProducerRegistry V2 and EAS:**
+2026-07-10, blocks `25502651`-`25502666` · **On-chain inventory verified at
+block:** `25502782` ·
 **Owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55`
 
 The values in this section are a live-state inventory, not deployment-script
@@ -17,7 +18,9 @@ manifest, this document, app configuration, and the current chain state.
 
 The owner is an EOA, not a Safe. All ProxyAdmins listed below are owned by the
 same EOA. The UGraph endpoint is
-`https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
+`https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`. It resolves to subgraph
+version `5.3.2` on physical deployment `growfi@5.3.2`; version `5.3.1` remains
+registered as the immediate rollback target.
 
 ### July 2026 security rollout transaction ledger
 
@@ -49,6 +52,18 @@ serially so each state transition was confirmed before the next one was sent.
 | 21 | 25501431 | Unpause campaign 0 | [`0xdaaab825a70605eab99256158f58c63f210568d0816acaa8e63a19d83918d352`](https://etherscan.io/tx/0xdaaab825a70605eab99256158f58c63f210568d0816acaa8e63a19d83918d352) |
 | 22 | 25501432 | Unpause campaign 1 | [`0x8bc87548cf81d829747c29645139176ffb5c12c624e76a89229c1817c5f47891`](https://etherscan.io/tx/0x8bc87548cf81d829747c29645139176ffb5c12c624e76a89229c1817c5f47891) |
 
+### ProducerRegistry V2 and EAS transaction ledger
+
+| # | Block | Action | Transaction |
+|---:|---:|---|---|
+| 1 | 25502651 | Fund the dedicated social verifier | [`0x8e83a9311cf78bfd479921d07d51dbf0c4ab51a03314df959672f85b642f5282`](https://etherscan.io/tx/0x8e83a9311cf78bfd479921d07d51dbf0c4ab51a03314df959672f85b642f5282) |
+| 2 | 25502657 | Deploy ProducerRegistry V2 | [`0x6f1a5d0e90867151be93a459927058e3de02cb6ecb516afaeca87bcd8cde42b3`](https://etherscan.io/tx/0x6f1a5d0e90867151be93a459927058e3de02cb6ecb516afaeca87bcd8cde42b3) |
+| 3 | 25502659 | Migrate legacy producer 0 | [`0x713faed584b379b8758fab268cabec44149db50353a6bb12d93cb7cc00ef7b22`](https://etherscan.io/tx/0x713faed584b379b8758fab268cabec44149db50353a6bb12d93cb7cc00ef7b22) |
+| 4 | 25502662 | Migrate legacy producer 1 | [`0xbff36353b277e091b2c754f5d26135d01c8daeb6495de31a9c6fbb170c2a4869`](https://etherscan.io/tx/0xbff36353b277e091b2c754f5d26135d01c8daeb6495de31a9c6fbb170c2a4869) |
+| 5 | 25502663 | Migrate legacy producer 2 | [`0x7d8f29f4b249a1b492fc489e97338b85a1afc032f366d22740aca58aa35ee4a9`](https://etherscan.io/tx/0x7d8f29f4b249a1b492fc489e97338b85a1afc032f366d22740aca58aa35ee4a9) |
+| 6 | 25502664 | Grant the backend social-verifier role | [`0xbf65c69256a0c9730cbedeffc9ae5eb51c55697e5f55799398b710c58d4af7aa`](https://etherscan.io/tx/0xbf65c69256a0c9730cbedeffc9ae5eb51c55697e5f55799398b710c58d4af7aa) |
+| 7 | 25502666 | Register the GrowFi social EAS schema | [`0xe831af965c87c10b65e9a75ae510d27f6e6a6947134dcc10647a239d15ccd828`](https://etherscan.io/tx/0xe831af965c87c10b65e9a75ae510d27f6e6a6947134dcc10647a239d15ccd828) |
+
 ### Authority, registries, and external infrastructure
 
 | Role | Address | State |
@@ -58,9 +73,24 @@ serially so each state transition was confirmed before the next one was sent.
 | CampaignFactory implementation | `0xC591c1c9F3269368457f06540b7EAC06a8A8d269` | July 2026 security upgrade |
 | CampaignFactory ProxyAdmin | `0xa65cFB968Ea5b02e38602f5eebFe157BaE6b1473` | Owner EOA controlled |
 | CampaignRegistry | `0xA3AEb95Ff4555E266aa1366000204a75FaD4142B` | Non-proxy registry |
-| Legacy ProducerRegistry | `0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5` | Immutable pre-social registry; retained until V2 rollout |
+| ProducerRegistry V2 | `0x267901bB08cb864b204D92185Fac8d6f9dee0F98` | Current profile and social-attestation registry; deploy block `25502657` |
+| Legacy ProducerRegistry | `0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5` | Immutable pre-social registry retained as the migration source and historical subgraph data source |
+| Social verifier | `0x5e55B7b90F26C980eFaCa5556D56350Ff2157B7c` | Dedicated funded backend signer; `isSocialVerifier == true` on V2 |
 | EAS | `0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587` | Canonical Ethereum mainnet EAS; `getSchemaRegistry()` verified on-chain |
 | EAS SchemaRegistry | `0xA7b39296258348C78294F95B872b282326A97BDF` | Canonical Ethereum mainnet registry |
+
+The GrowFi schema UID is
+`0x78422879833ca667e9b3ea79d6aaa24328d751493bbd42c92d271d7e94f40caa`.
+It is revocable, has no resolver, and is registered with the canonical schema
+definition recorded in `deployments/mainnet.json`.
+
+All legacy profiles were imported with their exact URI and version:
+
+| Producer | Migrated |
+|---|:---:|
+| `0x06a2608413384F4B9a52576f4f79ceb358c7FC42` | yes |
+| `0xC3FFeb3560EE7FF68C46c1D4162Ed61497ec5268` | yes |
+| `0xE6c30AD5AeE7AD22e9F39D51d67667587cdD05A1` | yes |
 
 ### Factory implementation pointers for new campaigns
 
@@ -162,7 +192,7 @@ NEXT_PUBLIC_USDC_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
 NEXT_PUBLIC_USDT_ADDRESS=0xdAC17F958D2ee523a2206206994597C13D831ec7
 NEXT_PUBLIC_DAI_ADDRESS=0x6B175474E89094C44Da98b954EedeAC495271d0F
 NEXT_PUBLIC_REGISTRY_ADDRESS=0xA3AEb95Ff4555E266aa1366000204a75FaD4142B
-NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5
+NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x267901bB08cb864b204D92185Fac8d6f9dee0F98
 NEXT_PUBLIC_REPAYMENT_IMPL=0x34326058FD53c773Fd7E67a20af17d73ae4d793A
 NEXT_PUBLIC_ECOMMERCE_IMPL=0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c
 NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL=0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a

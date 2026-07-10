@@ -97,20 +97,21 @@ services:
       - key: NOTIFIER_INTERVAL_MS
         value: "600000"
         scope: RUN_TIME
-      # --- Social verification (mainnet relay remains disabled for first deploy) ---
+      # --- Social verification ---
       - key: CHAIN_ID
         value: "1"
         scope: RUN_TIME
       - key: PRODUCER_REGISTRY_ADDRESS
-        # Temporary legacy address while EAS is disabled. Replace with the V2
-        # address emitted by RegisterMainnetSocialEAS before enabling relay.
-        value: "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5"
+        value: "0x267901bB08cb864b204D92185Fac8d6f9dee0F98"
         scope: RUN_TIME
       - key: SOCIAL_EAS_ENABLED
         value: "false"
         scope: RUN_TIME
       - key: SOCIAL_REGISTRY_RELAY
         value: "true"
+        scope: RUN_TIME
+      - key: SOCIAL_RPC_URLS
+        value: https://ethereum-rpc.publicnode.com,https://rpc.flashbots.net,https://1rpc.io/eth
         scope: RUN_TIME
       - key: SOCIAL_CHALLENGES_OBJECT_PREFIX
         value: social-challenges
@@ -175,8 +176,7 @@ services:
         value: "0xA3AEb95Ff4555E266aa1366000204a75FaD4142B"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS
-        # Replace with ProducerRegistry V2 in the post-EAS frontend build.
-        value: "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5"
+        value: "0x267901bB08cb864b204D92185Fac8d6f9dee0F98"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_REPAYMENT_IMPL
         value: "0x34326058FD53c773Fd7E67a20af17d73ae4d793A"

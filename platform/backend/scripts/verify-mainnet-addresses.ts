@@ -8,6 +8,7 @@ import {
   http,
   keccak256,
   parseAbi,
+  zeroAddress,
   type Address,
   type Hex,
 } from "viem";
@@ -46,6 +47,21 @@ type CampaignRecord = {
   }>;
 };
 
+type ProducerRegistryV2Record = ImplementationRecord & {
+  deployBlock: number;
+  legacyRegistry: Address;
+  socialVerifier: Address;
+  migratedProducers: Address[];
+};
+
+type SocialEasRecord = {
+  schemaUid: Hex;
+  schema: string;
+  revocable: boolean;
+  registrationBlock: number;
+  registrationTx: Hex;
+};
+
 type Manifest = {
   chainId: number;
   verifiedAtBlock: number;
@@ -55,7 +71,12 @@ type Manifest = {
     futureImplementations: Record<string, ImplementationRecord>;
   };
   growSystem: Record<string, ProxyRecord>;
-  registries: Record<string, ImplementationRecord>;
+  registries: {
+    campaignRegistry: ImplementationRecord;
+    legacyProducerRegistry: ImplementationRecord;
+    producerRegistryV2: ProducerRegistryV2Record;
+  };
+  socialEas: SocialEasRecord;
   modules: ModuleRecord[];
   campaigns: CampaignRecord[];
   external: Record<string, { address: Address }>;
@@ -100,6 +121,15 @@ const treasuryAbi = parseAbi([
   "function stablecoinConfigs(address) view returns (uint256 scale, address priceFeed, uint256 heartbeat, uint16 minPriceBps, uint16 maxPriceBps)",
 ]);
 const easAbi = parseAbi(["function getSchemaRegistry() view returns (address)"]);
+const easSchemaRegistryAbi = parseAbi([
+  "function getSchema(bytes32) view returns ((bytes32 uid,address resolver,bool revocable,string schema))",
+]);
+const producerRegistryV2Abi = parseAbi([
+  "function owner() view returns (address)",
+  "function legacyRegistry() view returns (address)",
+  "function isSocialVerifier(address) view returns (bool)",
+  "function legacyProducerMigrated(address) view returns (bool)",
+]);
 
 const repoRoot = resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 const manifest = JSON.parse(
@@ -430,6 +460,67 @@ async function verifyExternal() {
   assert(stablecoinConfig[4] === 10_500, "Treasury USDC maximum price changed");
 }
 
+async function verifyProducerRegistryV2() {
+  const registry = manifest.registries.producerRegistryV2;
+  const [owner, legacyRegistry, verifierGranted, schemaRecord] =
+    await Promise.all([
+      client.readContract({
+        address: registry.address,
+        abi: producerRegistryV2Abi,
+        functionName: "owner",
+      }),
+      client.readContract({
+        address: registry.address,
+        abi: producerRegistryV2Abi,
+        functionName: "legacyRegistry",
+      }),
+      client.readContract({
+        address: registry.address,
+        abi: producerRegistryV2Abi,
+        functionName: "isSocialVerifier",
+        args: [registry.socialVerifier],
+      }),
+      client.readContract({
+        address: manifest.external.easSchemaRegistry.address,
+        abi: easSchemaRegistryAbi,
+        functionName: "getSchema",
+        args: [manifest.socialEas.schemaUid],
+      }),
+    ]);
+
+  sameAddress(owner, manifest.owner, "ProducerRegistry V2 owner");
+  sameAddress(
+    legacyRegistry,
+    registry.legacyRegistry,
+    "ProducerRegistry V2 legacy registry",
+  );
+  assert(verifierGranted, "ProducerRegistry V2 social verifier role is missing");
+
+  for (const producer of registry.migratedProducers) {
+    const migrated = await client.readContract({
+      address: registry.address,
+      abi: producerRegistryV2Abi,
+      functionName: "legacyProducerMigrated",
+      args: [producer],
+    });
+    assert(migrated, `ProducerRegistry V2: ${producer} was not migrated`);
+  }
+
+  assert(
+    schemaRecord.uid === manifest.socialEas.schemaUid,
+    "GrowFi EAS schema UID changed",
+  );
+  sameAddress(schemaRecord.resolver, zeroAddress, "GrowFi EAS schema resolver");
+  assert(
+    schemaRecord.revocable === manifest.socialEas.revocable,
+    "GrowFi EAS schema revocability changed",
+  );
+  assert(
+    schemaRecord.schema === manifest.socialEas.schema,
+    "GrowFi EAS schema definition changed",
+  );
+}
+
 function collectAddresses(value: unknown, addresses = new Set<string>()) {
   if (typeof value === "string" && /^0x[0-9a-fA-F]{40}$/.test(value)) {
     addresses.add(value.toLowerCase());
@@ -505,7 +596,7 @@ function verifyDocumentation() {
     NEXT_PUBLIC_DAI_ADDRESS: manifest.external.dai.address,
     NEXT_PUBLIC_REGISTRY_ADDRESS: manifest.registries.campaignRegistry.address,
     NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS:
-      manifest.registries.legacyProducerRegistry.address,
+      manifest.registries.producerRegistryV2.address,
     NEXT_PUBLIC_REPAYMENT_IMPL: currentModules.repayment,
     NEXT_PUBLIC_ECOMMERCE_IMPL: currentModules.ecommerce,
     NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL: currentModules.debtRestructuring,
@@ -549,6 +640,7 @@ function verifyDocumentation() {
     manifest.factory.proxy,
     manifest.registries.campaignRegistry.address,
     manifest.registries.legacyProducerRegistry.address,
+    manifest.registries.producerRegistryV2.address,
     manifest.growSystem.token.proxy,
     manifest.growSystem.treasury.proxy,
     manifest.growSystem.minter.proxy,
@@ -600,6 +692,7 @@ async function main() {
     await assertImplementation(record, `Registry ${name}`);
   }
   await verifyExternal();
+  await verifyProducerRegistryV2();
   await verifyModules();
   await verifyCampaigns();
   verifyDocumentation();
