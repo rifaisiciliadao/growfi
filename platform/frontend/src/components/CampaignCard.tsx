@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { erc20Abi, type Address } from "viem";
 import { useReadContract } from "wagmi";
 import { useResolvedCampaignMetadata } from "@/lib/metadata";
+import { formatYieldRate } from "@/lib/numberFormat";
 import { CampaignImage } from "./CampaignImage";
 
 export type CampaignState = "funding" | "active" | "ended";
@@ -92,6 +93,7 @@ export function CampaignCard({
   const tokenSymbol = campaignTokenSymbol ?? "CAMPAIGN";
   const stakedTokensLabel =
     stakedTokens !== undefined ? formatStakedTokens(stakedTokens, locale) : null;
+  const yieldRateLabel = formatYieldRate(yieldRate, locale);
 
   return (
     <Link href={`/campaign/${address}`} className="block group">
@@ -142,7 +144,11 @@ export function CampaignCard({
                 {isEnded ? t("card.status") : t("card.expectedYield")}
               </span>
               <span className={`font-mono text-2xl font-bold leading-none tabular-nums ${cfg.yieldColor}`}>
-                {isEnded ? t("card.completed") : `${yieldRate}x`}
+                {isEnded
+                  ? t("card.completed")
+                  : yieldRateLabel
+                    ? `${yieldRateLabel}x`
+                    : "—"}
               </span>
             </div>
 
