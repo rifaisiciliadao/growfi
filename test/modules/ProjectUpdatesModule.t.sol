@@ -67,8 +67,7 @@ contract ProjectUpdatesModuleTest is Test {
         assertEq(ProjectUpdatesModule(payable(campaignAddr)).projectUpdateIdAt(0), 1);
         assertEq(ProjectUpdatesModule(payable(campaignAddr)).nextProjectUpdateId(), 2);
 
-        ProjectUpdatesModule.UpdateRecord memory record =
-            ProjectUpdatesModule(payable(campaignAddr)).projectUpdate(1);
+        ProjectUpdatesModule.UpdateRecord memory record = ProjectUpdatesModule(payable(campaignAddr)).projectUpdate(1);
         assertEq(record.id, 1);
         assertEq(record.author, producer);
         assertEq(record.metadataURI, uri);
@@ -99,15 +98,13 @@ contract ProjectUpdatesModuleTest is Test {
         vm.prank(producer);
         ProjectUpdatesModule(payable(campaignAddr)).setProjectUpdateHidden(1, true);
 
-        ProjectUpdatesModule.UpdateRecord memory hidden =
-            ProjectUpdatesModule(payable(campaignAddr)).projectUpdate(1);
+        ProjectUpdatesModule.UpdateRecord memory hidden = ProjectUpdatesModule(payable(campaignAddr)).projectUpdate(1);
         assertTrue(hidden.hidden);
         assertEq(ProjectUpdatesModule(payable(campaignAddr)).visibleProjectUpdateCount(), 0);
 
         vm.prank(producer);
         ProjectUpdatesModule(payable(campaignAddr)).setProjectUpdateHidden(1, false);
-        ProjectUpdatesModule.UpdateRecord memory visible =
-            ProjectUpdatesModule(payable(campaignAddr)).projectUpdate(1);
+        ProjectUpdatesModule.UpdateRecord memory visible = ProjectUpdatesModule(payable(campaignAddr)).projectUpdate(1);
         assertFalse(visible.hidden);
         assertEq(ProjectUpdatesModule(payable(campaignAddr)).visibleProjectUpdateCount(), 1);
     }

@@ -387,10 +387,11 @@ contract ProducerRegistryKycTest is Test {
         });
     }
 
-    function _signSocialAttestation(
-        uint256 signerPk,
-        GrowfiProducerRegistry.SocialAttestation memory attestation
-    ) internal view returns (bytes memory) {
+    function _signSocialAttestation(uint256 signerPk, GrowfiProducerRegistry.SocialAttestation memory attestation)
+        internal
+        view
+        returns (bytes memory)
+    {
         bytes32 digest = registry.socialAttestationDigest(attestation);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
         return abi.encodePacked(r, s, v);
