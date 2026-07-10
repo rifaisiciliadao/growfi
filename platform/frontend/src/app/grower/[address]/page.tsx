@@ -88,9 +88,6 @@ export default function ProducerPage({
   const displayName =
     protocolLabel || profile?.name || ensName || t("anonymous");
   const showCampaignsSection = campaignsLoading || Boolean(campaigns?.length);
-  const pageTopPadding = profile?.cover
-    ? "pt-24 md:pt-28"
-    : "pt-12";
 
   const [editing, setEditing] = useState(false);
 
@@ -103,33 +100,47 @@ export default function ProducerPage({
   }
 
   return (
-    <div className={`max-w-7xl mx-auto px-4 md:px-8 pb-20 ${pageTopPadding}`}>
-      {isSelfProfile && (
-        <ProducerAggregateDashboard producerAddress={producerAddress} />
-      )}
+    <div className="mx-auto max-w-7xl px-4 pb-20 pt-6 md:px-8 md:pt-8">
+      <section className="mb-8 md:mb-10">
+        <div className="relative h-44 overflow-hidden rounded-2xl bg-surface-container-low md:h-60">
+          {profile?.cover ? (
+            <img
+              src={profile.cover}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <ProfileCoverPlaceholder />
+          )}
 
-      {profile?.cover && (
-        <div
-          className="w-full h-48 md:h-60 rounded-2xl bg-cover bg-center mb-8"
-          style={{ backgroundImage: `url('${profile.cover}')` }}
-        />
-      )}
+          {isSelfProfile && !editing && !profileLoadingCombined && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              aria-label={t("editProfile")}
+              title={t("editProfile")}
+              className="app-control absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/90 text-on-surface shadow-[0_14px_36px_-24px_rgba(14,35,17,0.75)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 md:right-4 md:top-4"
+            >
+              <PencilIcon />
+            </button>
+          )}
+        </div>
 
-      <div className="flex items-start justify-between flex-wrap gap-4 mb-8">
-        <div className="flex items-center gap-4 min-w-0 flex-1">
+        <div className="relative z-10 -mt-10 mx-4 flex min-w-0 items-center gap-4 rounded-2xl border border-outline-variant/15 bg-surface-container-lowest/95 p-3 shadow-[0_20px_48px_-34px_rgba(14,35,17,0.65)] backdrop-blur-md md:-mt-12 md:ml-6 md:mr-auto md:w-fit md:max-w-[calc(100%-3rem)] md:pr-6">
           {profile?.avatar ? (
             <img
               src={profile.avatar}
               alt={profile.name ?? ""}
-              className="w-16 h-16 md:w-20 md:h-20 rounded-full object-cover border border-outline-variant/15 shrink-0"
+              className="h-20 w-20 shrink-0 rounded-full border-4 border-surface object-cover shadow-[0_16px_38px_-24px_rgba(14,35,17,0.6)] md:h-24 md:w-24"
             />
           ) : (
-            <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-primary-fixed flex items-center justify-center text-on-primary-fixed-variant font-bold text-2xl shrink-0">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border-4 border-surface bg-primary-fixed text-2xl font-bold text-on-primary-fixed-variant shadow-[0_16px_38px_-24px_rgba(14,35,17,0.6)] md:h-24 md:w-24">
               {protocolLabel
                 ? protocolInitials(protocolLabel)
                 : (profile?.name ?? producerAddress).slice(2, 4).toUpperCase()}
             </div>
           )}
+
           <div className="min-w-0 flex-1">
             <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-on-surface break-words flex items-center gap-2 flex-wrap">
               {profileLoadingCombined ? (
@@ -168,16 +179,7 @@ export default function ProducerPage({
             )}
           </div>
         </div>
-
-        {isSelfProfile && profile && !editing && !profileLoadingCombined && (
-          <button
-            onClick={() => setEditing(true)}
-            className="bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition"
-          >
-            {t("editProfile")}
-          </button>
-        )}
-      </div>
+      </section>
 
       {profile?.bio && (
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-6 mb-10">
@@ -245,6 +247,10 @@ export default function ProducerPage({
 
       {isSelfProfile && <DisconnectLink />}
 
+      {isSelfProfile && (
+        <ProducerAggregateDashboard producerAddress={producerAddress} />
+      )}
+
       {showCampaignsSection && (
         <section className="mb-12">
           <h2 className="text-xl font-bold text-on-surface mb-4">
@@ -280,6 +286,50 @@ export default function ProducerPage({
         isLoading={portfolioLoading}
       />
     </div>
+  );
+}
+
+function ProfileCoverPlaceholder() {
+  return (
+    <div
+      className="relative h-full w-full overflow-hidden bg-gradient-to-br from-primary/20 via-primary-fixed/30 to-secondary/20"
+      aria-hidden="true"
+    >
+      <svg
+        viewBox="0 0 1200 320"
+        preserveAspectRatio="none"
+        className="absolute inset-0 h-full w-full text-primary/20"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      >
+        <path d="M-40 260C150 115 285 390 470 225S790 45 1240 205" />
+        <path d="M-60 300C135 155 300 430 500 265S820 85 1260 245" />
+        <path d="M130-20C250 95 215 205 335 340" />
+        <path d="M940-30C845 90 905 210 795 350" />
+      </svg>
+      <div className="absolute -bottom-24 -left-16 h-56 w-56 rounded-full border border-white/40 bg-white/20" />
+      <div className="absolute -right-12 -top-20 h-64 w-64 rounded-full border border-white/40 bg-white/20" />
+    </div>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </svg>
   );
 }
 

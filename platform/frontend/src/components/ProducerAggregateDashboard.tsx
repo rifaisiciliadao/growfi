@@ -8,8 +8,8 @@ import { useProducerAggregate } from "@/lib/subgraph";
 import { RefreshButton } from "./RefreshButton";
 
 /**
- * Producer-only cross-campaign summary, rendered at the top of the
- * /producer/[address] page when the viewer is the producer themselves.
+ * Producer-only cross-campaign summary, rendered after the profile section on
+ * the /grower/[address] page when the viewer is the grower themselves.
  *
  * Pulls every campaign + season through a single aggregate subgraph
  * query and computes three KPIs the producer cares about most:
