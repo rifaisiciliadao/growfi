@@ -5,7 +5,7 @@
 **Factory deployed:** 2026-06-16 at block `25328624` · **Security rollout:**
 2026-07-10, blocks `25501399`-`25501432` · **ProducerRegistry V2 and EAS:**
 2026-07-10, blocks `25502651`-`25502666` · **On-chain inventory verified at
-block:** `25503260` ·
+block:** `25503315` ·
 **Owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55`
 
 The values in this section are a live-state inventory, not deployment-script
@@ -63,6 +63,8 @@ serially so each state transition was confirmed before the next one was sent.
 | 5 | 25502663 | Migrate legacy producer 2 | [`0x7d8f29f4b249a1b492fc489e97338b85a1afc032f366d22740aca58aa35ee4a9`](https://etherscan.io/tx/0x7d8f29f4b249a1b492fc489e97338b85a1afc032f366d22740aca58aa35ee4a9) |
 | 6 | 25502664 | Grant the backend social-verifier role | [`0xbf65c69256a0c9730cbedeffc9ae5eb51c55697e5f55799398b710c58d4af7aa`](https://etherscan.io/tx/0xbf65c69256a0c9730cbedeffc9ae5eb51c55697e5f55799398b710c58d4af7aa) |
 | 7 | 25502666 | Register the GrowFi social EAS schema | [`0xe831af965c87c10b65e9a75ae510d27f6e6a6947134dcc10647a239d15ccd828`](https://etherscan.io/tx/0xe831af965c87c10b65e9a75ae510d27f6e6a6947134dcc10647a239d15ccd828) |
+| 8 | 25503273 | Publish the first live grower EAS attestation | [`0xa9bec33d321162416409b642453721ae6ad12f7547a0eefecde5178e5037ad00`](https://etherscan.io/tx/0xa9bec33d321162416409b642453721ae6ad12f7547a0eefecde5178e5037ad00) |
+| 9 | 25503310 | Reconcile the EAS UID into ProducerRegistry V2 | [`0x65ceea57bbe4c422abc3623d005640f0a8f4de93e2b51292824bcce984048c00`](https://etherscan.io/tx/0x65ceea57bbe4c422abc3623d005640f0a8f4de93e2b51292824bcce984048c00) |
 
 ### Authority, registries, and external infrastructure
 
@@ -83,6 +85,11 @@ The GrowFi schema UID is
 `0x78422879833ca667e9b3ea79d6aaa24328d751493bbd42c92d271d7e94f40caa`.
 It is revocable, has no resolver, and is registered with the canonical schema
 definition recorded in `deployments/mainnet.json`.
+
+The first live grower attestation belongs to
+`0xE6c30AD5AeE7AD22e9F39D51d67667587cdD05A1` and has EAS/registry UID
+`0x45b153753d331ad71d65077cf990a1ef4e9927969d781ce766fb6d35f207d594`.
+UGraph indexed the matching Registry event at block `25503310`.
 
 All legacy profiles were imported with their exact URI and version:
 

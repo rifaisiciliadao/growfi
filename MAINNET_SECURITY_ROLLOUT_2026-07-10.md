@@ -39,9 +39,9 @@ resumable after a partial execution.
 
 ## Current deployment gates
 
-The contract, ProducerRegistry V2, UGraph, and application rollouts are
-complete. The remaining operational gates are PAT rotation and the first
-grower-authorized social attestation:
+The contract, ProducerRegistry V2, UGraph, application, and first live social
+attestation rollouts are complete. The remaining operational gate is PAT
+rotation:
 
 - [x] Full Solidity suite passes.
 - [x] Mainnet-fork rollout preserves live state.
@@ -71,13 +71,16 @@ grower-authorized social attestation:
 - [x] Canonical GrowFi EAS schema registered on Ethereum mainnet.
 - [x] UGraph `latest` serves v5.3.2 with both registry data sources and no
   indexing errors.
-- [x] DigitalOcean deployment `32431930-419a-4f78-b312-4224ab0bc044` is active
-  on commit `ca87507`, with mainnet chain/Registry V2, sponsored EAS relay, and
-  the public social UI enabled.
+- [x] DigitalOcean deployment `32431930-419a-4f78-b312-4224ab0bc044` first
+  activated the mainnet chain/Registry V2, sponsored EAS relay, and public
+  social UI configuration on commit `ca87507`; later deployments inherit the
+  same remote spec.
 - [x] The live challenge endpoint returns chain 1 and ProducerRegistry V2; an
   invalid wallet signature returns HTTP 401 before proof retrieval or gas use.
-- [ ] Complete one valid grower-authorized verification and reconcile its EAS
-  UID with the ProducerRegistry event and indexed producer row.
+- [x] The first grower-authorized verification minted EAS UID
+  `0x45b153753d331ad71d65077cf990a1ef4e9927969d781ce766fb6d35f207d594`;
+  the identical UID, proof hash, handle, and URLs are live in ProducerRegistry
+  V2 and the UGraph producer row.
 
 Never create a replacement DigitalOcean app while the existing app ownership is
 unresolved. That risks splitting production domains, secrets, and Spaces data
@@ -306,8 +309,9 @@ challenge signature validation while no sponsored EAS transaction can be sent.
 ## Phase 5 — enable EAS, then the public UI
 
 **Status: enabled in production on 2026-07-10.** DigitalOcean deployment
-`32431930-419a-4f78-b312-4224ab0bc044` is active on commit `ca87507`. Its remote
-spec explicitly uses chain 1, ProducerRegistry V2, canonical mainnet EAS and
+`32431930-419a-4f78-b312-4224ab0bc044` first activated the configuration on
+commit `ca87507`; later deployments inherit the same remote spec. The spec
+explicitly uses chain 1, ProducerRegistry V2, canonical mainnet EAS and
 SchemaRegistry addresses, encrypted challenge/verifier secrets,
 `SOCIAL_EAS_ENABLED=true`, and
 `NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION=true`.
@@ -315,11 +319,20 @@ SchemaRegistry addresses, encrypted challenge/verifier secrets,
 Runtime smoke checks returned a campaign-bound website challenge with chain 1
 and Registry V2, and rejected an intentionally invalid EIP-191 signature with
 HTTP 401 before proof retrieval or any sponsored transaction. The public bundle
-queries the v5.3.2 social fields. No user attestation was minted as part of the
-deployment itself: the first valid end-to-end acceptance still requires the
-campaign producer to sign the challenge and publish its code on the selected
-public profile. Record and reconcile the resulting EAS UID before closing the
-last deployment gate above.
+queries the v5.3.2 social fields.
+
+The first valid X verification published EAS UID
+`0x45b153753d331ad71d65077cf990a1ef4e9927969d781ce766fb6d35f207d594`
+in transaction
+`0xa9bec33d321162416409b642453721ae6ad12f7547a0eefecde5178e5037ad00`
+at block `25503273`. A rolling App Platform deployment replaced the backend
+instance before the Registry relay completed. The already-published EAS data
+was decoded and checked against the grower, post URL, proof hash, expiry, and
+nonce; the same UID was then reconciled into ProducerRegistry V2 in transaction
+`0x65ceea57bbe4c422abc3623d005640f0a8f4de93e2b51292824bcce984048c00`
+at block `25503310`, without creating a duplicate EAS attestation. UGraph
+indexed the row at that block and the public grower profile renders the on-chain
+verified badge and social link.
 
 Enable `SOCIAL_EAS_ENABLED=true` while keeping
 `NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION=false`. Run one controlled verification
