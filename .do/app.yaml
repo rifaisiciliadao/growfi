@@ -1,19 +1,23 @@
 # DigitalOcean App Platform spec for the GrowFi platform.
 #
-# Architecture: single public HTTPS endpoint (growfi-test.ondigitalocean.app
-# initially, custom domain later) with path-based routing:
+# Architecture: single public HTTPS endpoint (growfi.dev) with path-based routing:
 #   /           -> Next.js frontend
 #   /api/*      -> Fastify backend
 # Both are Docker-built from the monorepo; pushes to `main` auto-deploy.
 #
-# Create/update via:
-#   doctl apps create --spec .do/app.yaml          # first time
-#   doctl apps update <APP_ID> --spec .do/app.yaml # on spec changes
+# Create via `doctl apps create --spec .do/app.yaml`. For production updates,
+# fetch the remote spec first and merge these values into it so encrypted
+# secrets already stored by App Platform remain intact.
 # Secrets (DO_SPACES_KEY / DO_SPACES_SECRET) are set in the dashboard and
 # are NOT in this file; this spec only ships non-secret defaults.
 
-name: growfi-test
+name: growfi-mainnet
 region: fra
+
+domains:
+  - domain: growfi.dev
+    type: PRIMARY
+    zone: growfi.dev
 
 # Path-based ingress: one domain, two services behind it.
 ingress:
@@ -80,7 +84,7 @@ services:
         value: invites
         scope: RUN_TIME
       - key: APP_URL
-        value: https://growfi-test-m9s8u.ondigitalocean.app
+        value: https://growfi.dev
         scope: RUN_TIME
       - key: ADMIN_NOTIFY_EMAIL
         value: hey@growfi.dev
@@ -101,6 +105,9 @@ services:
       - key: CHAIN_ID
         value: "1"
         scope: RUN_TIME
+      - key: RPC_URL
+        value: https://ethereum-rpc.publicnode.com
+        scope: RUN_TIME
       - key: PRODUCER_REGISTRY_ADDRESS
         value: "0x267901bB08cb864b204D92185Fac8d6f9dee0F98"
         scope: RUN_TIME
@@ -119,13 +126,21 @@ services:
       - key: SOCIAL_EAS_MAX_GAS_PRICE_WEI
         value: "50000000000"
         scope: RUN_TIME
+      - key: SOCIAL_EAS_ADDRESS
+        value: "0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587"
+        scope: RUN_TIME
+      - key: SOCIAL_EAS_SCHEMA_REGISTRY_ADDRESS
+        value: "0xA7b39296258348C78294F95B872b282326A97BDF"
+        scope: RUN_TIME
+      - key: SOCIAL_EAS_SCHEMA
+        value: string protocol,address grower,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce
+        scope: RUN_TIME
       # Secrets (set via dashboard / `doctl apps update --spec ...`, not committed here):
       #   DO_SPACES_KEY                (SECRET, RUN_TIME)
       #   DO_SPACES_SECRET             (SECRET, RUN_TIME)
       #   ADMIN_API_KEY                (SECRET, RUN_TIME)  — shared with the local admin dashboard
       #   RESEND_API_KEY               (SECRET, RUN_TIME)
       #   NOTIFICATIONS_UNSUB_SECRET   (SECRET, RUN_TIME)  — HMAC key for digest unsubscribe links; rotate to invalidate all live links
-      #   SEPOLIA_RPC_URL              (optional override for the snapshot multicall)
       #   SOCIAL_CHALLENGE_SECRET      (SECRET, RUN_TIME)
       #   SOCIAL_VERIFIER_PRIVATE_KEY  (SECRET, RUN_TIME)  — must be granted isSocialVerifier on ProducerRegistry before relay works
       #   SOCIAL_RPC_URL               (RUN_TIME; Sepolia/mainnet RPC used to publish EAS + registry txs)
