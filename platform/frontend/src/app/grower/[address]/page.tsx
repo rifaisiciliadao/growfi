@@ -119,7 +119,7 @@ export default function ProducerPage({
               onClick={() => setEditing(true)}
               aria-label={t("editProfile")}
               title={t("editProfile")}
-              className="app-control absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full border border-white/70 bg-white/90 text-on-surface shadow-[0_14px_36px_-24px_rgba(14,35,17,0.75)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 md:right-4 md:top-4"
+              className="app-control absolute right-3 top-3 flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-white/70 bg-white/90 text-on-surface shadow-[0_14px_36px_-24px_rgba(14,35,17,0.75)] backdrop-blur-md transition hover:-translate-y-0.5 hover:bg-white focus:outline-none focus:ring-2 focus:ring-primary/30 md:right-4 md:top-4"
             >
               <PencilIcon />
             </button>
