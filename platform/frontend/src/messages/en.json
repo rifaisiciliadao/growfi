@@ -472,7 +472,7 @@
     },
     "activateCta": {
       "title": "Min cap reached — ready to activate",
-      "body": "Your campaign has reached its min cap. Activate now to open the staking season and let holders start earning.",
+      "body": "The on-chain minimum has been reached. Any connected wallet can activate the campaign and release the funding escrow.",
       "cta": "Activate campaign",
       "sig": "Sign activation…",
       "chain": "Confirming on-chain…"

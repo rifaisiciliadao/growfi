@@ -7,13 +7,7 @@ const SUBGRAPH_URL =
 
 const CHAIN_ID = Number(process.env.CHAIN_ID || process.env.NEXT_PUBLIC_CHAIN_ID || baseSepolia.id);
 
-const RPC_URL =
-  process.env.RPC_URL ||
-  process.env.SEPOLIA_RPC_URL ||
-  process.env.BASE_SEPOLIA_RPC ||
-  (CHAIN_ID === sepolia.id
-    ? "https://ethereum-sepolia-rpc.publicnode.com"
-    : "https://sepolia.base.org");
+const RPC_URL = rpcUrlForChain(CHAIN_ID);
 
 const chain =
   CHAIN_ID === sepolia.id ? sepolia : CHAIN_ID === mainnet.id ? mainnet : baseSepolia;
@@ -22,6 +16,37 @@ const client = createPublicClient({
   chain,
   transport: http(RPC_URL),
 });
+
+export function rpcUrlForChain(
+  chainId: number,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const first = (...values: Array<string | undefined>) => {
+    for (const value of values) {
+      const candidate = value?.split(",")[0]?.trim();
+      if (candidate) return candidate;
+    }
+    return null;
+  };
+  if (chainId === mainnet.id) {
+    return first(
+      env.MAINNET_RPC_URL,
+      env.ETHEREUM_RPC_URL,
+      env.SOCIAL_RPC_URL,
+      env.SOCIAL_RPC_URLS,
+      env.RPC_URL,
+    ) ?? "https://ethereum-rpc.publicnode.com";
+  }
+  if (chainId === sepolia.id) {
+    return first(
+      env.SEPOLIA_RPC_URL,
+      env.SOCIAL_RPC_URL,
+      env.SOCIAL_RPC_URLS,
+      env.RPC_URL,
+    ) ?? "https://ethereum-sepolia-rpc.publicnode.com";
+  }
+  return first(env.BASE_SEPOLIA_RPC, env.RPC_URL) ?? "https://sepolia.base.org";
+}
 
 /**
  * Minimal StakingVault ABI — just the two views we need.
@@ -76,6 +101,16 @@ const erc20Abi = [
   },
 ] as const;
 
+const campaignProducerAbi = [
+  {
+    type: "function",
+    name: "producer",
+    stateMutability: "view",
+    inputs: [],
+    outputs: [{ type: "address" }],
+  },
+] as const;
+
 interface SubgraphPosition {
   positionId: string;
   user: string;
@@ -123,6 +158,15 @@ export interface SnapshotResult {
   redeemableYieldSupply: bigint | null;
   holders: SnapshotHolder[];
   notes: string[];
+}
+
+export async function readCampaignProducer(campaign: Address): Promise<Address> {
+  const producer = await client.readContract({
+    address: campaign,
+    abi: campaignProducerAbi,
+    functionName: "producer",
+  });
+  return getAddress(producer);
 }
 
 /**

@@ -10,35 +10,27 @@ import { useTxNotify } from "@/lib/useTxNotify";
 import { waitForTx } from "@/lib/waitForTx";
 
 /**
- * Urgent CTA for the producer once their campaign has crossed minCap but
- * is still in Funding state. Activation is ALWAYS an explicit producer
- * action: `Campaign.buy()` does NOT auto-activate (the auto-activate was
- * removed as part of the 2026-06 audit hardening to close a producer
- * self-dealing / silent escrow-release vector). So whenever a campaign
- * reaches its soft cap it stays in Funding until the producer calls
- * `activateCampaign()` — this banner is the primary way they do it.
+ * Permissionless CTA once a campaign has crossed minCap but remains in
+ * Funding. Any connected wallet can activate because all release
+ * conditions are enforced on-chain.
  *
  * Rendered only when all three conditions line up:
  *   - state === Funding (0)
  *   - currentSupply >= minCap
- *   - viewer === producer
  *
- * This is a banner, not a tab, so the producer sees it the moment they
- * open the page instead of having to drill into Manage.
+ * This is a banner, not a tab, so the recovery action remains visible.
  */
 export function ActivateCtaBanner({
   campaignAddress,
   currentState,
   currentSupply,
   minCap,
-  isProducerViewing,
   onActivated,
 }: {
   campaignAddress: Address;
   currentState: number;
   currentSupply: bigint;
   minCap: bigint;
-  isProducerViewing: boolean;
   onActivated?: () => void;
 }) {
   const t = useTranslations("detail.activateCta");
@@ -48,8 +40,7 @@ export function ActivateCtaBanner({
   const [pending, setPending] = useState<"sig" | "chain" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const shouldShow =
-    isProducerViewing && currentState === 0 && currentSupply >= minCap;
+  const shouldShow = currentState === 0 && currentSupply >= minCap;
   if (!shouldShow) return null;
 
   const handleActivate = async () => {

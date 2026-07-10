@@ -402,10 +402,9 @@ contract SaleClassicModule {
             msg.sender, paymentToken, paymentAmount, filledFromQueue + mintedTokens, oraclePrice, s.currentSupply
         );
 
-        // GROW emission hook: fires AFTER the mint. Activation is NOT automatic
-        // anymore — the producer must explicitly call `activateCampaign()` once
-        // minCap is reached. This closes the self-dealing farm where a trivial
-        // buy could silently flip a campaign to Active and release escrow.
+        // GROW emission hook: fires AFTER the mint. Activation remains explicit,
+        // but becomes permissionless once minCap is reached. A purchase cannot
+        // silently flip the state or release escrow inside this transaction.
         if (s.growMinter != address(0)) {
             try IGrowfiMinter(s.growMinter).recordBuy(msg.sender, supplyBefore, s.currentSupply) {} catch {}
         }
@@ -515,10 +514,10 @@ contract SaleClassicModule {
     }
 
     // ------------------------------------------------------------------
-    // Producer manual activation (alternative to auto-activate inside `buy`)
+    // Permissionless activation once the on-chain soft cap is satisfied
     // ------------------------------------------------------------------
 
-    function activateCampaign() external onlyProducer inState(CampaignStorage.State.Funding) {
+    function activateCampaign() external inState(CampaignStorage.State.Funding) {
         if (_s().currentSupply < _s().minCap) revert MinCapNotReached();
         _activate();
     }

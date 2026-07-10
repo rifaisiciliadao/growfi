@@ -195,11 +195,17 @@ Deployment script lives at `script/Deploy.s.sol`.
 
 ## Status
 
-- Smart contracts implemented and tested: **107/107 passing** (unit + integration + E2E + adversarial + fuzz + stateful invariants + gas-bounds + multi-chain fork tests).
+- Smart contracts implemented and tested: **809 passing**, with 9 opt-in
+  external-network fork cases skipped by the offline CI profile (unit,
+  integration, E2E, adversarial, fuzz, stateful invariants, gas bounds, and
+  dedicated mainnet-rollout fork tests).
 - Internal security review: complete (fixes merged).
-- External audit: **pending**. Do not deploy to mainnet until audit is finalized.
+- Ethereum mainnet is live. The July 2026 security rollout is documented in
+  [`CONTRACTS.md`](./CONTRACTS.md); an independent external audit remains
+  pending.
 - Fork tests pass against Ethereum, Base, and Arbitrum mainnet (real USDC + real Chainlink ETH/USD feeds).
-- Subgraph / indexer: out of scope of this repo (see event specs in `Campaign.sol`, `StakingVault.sol`, `HarvestManager.sol`).
+- The production subgraph and deployment manifests live under
+  `platform/subgraph/`.
 
 ---
 

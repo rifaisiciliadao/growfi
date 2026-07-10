@@ -17,8 +17,8 @@ import {Deployer} from "./helpers/Deployer.sol";
 /// @notice Locks the new invariants introduced when auto-activation was
 ///         removed and the producer self-dealing / escrow-brick vectors were
 ///         closed:
-///           - buy() no longer auto-activates; producer must call
-///             activateCampaign() explicitly once minCap is reached.
+///           - buy() no longer auto-activates; activation is an explicit,
+///             permissionless call once minCap is reached.
 ///           - endCampaign() can never strand buyer escrow.
 ///           - setMinCap() can only be raised, never lowered.
 ///           - the factory emergency pause cannot be cleared by the producer.
@@ -122,11 +122,11 @@ contract SecurityFixesTest is Test {
         campaign.activateCampaign();
     }
 
-    function test_activateByNonProducer_reverts() public {
+    function test_activateByNonProducer_succeedsAfterSoftcap() public {
         _buy(alice, MIN_CAP);
         vm.prank(attacker);
-        vm.expectRevert(SaleClassicModule.OnlyProducer.selector);
         campaign.activateCampaign();
+        assertEq(uint8(campaign.state()), uint8(CampaignStorage.State.Active));
     }
 
     // ------------------------------------------------------------------

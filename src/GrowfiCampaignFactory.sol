@@ -353,6 +353,16 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         GrowfiTreasury(growfiTreasury).claimYieldFromCampaign(campaign, positionId);
     }
 
+    function unstakeGrowfiTreasury(address campaign, uint256 positionId) external onlyOwner {
+        GrowfiTreasury(growfiTreasury).unstakeFromCampaign(campaign, positionId);
+    }
+
+    /// @notice Initialize season-isolated stake accounting on an upgraded
+    ///         StakingVault. Prefer executing this at a season boundary.
+    function initializeCampaignSeasonStakeAccounting(uint256 campaignIndex, uint256 eligibleStake) external onlyOwner {
+        GrowfiStakingVault(campaigns[campaignIndex].stakingVault).initializeSeasonStakeAccounting(eligibleStake);
+    }
+
     function commitGrowfiTreasuryUsdcRedeem(address campaign, uint256 seasonId, uint256 yieldAmount)
         external
         onlyOwner
@@ -380,20 +390,28 @@ contract GrowfiCampaignFactory is Initializable, ModuleRegistry {
         return campaigns.length;
     }
 
-    /// @notice Owner-only emergency pause for a deployed Campaign. Pauses
-    ///         both the host (which the sale module reads) and the
-    ///         HarvestManager (which has its own pause state).
+    /// @notice Owner-only emergency pause for every stateful campaign subsystem.
     function pauseCampaign(uint256 idx) external onlyOwner {
         CampaignContracts memory cc = campaigns[idx];
         GrowfiCampaign(payable(cc.campaign)).factorySetPaused(true);
-        GrowfiHarvestManager(cc.harvestManager).emergencyPause();
+        if (!GrowfiHarvestManager(cc.harvestManager).paused()) {
+            GrowfiHarvestManager(cc.harvestManager).emergencyPause();
+        }
+        if (!GrowfiStakingVault(cc.stakingVault).paused()) {
+            GrowfiStakingVault(cc.stakingVault).emergencyPause();
+        }
     }
 
     /// @notice Owner-only unpause.
     function unpauseCampaign(uint256 idx) external onlyOwner {
         CampaignContracts memory cc = campaigns[idx];
         GrowfiCampaign(payable(cc.campaign)).factorySetPaused(false);
-        GrowfiHarvestManager(cc.harvestManager).emergencyUnpause();
+        if (GrowfiHarvestManager(cc.harvestManager).paused()) {
+            GrowfiHarvestManager(cc.harvestManager).emergencyUnpause();
+        }
+        if (GrowfiStakingVault(cc.stakingVault).paused()) {
+            GrowfiStakingVault(cc.stakingVault).emergencyUnpause();
+        }
     }
 
     function setCampaignHidden(address campaign, bool hidden) external onlyOwner {

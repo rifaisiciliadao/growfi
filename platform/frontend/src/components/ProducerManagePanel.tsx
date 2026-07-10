@@ -7,6 +7,7 @@ import {
   useAccount,
   useReadContract,
   useReadContracts,
+  useSignMessage,
   useWriteContract,
 } from "wagmi";
 import {
@@ -53,6 +54,7 @@ import { useCampaignSeasons, type SubgraphSeason } from "@/lib/subgraph";
 import {
   fetchSnapshot,
   generateMerkleTree,
+  buildMerklePublicationMessage,
   uploadImage,
   uploadMetadata,
   uploadProjectUpdateMetadata,
@@ -2870,6 +2872,7 @@ function ReportHarvestCard({
   const tx = useTranslations("tx");
   const notify = useTxNotify();
   const { writeContractAsync } = useWriteContract();
+  const { signMessageAsync } = useSignMessage();
 
   const [totalValueUSD, setTotalValueUSD] = useState("");
   const [totalProductUnits, setTotalProductUnits] = useState("");
@@ -2920,13 +2923,28 @@ function ReportHarvestCard({
       // 2. Build a Merkle tree scoped to this season → root for reportHarvest.
       setStage({ kind: "merkle" });
       const productUnitsWei = parseUnits(totalProductUnits, 18);
-      const merkle = await generateMerkleTree({
+      const merkleInput = {
         campaign: campaignAddress,
         seasonId: season.seasonId,
         totalProductUnits: productUnitsWei.toString(),
         totalYieldSupply: snap.redeemableYieldSupply,
         holders: snap.holders,
         minProductClaim: minProductClaim.toString(),
+      };
+      const authorizationExpiresAt = Date.now() + 5 * 60 * 1000;
+      const authorizationMessage = buildMerklePublicationMessage(
+        merkleInput,
+        authorizationExpiresAt,
+      );
+      const authorizationSignature = await signMessageAsync({
+        message: authorizationMessage,
+      });
+      const merkle = await generateMerkleTree({
+        ...merkleInput,
+        authorization: {
+          expiresAt: authorizationExpiresAt,
+          signature: authorizationSignature,
+        },
       });
 
       // 3. reportHarvest on-chain.

@@ -1,0 +1,341 @@
+{
+  "network": "ethereum-mainnet",
+  "chainId": 1,
+  "verifiedAtBlock": 25501436,
+  "factoryDeployBlock": 25328624,
+  "owner": "0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55",
+  "factory": {
+    "proxy": "0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2",
+    "implementation": "0xC591c1c9F3269368457f06540b7EAC06a8A8d269",
+    "proxyAdmin": "0xa65cFB968Ea5b02e38602f5eebFe157BaE6b1473",
+    "implementationCodeHash": "0x103fdcb1f8bf142aec42449b4fa6fa11519042582200209f593087bd94317338",
+    "futureImplementations": {
+      "campaign": {
+        "address": "0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b",
+        "codeHash": "0x7de66f73935e746fd8b426ee79b387086ca1fedf1e62d74e9f2c2bbedb1e5fd1"
+      },
+      "campaignToken": {
+        "address": "0x53b2c6C52363C36BF35D728A15a36DFC0882c11b",
+        "codeHash": "0x69f22d0682a768f0717fa79eb7018462773ac0e0419558e6571db871950c3ee7"
+      },
+      "stakingVault": {
+        "address": "0xe9a9D14227B1bBe6c41de8002098Ef14F4768CEa",
+        "codeHash": "0xa633f1d99bc4aa60158ec32dcbb807b735f7e2718b2d16081b96f2c8ef84dd5d"
+      },
+      "yieldToken": {
+        "address": "0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20",
+        "codeHash": "0xc44503d5e4d710332a90ee09edc1b8107602c185c3583607d967f7424f80355d"
+      },
+      "harvestManager": {
+        "address": "0x852987797CCB62735B9880CEaE3251e948bcBA50",
+        "codeHash": "0x53db7fcc143711358cf41f6dc394b0dd4200b9764b9c373b002eddfcb023c845"
+      }
+    }
+  },
+  "growSystem": {
+    "token": {
+      "proxy": "0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725",
+      "implementation": "0xdB8Da814194ADbe8E4fe80Cff87d10f483623D1E",
+      "proxyAdmin": "0x161395596Bf49c76127024aae445098238822f58",
+      "implementationCodeHash": "0xb87af95df17afa6a167a585841b606060a55905489cb5c684e28fa5922497a0a"
+    },
+    "minter": {
+      "proxy": "0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B",
+      "implementation": "0x9b45d7cbD6D4Ca54E1221Fb1f8b44E13BD92d66B",
+      "proxyAdmin": "0x09ea0284C08Dd2864aA1B02d229E4b8417d2868a",
+      "implementationCodeHash": "0x05db34cbecf4158ee406eca2a24270bc2924fbbbf8ab0a47b4f26f87f7178441"
+    },
+    "treasury": {
+      "proxy": "0x47ea5710ea674f5D653A59c96836E2d20288813a",
+      "implementation": "0xAF3c5Bc33E57e0f37723a72B0D2cA1D1F7Ef3594",
+      "proxyAdmin": "0x38226B48b60cbddca6Fc9DdA94684850468060B9",
+      "implementationCodeHash": "0xa051625ebdd3a23a38891d1b83c6153bd82ac8b6e8b504a7812f5ad9dc2e2990"
+    },
+    "feeSplitter": {
+      "proxy": "0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f",
+      "implementation": "0x484d5110C280da9F135e85a1E722C4908BafbB08",
+      "proxyAdmin": "0x90552b96A709EbabD2Ca224394B8424dcC873f5F",
+      "implementationCodeHash": "0xaf69ed0b44dd5decb6f6e4d28934a76e1b406d8e3a8f460ad0f612d071e1dba6"
+    },
+    "stakingPool": {
+      "proxy": "0xD4f6c69457F34332D3cd9ea287F69a91e84a803A",
+      "implementation": "0xd7C37b9d844b48f886aAA8a7eba237bd337980A1",
+      "proxyAdmin": "0x406933B2309771B14490d7e002722fbb1eDCdBDC",
+      "implementationCodeHash": "0x1623ae2120644bc13c9d684acec13123372e9dae74143a3b42679bd5c8754469"
+    }
+  },
+  "registries": {
+    "campaignRegistry": {
+      "address": "0xA3AEb95Ff4555E266aa1366000204a75FaD4142B",
+      "codeHash": "0xc8189c0926769cc7f8e3e08f02c98aad32ecafd45ce079f80e50d7179cc17035"
+    },
+    "legacyProducerRegistry": {
+      "address": "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5",
+      "codeHash": "0x60d59915561fc288147762aac56b940cf4add9195bf332a4fd5d349b731f9233"
+    }
+  },
+  "modules": [
+    {
+      "name": "sale",
+      "moduleType": "0xc472767d72fba4fcee7061e2ac39a16f5573eb47987e601e2298bc318921f04b",
+      "kind": "0x88e9afc607128bf3de27d7af622a7cba98b48c9d710282f9e82f9fb433935e74",
+      "address": "0x3C5077c5eE8cB22886352f331D105d770693ec5D",
+      "codeHash": "0xb881db5a3b0330c076f49b42d88a1365fc52e01c281d06e3bebb119dc5e376a3",
+      "approved": true,
+      "default": true
+    },
+    {
+      "name": "saleLegacyCampaign0",
+      "moduleType": "0xc472767d72fba4fcee7061e2ac39a16f5573eb47987e601e2298bc318921f04b",
+      "kind": "0x88e9afc607128bf3de27d7af622a7cba98b48c9d710282f9e82f9fb433935e74",
+      "address": "0x82dea032125FB620E104BF4837c3dEE43C52444E",
+      "codeHash": "0xfab7a56acc108f3d600bb04242bca7616ebf3641a6a7c28dd42f54950d713055",
+      "approved": false,
+      "default": false
+    },
+    {
+      "name": "saleLegacyCampaign1",
+      "moduleType": "0xc472767d72fba4fcee7061e2ac39a16f5573eb47987e601e2298bc318921f04b",
+      "kind": "0x88e9afc607128bf3de27d7af622a7cba98b48c9d710282f9e82f9fb433935e74",
+      "address": "0xa1f01A442359E596D8a98aa7c5595016CeBe193a",
+      "codeHash": "0xb6e50660e914045de75cdef9008e09dde1a22fd40bf63f659c5bb38587b4d67e",
+      "approved": false,
+      "default": false
+    },
+    {
+      "name": "collateral",
+      "moduleType": "0x8e5ea360bdeed818efd87c6f274fcdf58af90bb406d23ae98973b22658c61d20",
+      "kind": "0x6c793fb30246223245423ced28fc6fa7b89eea6a674b20b41c832376265edb73",
+      "address": "0x1e6D432813BA9B4477ACCC87788bf461c1A55B02",
+      "codeHash": "0xee948e129473eb0c7e5db43de5241dc40286c7edc4e9d426c8792e1069e3d0e7",
+      "approved": true,
+      "default": true
+    },
+    {
+      "name": "collateralLegacyCampaign0",
+      "moduleType": "0x8e5ea360bdeed818efd87c6f274fcdf58af90bb406d23ae98973b22658c61d20",
+      "kind": "0x6c793fb30246223245423ced28fc6fa7b89eea6a674b20b41c832376265edb73",
+      "address": "0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6",
+      "codeHash": "0x4b033f3e4275980f3163b5ae75551258479f15765bf7d2e400081c9c1fb02979",
+      "approved": true,
+      "default": false
+    },
+    {
+      "name": "repayment",
+      "moduleType": "0x8d8dbd54da6ed08f3af3f4408383e63b6594306608253e922377e052ddfbbc05",
+      "kind": "0x82beecdd0fd7fb5ab47261b2dec556e40796f55e3706a60c118ff8e2a4e768e7",
+      "address": "0x34326058FD53c773Fd7E67a20af17d73ae4d793A",
+      "codeHash": "0x7ff3bdac1d6d49b2de40582807068b07036689c1b1164ba32d9baa210d322da1",
+      "approved": true,
+      "default": false
+    },
+    {
+      "name": "ecommerce",
+      "moduleType": "0x339a5d90f9f403961f24871011809ca7f8ff0723db4b45df98f1388b3bde8113",
+      "kind": "0xf66f550782caf3afe8eaa3cba8b3097ca29eb29744bec8d3d427d70e3a785334",
+      "address": "0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c",
+      "codeHash": "0x74616f3e5cb939c37344b6be08cea02dc2ea39974075d87416134965072e3380",
+      "approved": true,
+      "default": false
+    },
+    {
+      "name": "ecommerceLegacyCampaign0",
+      "moduleType": "0x339a5d90f9f403961f24871011809ca7f8ff0723db4b45df98f1388b3bde8113",
+      "kind": "0xf66f550782caf3afe8eaa3cba8b3097ca29eb29744bec8d3d427d70e3a785334",
+      "address": "0x881883a9fd1c296D198EE9937603E8Eec1AE5E70",
+      "codeHash": "0x10a531107cfcb61963de81760eb889c5cd295b481af97018d165125fbaf228f7",
+      "approved": false,
+      "default": false
+    },
+    {
+      "name": "debtRestructuring",
+      "moduleType": "0xbb1e70ab25911d1516356096644f11787f329b416f17504d31c1ee16a14f56a3",
+      "kind": "0x54b097ca49f64db5df27c0a6741cc50ac0eeb361e18b575781a8626e0fff4e66",
+      "address": "0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a",
+      "codeHash": "0xe5f0f8b9e1e92a4b54bff19beb7adcd2ef34c16cf2be26bb80294811cecfc0f8",
+      "approved": true,
+      "default": false
+    },
+    {
+      "name": "proceedsSplit",
+      "moduleType": "0x30b395817081a4bfcc2de11d585353c65c3c5b699309b8740e8ecf6cf6c18d74",
+      "kind": "0xc921820d269e802042a87c6f3113cadc04b2e104586f5eacf569b70256c98a7c",
+      "address": "0xb57073310911a902b082d4A7d0CD7dA26e27775D",
+      "codeHash": "0xc680a8c60e1f3fc7105be5f77efde2dc20d5b2b4450442220ee99b759d96d578",
+      "approved": true,
+      "default": false
+    },
+    {
+      "name": "directIssue",
+      "moduleType": "0xf502127c932b4ff52cf7984ab5f3245e8d7935210db5535d8d05aab0d4f49c39",
+      "kind": "0xc0b13d8cc9d9ca49de3ae4a65abe3c0df35c00d8cb9aac4e986e3f9c035f112f",
+      "address": "0x236855EAFb5fbe864E3557f8b621950cBB46d816",
+      "codeHash": "0x9b0b8faa259ef51a573a03d5cdebcb9523cb314ae7e423f98c5afaba95b5e719",
+      "approved": true,
+      "default": false
+    },
+    {
+      "name": "projectUpdates",
+      "moduleType": "0x3f2ec7a5222740f4a0c4748460362c7d91aff110df1f4c2db6afa015ac3c2630",
+      "kind": "0x56c7f283053e93516e894bc44491056721e6b425d9729908724260571f5a4b1c",
+      "address": "0x43FD484D3e12071a53181c3727354530230bEFCf",
+      "codeHash": "0xbbddfe78b53ea1bc1852eb4346caf06d659848ff87a406f4f9978aecf8b9d140",
+      "approved": true,
+      "default": false
+    }
+  ],
+  "campaigns": [
+    {
+      "index": 0,
+      "producer": "0xE6c30AD5AeE7AD22e9F39D51d67667587cdD05A1",
+      "components": {
+        "campaign": {
+          "proxy": "0x3Cae6813bbA201a1953Caac00A70f3B4e6DAB23f",
+          "implementation": "0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b",
+          "proxyAdmin": "0x5B49CeeC63b69f81D60702511fcC75Cb4710ac5a",
+          "implementationCodeHash": "0x7de66f73935e746fd8b426ee79b387086ca1fedf1e62d74e9f2c2bbedb1e5fd1"
+        },
+        "campaignToken": {
+          "proxy": "0x64CA37e2ADbd27578805D41eE2F93a20B709ee37",
+          "implementation": "0x53b2c6C52363C36BF35D728A15a36DFC0882c11b",
+          "proxyAdmin": "0x599a55Ee0b7C0E2de8C27125F20639B43Fe51ae3",
+          "implementationCodeHash": "0x69f22d0682a768f0717fa79eb7018462773ac0e0419558e6571db871950c3ee7"
+        },
+        "yieldToken": {
+          "proxy": "0x63862751fb0E30b8eb779078EdE708D4D020bf24",
+          "implementation": "0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20",
+          "proxyAdmin": "0x1D50a71b8b9946018E24605D437671eB14Ef9681",
+          "implementationCodeHash": "0xc44503d5e4d710332a90ee09edc1b8107602c185c3583607d967f7424f80355d"
+        },
+        "stakingVault": {
+          "proxy": "0x2EA8d789B815d5AD34154f622B5dD0A1e94DA060",
+          "implementation": "0xe9a9D14227B1bBe6c41de8002098Ef14F4768CEa",
+          "proxyAdmin": "0x7F810DC8E3D19D6850DcE3d76d4EcaB5dA0F0Ff9",
+          "implementationCodeHash": "0xa633f1d99bc4aa60158ec32dcbb807b735f7e2718b2d16081b96f2c8ef84dd5d"
+        },
+        "harvestManager": {
+          "proxy": "0x395FBf71eE5a943a426583F9BBC880847f8e3DE2",
+          "implementation": "0x852987797CCB62735B9880CEaE3251e948bcBA50",
+          "proxyAdmin": "0x1f842639590969180CFeBEAFEF58CBC28f5508D8",
+          "implementationCodeHash": "0x53db7fcc143711358cf41f6dc394b0dd4200b9764b9c373b002eddfcb023c845"
+        }
+      },
+      "modules": [
+        {
+          "name": "ecommerce",
+          "moduleType": "0x339a5d90f9f403961f24871011809ca7f8ff0723db4b45df98f1388b3bde8113",
+          "kind": "0xf66f550782caf3afe8eaa3cba8b3097ca29eb29744bec8d3d427d70e3a785334",
+          "implementation": "0x881883a9fd1c296D198EE9937603E8Eec1AE5E70",
+          "enabled": true
+        },
+        {
+          "name": "collateral",
+          "moduleType": "0x8e5ea360bdeed818efd87c6f274fcdf58af90bb406d23ae98973b22658c61d20",
+          "kind": "0x6c793fb30246223245423ced28fc6fa7b89eea6a674b20b41c832376265edb73",
+          "implementation": "0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6",
+          "enabled": true
+        },
+        {
+          "name": "sale",
+          "moduleType": "0xc472767d72fba4fcee7061e2ac39a16f5573eb47987e601e2298bc318921f04b",
+          "kind": "0x88e9afc607128bf3de27d7af622a7cba98b48c9d710282f9e82f9fb433935e74",
+          "implementation": "0x3C5077c5eE8cB22886352f331D105d770693ec5D",
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "index": 1,
+      "producer": "0xE6c30AD5AeE7AD22e9F39D51d67667587cdD05A1",
+      "components": {
+        "campaign": {
+          "proxy": "0xd9dC6494FD749a015EA682DA49858aBbC3Ac9e14",
+          "implementation": "0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b",
+          "proxyAdmin": "0xCd3b98329149840B05FF06f517a815424F639C08",
+          "implementationCodeHash": "0x7de66f73935e746fd8b426ee79b387086ca1fedf1e62d74e9f2c2bbedb1e5fd1"
+        },
+        "campaignToken": {
+          "proxy": "0xea70BBbfA4570346875E74f5F297C93c3facc28E",
+          "implementation": "0x53b2c6C52363C36BF35D728A15a36DFC0882c11b",
+          "proxyAdmin": "0xec2337adb74485D9d593C1764Ac85Bd7de6AD33A",
+          "implementationCodeHash": "0x69f22d0682a768f0717fa79eb7018462773ac0e0419558e6571db871950c3ee7"
+        },
+        "yieldToken": {
+          "proxy": "0xb727BD9F445CA98104F64e4ba3Cd8Afe4CE695A0",
+          "implementation": "0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20",
+          "proxyAdmin": "0xC3Ca7af3750afE727D956E46ca810Dd44c1bc484",
+          "implementationCodeHash": "0xc44503d5e4d710332a90ee09edc1b8107602c185c3583607d967f7424f80355d"
+        },
+        "stakingVault": {
+          "proxy": "0xd54A3C5D68CFdbaE7e68aE4DC3787Dbe37237EE8",
+          "implementation": "0xe9a9D14227B1bBe6c41de8002098Ef14F4768CEa",
+          "proxyAdmin": "0x627CEB880705Ad2fe04f81B63d879555ec1382Dc",
+          "implementationCodeHash": "0xa633f1d99bc4aa60158ec32dcbb807b735f7e2718b2d16081b96f2c8ef84dd5d"
+        },
+        "harvestManager": {
+          "proxy": "0x45a5e2a94dfb65257d1a3455d31f050aD38d0a04",
+          "implementation": "0x852987797CCB62735B9880CEaE3251e948bcBA50",
+          "proxyAdmin": "0x5f62037E3f30950b97358a5f9E78dE4e36F5384E",
+          "implementationCodeHash": "0x53db7fcc143711358cf41f6dc394b0dd4200b9764b9c373b002eddfcb023c845"
+        }
+      },
+      "modules": [
+        {
+          "name": "projectUpdates",
+          "moduleType": "0x3f2ec7a5222740f4a0c4748460362c7d91aff110df1f4c2db6afa015ac3c2630",
+          "kind": "0x56c7f283053e93516e894bc44491056721e6b425d9729908724260571f5a4b1c",
+          "implementation": "0x43FD484D3e12071a53181c3727354530230bEFCf",
+          "enabled": true
+        },
+        {
+          "name": "collateral",
+          "moduleType": "0x8e5ea360bdeed818efd87c6f274fcdf58af90bb406d23ae98973b22658c61d20",
+          "kind": "0x6c793fb30246223245423ced28fc6fa7b89eea6a674b20b41c832376265edb73",
+          "implementation": "0x1e6D432813BA9B4477ACCC87788bf461c1A55B02",
+          "enabled": true
+        },
+        {
+          "name": "proceedsSplit",
+          "moduleType": "0x30b395817081a4bfcc2de11d585353c65c3c5b699309b8740e8ecf6cf6c18d74",
+          "kind": "0xc921820d269e802042a87c6f3113cadc04b2e104586f5eacf569b70256c98a7c",
+          "implementation": "0xb57073310911a902b082d4A7d0CD7dA26e27775D",
+          "enabled": true
+        },
+        {
+          "name": "directIssue",
+          "moduleType": "0xf502127c932b4ff52cf7984ab5f3245e8d7935210db5535d8d05aab0d4f49c39",
+          "kind": "0xc0b13d8cc9d9ca49de3ae4a65abe3c0df35c00d8cb9aac4e986e3f9c035f112f",
+          "implementation": "0x236855EAFb5fbe864E3557f8b621950cBB46d816",
+          "enabled": true
+        },
+        {
+          "name": "sale",
+          "moduleType": "0xc472767d72fba4fcee7061e2ac39a16f5573eb47987e601e2298bc318921f04b",
+          "kind": "0x88e9afc607128bf3de27d7af622a7cba98b48c9d710282f9e82f9fb433935e74",
+          "implementation": "0x3C5077c5eE8cB22886352f331D105d770693ec5D",
+          "enabled": true
+        }
+      ]
+    }
+  ],
+  "external": {
+    "usdc": {
+      "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
+    },
+    "usdt": {
+      "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7"
+    },
+    "dai": {
+      "address": "0x6B175474E89094C44Da98b954EedeAC495271d0F"
+    },
+    "usdcUsdFeed": {
+      "address": "0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6"
+    },
+    "eas": {
+      "address": "0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587"
+    },
+    "easSchemaRegistry": {
+      "address": "0xA7b39296258348C78294F95B872b282326A97BDF"
+    }
+  }
+}

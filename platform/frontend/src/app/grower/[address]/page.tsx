@@ -234,7 +234,10 @@ export default function ProducerPage({
           producerAddress={producerAddress}
           previousVersion={producer?.version}
           producer={producer}
-          showSocialVerification={SOCIAL_VERIFICATION_ENABLED && !protocolLabel}
+          socialCampaignAddress={campaigns?.[0]?.id as Address | undefined}
+          showSocialVerification={
+            SOCIAL_VERIFICATION_ENABLED && !protocolLabel && Boolean(campaigns?.[0]?.id)
+          }
         />
       )}
 
@@ -759,6 +762,7 @@ function ProfileForm({
   producerAddress,
   previousVersion,
   producer,
+  socialCampaignAddress,
   showSocialVerification,
 }: {
   current?: { name?: string; bio?: string; avatar?: string | null; cover?: string | null; website?: string | null; location?: string | null } | null;
@@ -767,6 +771,7 @@ function ProfileForm({
   /** Subgraph version at the moment the form opened. Undefined if the producer has no profile yet. */
   previousVersion: string | undefined;
   producer: SubgraphProducer | null | undefined;
+  socialCampaignAddress: Address | undefined;
   showSocialVerification: boolean;
 }) {
   const t = useTranslations("grower.form");
@@ -971,9 +976,10 @@ function ProfileForm({
         `}</style>
       </div>
 
-      {showSocialVerification && (
+      {showSocialVerification && socialCampaignAddress && (
         <SocialVerificationPanel
           producerAddress={producerAddress}
+          campaignAddress={socialCampaignAddress}
           producer={producer}
         />
       )}

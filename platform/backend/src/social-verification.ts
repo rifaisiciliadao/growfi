@@ -11,6 +11,7 @@ import {
   keccak256,
   parseEventLogs,
   toBytes,
+  verifyMessage,
   type Address,
   type Hex,
   type Log,
@@ -18,11 +19,17 @@ import {
 import { privateKeyToAccount } from "viem/accounts";
 import { mainnet, sepolia } from "viem/chains";
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import {
+  assertPublicHttpUrl,
+  fetchPublicHttpUrl,
+  readBoundedText,
+  type ResolveHostname,
+} from "./public-http.js";
 
 const ZERO_BYTES32 =
   "0x0000000000000000000000000000000000000000000000000000000000000000" as const;
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000" as const;
-const CHALLENGE_VERSION = "v1";
+const CHALLENGE_VERSION = "v2";
 const EAS_PROTOCOL = "GrowFi";
 const DEFAULT_EAS_SCHEMA =
   "string protocol,address grower,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce";
@@ -39,7 +46,7 @@ const EAS_CONTRACTS: Record<
   { eas: Address; schemaRegistry: Address }
 > = {
   [mainnet.id]: {
-    eas: getAddress("0xa1207f3bba224e2c9c3c6ebd2c90b7fe3d0f0d17"),
+    eas: getAddress("0xa1207f3bba224e2c9c3c6d5af63d0eb1582ce587"),
     schemaRegistry: getAddress("0xa7b39296258348c78294f95b872b282326a97bdf"),
   },
   [sepolia.id]: {
@@ -123,6 +130,20 @@ const SCHEMA_REGISTRY_ABI = [
 const PRODUCER_REGISTRY_SOCIAL_ABI = [
   {
     type: "function",
+    name: "hasActiveSocialAttestation",
+    stateMutability: "view",
+    inputs: [{ name: "producer", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    type: "function",
+    name: "socialNonce",
+    stateMutability: "view",
+    inputs: [{ name: "producer", type: "address" }],
+    outputs: [{ name: "", type: "uint256" }],
+  },
+  {
+    type: "function",
     name: "setSocialAttestation",
     stateMutability: "nonpayable",
     inputs: [
@@ -155,7 +176,11 @@ export interface SocialVerificationDeps {
   challengeTtlMs?: number;
   attestationTtlSeconds?: number;
   fetchText?: (url: string) => Promise<Response>;
+  resolveHostname?: ResolveHostname;
   onchainAttester?: SocialOnchainAttester | null;
+  campaignProducer?: (campaign: Address) => Promise<Address>;
+  consumeChallenge?: (reservationId: Hex) => Promise<boolean>;
+  releaseChallenge?: (reservationId: Hex) => Promise<void>;
 }
 
 export interface SocialOnchainAttester {
@@ -180,6 +205,17 @@ export interface SocialOnchainResult {
   } | null;
 }
 
+export class SocialOnchainIssueError extends Error {
+  readonly easTransactionSubmitted: boolean;
+
+  constructor(cause: unknown, easTransactionSubmitted: boolean) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.name = "SocialOnchainIssueError";
+    this.easTransactionSubmitted = easTransactionSubmitted;
+    (this as Error & { cause?: unknown }).cause = cause;
+  }
+}
+
 export interface SocialOnchainAttesterConfig {
   chainId: number;
   rpcUrl?: string;
@@ -192,10 +228,14 @@ export interface SocialOnchainAttesterConfig {
   resolver?: Address;
   revocable?: boolean;
   relayRegistry?: boolean;
+  maxGasPriceWei?: bigint;
 }
 
 type ChallengePayload = {
   wallet: Address;
+  campaign: Address | null;
+  chainId: number;
+  registryAddress: Address | null;
   platform: string;
   handle: string;
   profileUrl: string;
@@ -205,6 +245,11 @@ type ChallengePayload = {
   code: string;
   message: string;
 };
+
+type ChallengeRequestPayload = Pick<
+  ChallengePayload,
+  "wallet" | "campaign" | "platform" | "handle" | "profileUrl"
+>;
 
 export type SocialAttestationMessage = {
   producer: Address;
@@ -274,76 +319,110 @@ export function buildSocialOnchainAttester(
 
   return {
     async issue({ attestation }) {
-      const { schemaUID, registrationTxHash } = await ensureSchema({
-        publicClient,
-        walletClient,
-        account,
-        schemaRegistryAddress,
-        schema,
-        resolver,
-        revocable,
-      });
-      const easRequest = {
-        schema: schemaUID,
-        data: {
-          recipient: attestation.producer,
-          expirationTime: BigInt(attestation.expiresAt),
-          revocable,
-          refUID: ZERO_BYTES32,
-          data: encodeSocialAttestationData(attestation),
-          value: 0n,
-        },
-      };
-      const simulation = await publicClient.simulateContract({
-        account,
-        address: easAddress,
-        abi: EAS_ABI,
-        functionName: "attest",
-        args: [easRequest],
-        value: 0n,
-      });
-      const easTxHash = await walletClient.writeContract(simulation.request);
-      const easReceipt = await publicClient.waitForTransactionReceipt({
-        hash: easTxHash,
-      });
-      const attestationUID = readEasAttestationUID({
-        logs: easReceipt.logs,
-        recipient: attestation.producer,
-        attester: account.address,
-        schemaUID,
-      });
+      let easTransactionSubmitted = false;
+      try {
+        if (relayRegistry && config.registryAddress) {
+          const currentNonce = await publicClient.readContract({
+            address: config.registryAddress,
+            abi: PRODUCER_REGISTRY_SOCIAL_ABI,
+            functionName: "socialNonce",
+            args: [attestation.producer],
+          });
+          if (currentNonce !== BigInt(attestation.nonce)) {
+            throw new Error("Social attestation nonce is stale");
+          }
+          const active = await publicClient.readContract({
+            address: config.registryAddress,
+            abi: PRODUCER_REGISTRY_SOCIAL_ABI,
+            functionName: "hasActiveSocialAttestation",
+            args: [attestation.producer],
+          });
+          if (active) {
+            throw new Error("Producer already has an active social attestation");
+          }
+        }
 
-      const nextAttestation = {
-        ...attestation,
-        attestationUID,
-      };
-      let registry: SocialOnchainResult["registry"] = null;
-      if (relayRegistry && config.registryAddress) {
-        const registryTxHash = await walletClient.writeContract({
-          address: config.registryAddress,
-          abi: PRODUCER_REGISTRY_SOCIAL_ABI,
-          functionName: "setSocialAttestation",
-          args: [toRegistryAttestation(nextAttestation)],
-        });
-        await publicClient.waitForTransactionReceipt({ hash: registryTxHash });
-        registry = {
-          address: config.registryAddress,
-          txHash: registryTxHash,
-        };
-      }
+        if (config.maxGasPriceWei !== undefined) {
+          const gasPrice = await publicClient.getGasPrice();
+          if (gasPrice > config.maxGasPriceWei) {
+            throw new Error("Current gas price exceeds the social attestation limit");
+          }
+        }
 
-      return {
-        eas: {
-          schema,
-          schemaUID,
-          attestationUID,
-          txHash: easTxHash,
-          address: easAddress,
+        const { schemaUID, registrationTxHash } = await ensureSchema({
+          publicClient,
+          walletClient,
+          account,
           schemaRegistryAddress,
-          registrationTxHash,
-        },
-        registry,
-      };
+          schema,
+          resolver,
+          revocable,
+        });
+        const easRequest = {
+          schema: schemaUID,
+          data: {
+            recipient: attestation.producer,
+            expirationTime: BigInt(attestation.expiresAt),
+            revocable,
+            refUID: ZERO_BYTES32,
+            data: encodeSocialAttestationData(attestation),
+            value: 0n,
+          },
+        };
+        const simulation = await publicClient.simulateContract({
+          account,
+          address: easAddress,
+          abi: EAS_ABI,
+          functionName: "attest",
+          args: [easRequest],
+          value: 0n,
+        });
+        const easTxHash = await walletClient.writeContract(simulation.request);
+        easTransactionSubmitted = true;
+        const easReceipt = await publicClient.waitForTransactionReceipt({
+          hash: easTxHash,
+        });
+        const attestationUID = readEasAttestationUID({
+          logs: easReceipt.logs,
+          recipient: attestation.producer,
+          attester: account.address,
+          schemaUID,
+        });
+
+        const nextAttestation = {
+          ...attestation,
+          attestationUID,
+        };
+        let registry: SocialOnchainResult["registry"] = null;
+        if (relayRegistry && config.registryAddress) {
+          const registryTxHash = await walletClient.writeContract({
+            address: config.registryAddress,
+            abi: PRODUCER_REGISTRY_SOCIAL_ABI,
+            functionName: "setSocialAttestation",
+            args: [toRegistryAttestation(nextAttestation)],
+          });
+          await publicClient.waitForTransactionReceipt({ hash: registryTxHash });
+          registry = {
+            address: config.registryAddress,
+            txHash: registryTxHash,
+          };
+        }
+
+        return {
+          eas: {
+            schema,
+            schemaUID,
+            attestationUID,
+            txHash: easTxHash,
+            address: easAddress,
+            schemaRegistryAddress,
+            registrationTxHash,
+          },
+          registry,
+        };
+      } catch (cause) {
+        throw new SocialOnchainIssueError(cause, easTransactionSubmitted);
+      }
     },
   };
 }
@@ -360,18 +439,15 @@ export function registerSocialVerificationRoutes(
   app: FastifyInstance,
   deps: SocialVerificationDeps,
 ) {
-  const fetchText = deps.fetchText ?? ((url: string) => fetch(url, {
-    headers: {
-      accept: "text/html,text/plain,*/*",
-      "user-agent": "GrowFiSocialVerifier/1.0 (+https://growfi.dev)",
-    },
-  }));
+  const fetchText = deps.fetchText ?? ((url: string) =>
+    fetchPublicHttpUrl(url, deps.resolveHostname));
   const challengeTtlMs = deps.challengeTtlMs ?? 15 * 60 * 1000;
   const attestationTtlSeconds = deps.attestationTtlSeconds ?? 180 * 24 * 60 * 60;
 
   app.post<{
     Body: {
       wallet: string;
+      campaign?: string;
       platform: string;
       handle?: string;
       profileUrl?: string;
@@ -383,17 +459,26 @@ export function registerSocialVerificationRoutes(
 
     const parsed = parseChallengeRequest(req.body);
     if ("error" in parsed) return reply.status(400).send({ error: parsed.error });
+    const eligibilityError = await validateProducerEligibility(parsed, deps);
+    if (eligibilityError) {
+      return reply.status(eligibilityError.status).send({ error: eligibilityError.error });
+    }
 
     const now = Date.now();
     const nonce = randomBytes(16).toString("hex");
     const code = `GROWFI-SOCIAL-${parsed.wallet}-${nonce}`;
-    const payload: ChallengePayload = {
+    const challengeBase = {
       ...parsed,
+      chainId: deps.chainId ?? 1,
+      registryAddress: deps.registryAddress ?? null,
       nonce,
       issuedAt: now,
       expiresAt: now + challengeTtlMs,
       code,
-      message: `GrowFi social verification: ${code}`,
+    };
+    const payload: ChallengePayload = {
+      ...challengeBase,
+      message: buildWalletProofMessage(challengeBase),
     };
 
     return {
@@ -405,6 +490,7 @@ export function registerSocialVerificationRoutes(
   app.post<{
     Body: {
       wallet: string;
+      campaign?: string;
       platform: string;
       handle?: string;
       profileUrl?: string;
@@ -415,6 +501,7 @@ export function registerSocialVerificationRoutes(
       code: string;
       message: string;
       challenge: string;
+      walletSignature: Hex;
       onchainNonce: string | number;
     };
   }>("/api/social-verification/verify", async (req, reply) => {
@@ -424,6 +511,10 @@ export function registerSocialVerificationRoutes(
 
     const parsed = parseChallengeRequest(req.body);
     if ("error" in parsed) return reply.status(400).send({ error: parsed.error });
+    const eligibilityError = await validateProducerEligibility(parsed, deps);
+    if (eligibilityError) {
+      return reply.status(eligibilityError.status).send({ error: eligibilityError.error });
+    }
 
     const proofUrl = normalizeHttpUrl(req.body.proofUrl);
     if (!proofUrl) return reply.status(400).send({ error: "Invalid proofUrl" });
@@ -432,6 +523,8 @@ export function registerSocialVerificationRoutes(
 
     const challengePayload: ChallengePayload = {
       ...parsed,
+      chainId: deps.chainId ?? 1,
+      registryAddress: deps.registryAddress ?? null,
       nonce: String(req.body.nonce ?? ""),
       issuedAt: Number(req.body.issuedAt),
       expiresAt: Number(req.body.expiresAt),
@@ -445,12 +538,43 @@ export function registerSocialVerificationRoutes(
       return reply.status(400).send({ error: "Social verification challenge expired" });
     }
 
-    const proof = await fetchText(proofUrl);
+    const walletSignature = String(req.body.walletSignature ?? "") as Hex;
+    const walletProofValid = await verifyMessage({
+      address: parsed.wallet,
+      message: challengePayload.message,
+      signature: walletSignature,
+    }).catch(() => false);
+    if (!walletProofValid) {
+      return reply.status(401).send({ error: "Wallet signature does not match verification wallet" });
+    }
+
+    if (deps.fetchText) {
+      try {
+        await assertPublicHttpUrl(proofUrl, deps.resolveHostname);
+      } catch {
+        return reply.status(400).send({ error: "Proof URL must resolve to a public HTTP(S) address" });
+      }
+    }
+
+    let proof: Response;
+    try {
+      proof = await fetchText(proofUrl);
+    } catch {
+      return reply.status(502).send({ error: "Unable to fetch social verification proof" });
+    }
+    if (proof.status >= 300 && proof.status < 400) {
+      return reply.status(400).send({ error: "Proof URL redirects are not allowed" });
+    }
     if (!proof.ok) {
       return reply.status(400).send({ error: `Proof URL returned HTTP ${proof.status}` });
     }
 
-    const text = await proof.text();
+    let text: string;
+    try {
+      text = await readBoundedText(proof);
+    } catch {
+      return reply.status(400).send({ error: "Proof response exceeds the allowed size" });
+    }
     if (!proofTextContainsChallenge(text, challengePayload)) {
       return reply.status(400).send({
         error: "Proof URL does not contain the GrowFi verification code",
@@ -487,12 +611,38 @@ export function registerSocialVerificationRoutes(
       attestationUID: ZERO_BYTES32,
     };
 
+    const reservationId = keccak256(
+      toBytes(`${deps.chainId ?? 1}:${parsed.wallet.toLowerCase()}:${onchainNonce}`),
+    );
+    if (deps.consumeChallenge) {
+      let reserved: boolean;
+      try {
+        reserved = await deps.consumeChallenge(reservationId);
+      } catch (err) {
+        req.log.error({ err }, "social verification challenge reservation failed");
+        return reply.status(503).send({ error: "Unable to reserve social verification challenge" });
+      }
+      if (!reserved) {
+        return reply.status(409).send({ error: "Social verification challenge already used" });
+      }
+    }
+
     let onchainResult: SocialOnchainResult | null = null;
     if (deps.onchainAttester) {
       try {
         onchainResult = await deps.onchainAttester.issue({ attestation });
         attestation.attestationUID = onchainResult.eas.attestationUID;
       } catch (err) {
+        if (
+          deps.releaseChallenge &&
+          (!(err instanceof SocialOnchainIssueError) || !err.easTransactionSubmitted)
+        ) {
+          try {
+            await deps.releaseChallenge(reservationId);
+          } catch (releaseErr) {
+            req.log.error({ err: releaseErr }, "social verification challenge release failed");
+          }
+        }
         req.log.error({ err }, "social verification onchain attestation failed");
         return reply.status(502).send({
           error: "Unable to publish social attestation on-chain",
@@ -545,11 +695,13 @@ export function registerSocialVerificationRoutes(
 
 function parseChallengeRequest(body: {
   wallet?: string;
+  campaign?: string;
   platform?: string;
   handle?: string;
   profileUrl?: string;
-}): Omit<ChallengePayload, "nonce" | "issuedAt" | "expiresAt" | "code" | "message"> | { error: string } {
+}): ChallengeRequestPayload | { error: string } {
   if (!body.wallet || !isAddress(body.wallet)) return { error: "Invalid wallet" };
+  if (body.campaign && !isAddress(body.campaign)) return { error: "Invalid campaign" };
   const platform = normalizePlatform(body.platform);
   if (!platform) return { error: "Invalid platform" };
   if (COMING_SOON_SOCIAL_PLATFORMS.has(platform)) {
@@ -573,6 +725,7 @@ function parseChallengeRequest(body: {
   }
   return {
     wallet: getAddress(body.wallet),
+    campaign: body.campaign ? getAddress(body.campaign) : null,
     platform,
     handle,
     profileUrl,
@@ -609,7 +762,7 @@ function inferProfileUrl(platform: string, handle: string): string | null {
 
 function validateProofUrlForPlatform(
   proofUrl: string,
-  input: Omit<ChallengePayload, "nonce" | "issuedAt" | "expiresAt" | "code" | "message">,
+  input: ChallengeRequestPayload,
 ): string | null {
   const proof = new URL(proofUrl);
   const proofHost = normalizedHost(proof.hostname);
@@ -699,6 +852,9 @@ function verifyChallenge(payload: ChallengePayload, challenge: string, secret: s
 function challengeCanonical(payload: ChallengePayload) {
   return {
     wallet: payload.wallet.toLowerCase(),
+    campaign: payload.campaign?.toLowerCase() ?? null,
+    chainId: payload.chainId,
+    registryAddress: payload.registryAddress?.toLowerCase() ?? null,
     platform: payload.platform,
     handle: payload.handle,
     profileUrl: payload.profileUrl,
@@ -708,6 +864,46 @@ function challengeCanonical(payload: ChallengePayload) {
     code: payload.code,
     message: payload.message,
   };
+}
+
+function buildWalletProofMessage(
+  payload: Omit<ChallengePayload, "message">,
+): string {
+  return [
+    "GrowFi social verification",
+    `Wallet: ${payload.wallet}`,
+    `Campaign: ${payload.campaign ?? "none"}`,
+    `Chain ID: ${payload.chainId}`,
+    `Registry: ${payload.registryAddress ?? "none"}`,
+    `Platform: ${payload.platform}`,
+    `Profile: ${payload.profileUrl}`,
+    `Nonce: ${payload.nonce}`,
+    `Issued at: ${payload.issuedAt}`,
+    `Expires at: ${payload.expiresAt}`,
+    `Code: ${payload.code}`,
+  ].join("\n");
+}
+
+async function validateProducerEligibility(
+  payload: Pick<ChallengePayload, "wallet" | "campaign">,
+  deps: SocialVerificationDeps,
+): Promise<{ status: 400 | 403 | 503; error: string } | null> {
+  if (!deps.onchainAttester) return null;
+  if (!payload.campaign) {
+    return { status: 400, error: "Campaign is required for sponsored social verification" };
+  }
+  if (!deps.campaignProducer) {
+    return { status: 503, error: "Campaign producer verification is not configured" };
+  }
+  try {
+    const producer = await deps.campaignProducer(payload.campaign);
+    if (producer.toLowerCase() !== payload.wallet.toLowerCase()) {
+      return { status: 403, error: "Wallet is not the producer of this campaign" };
+    }
+  } catch {
+    return { status: 400, error: "Unable to verify campaign producer" };
+  }
+  return null;
 }
 
 function proofTextContainsChallenge(text: string, payload: ChallengePayload): boolean {

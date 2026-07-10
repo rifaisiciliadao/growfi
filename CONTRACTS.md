@@ -1,61 +1,156 @@
 # GrowFi — Deployments
 
-## Ethereum Mainnet (chain 1) — v4 audit-hardened launch
+## Ethereum Mainnet (chain 1) — current production state
 
-**Deployed:** 2026-06-16 · **Audit implementation patch:** block `25328977` · **Latest module rollout:** block `25480106` · **Deployer/owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` · **Factory deploy block:** `25328624`
+**Factory deployed:** 2026-06-16 at block `25328624` · **Security rollout:**
+2026-07-10, blocks `25501399`-`25501432` · **On-chain inventory verified at
+block:** `25501436` ·
+**Owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55`
 
-> Fresh full v4 deploy on Ethereum Mainnet, followed before any campaign
-> existed by an implementation-pointer patch to the merged 2026-06
-> audit-hardened build. No campaigns were seeded during launch; the first
-> production campaign must be created manually through the app. Real USDC is
-> the only enabled payment/stablecoin policy at launch. UGraph serves the
-> mainnet index at `https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
->
-> No production Safe address is currently configured in the admin app. Current
-> FeeSplitter operations receiver is still the deployer
-> `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` until it is moved on-chain.
-> Factory/protocol owner remains the deployer during the launch phase.
->
-> Latest module rollout registered the split, direct issue, and project update
-> modules, then updated the default SaleClassic and Collateral implementations
-> for newly created campaigns. Existing campaign module slots were not replaced.
+The values in this section are a live-state inventory, not deployment-script
+defaults. Proxy implementations and admins were read directly from the
+ERC-1967 slots; Factory pointers, module approvals, defaults, campaign stacks,
+and attached modules were read from contract state. Runtime code hashes are
+stored in `deployments/mainnet.json`. Run
+`npm --prefix platform/backend run verify:mainnet-addresses` to compare that
+manifest, this document, app configuration, and the current chain state.
 
-### Core v4 + GROW
+The owner is an EOA, not a Safe. All ProxyAdmins listed below are owned by the
+same EOA. The UGraph endpoint is
+`https://ugraph.growfi.dev/subgraphs/growfi/latest/gn`.
 
-| Contract | Address |
+### July 2026 security rollout transaction ledger
+
+All 22 transactions succeeded on Ethereum mainnet. The sequence was executed
+serially so each state transition was confirmed before the next one was sent.
+
+| # | Block | Action | Transaction |
+|---:|---:|---|---|
+| 1 | 25501399 | Deploy Factory implementation | [`0xfe71461aff53e1f6b4ccb080f94199cb9553f2a9bc842a46fa54d1bea9d2b3d1`](https://etherscan.io/tx/0xfe71461aff53e1f6b4ccb080f94199cb9553f2a9bc842a46fa54d1bea9d2b3d1) |
+| 2 | 25501400 | Deploy Treasury implementation | [`0xc13850c03234f8c7ff8a6fa3d1e7825e72bbc5ea4376881d67105bc5498ab297`](https://etherscan.io/tx/0xc13850c03234f8c7ff8a6fa3d1e7825e72bbc5ea4376881d67105bc5498ab297) |
+| 3 | 25501401 | Deploy StakingVault implementation | [`0x92e9775c6b6db41e32568337bd72d941466c9b7669647071d71bdf13f06e4e53`](https://etherscan.io/tx/0x92e9775c6b6db41e32568337bd72d941466c9b7669647071d71bdf13f06e4e53) |
+| 4 | 25501402 | Deploy SaleClassic implementation | [`0xae4ad387b598603f74f0464939ff20f6b864f0f78a315da6a4067499e54f8579`](https://etherscan.io/tx/0xae4ad387b598603f74f0464939ff20f6b864f0f78a315da6a4067499e54f8579) |
+| 5 | 25501404 | Upgrade Factory proxy | [`0xb9ddf433191407ace10c1d2d2337251b1b6e085fc334b9e0e655d2b43729f7d0`](https://etherscan.io/tx/0xb9ddf433191407ace10c1d2d2337251b1b6e085fc334b9e0e655d2b43729f7d0) |
+| 6 | 25501408 | Pause campaign 0 | [`0x8a9ce83deaa24432e9a78a5312d68a9ee69c6a9fb8abe34c6648d79068348396`](https://etherscan.io/tx/0x8a9ce83deaa24432e9a78a5312d68a9ee69c6a9fb8abe34c6648d79068348396) |
+| 7 | 25501409 | Pause campaign 1 | [`0x21af24f467294c52348486d0bb86c503add5d743b60ed86c21548f5c2dbfcfc9`](https://etherscan.io/tx/0x21af24f467294c52348486d0bb86c503add5d743b60ed86c21548f5c2dbfcfc9) |
+| 8 | 25501410 | Upgrade Treasury proxy | [`0x7f80c7e2ed6e616e6013cdd5c2d24d68b4e70c25229cba5cd248d24cee37e4cb`](https://etherscan.io/tx/0x7f80c7e2ed6e616e6013cdd5c2d24d68b4e70c25229cba5cd248d24cee37e4cb) |
+| 9 | 25501411 | Set future StakingVault implementation | [`0xf50ece9b3985b38b33cb6232748a10bb46ebec1b8ba3254b508f4473febce330`](https://etherscan.io/tx/0xf50ece9b3985b38b33cb6232748a10bb46ebec1b8ba3254b508f4473febce330) |
+| 10 | 25501412 | Update SaleClassic selectors | [`0x5ceff447006d2660c11513448a18a8dd9d6a8b0bd09de65067a20b7b180ef80a`](https://etherscan.io/tx/0x5ceff447006d2660c11513448a18a8dd9d6a8b0bd09de65067a20b7b180ef80a) |
+| 11 | 25501413 | Approve new SaleClassic implementation | [`0xa382e6d40bce333c5bef9de4312e2bd6afa19d66d35df8e773584dbb1f60bf5f`](https://etherscan.io/tx/0xa382e6d40bce333c5bef9de4312e2bd6afa19d66d35df8e773584dbb1f60bf5f) |
+| 12 | 25501414 | Update Factory default modules | [`0xc02d87efc6223b651e19a57b7e2d6e904f33cf340d56ecf640bde2745cb5f867`](https://etherscan.io/tx/0xc02d87efc6223b651e19a57b7e2d6e904f33cf340d56ecf640bde2745cb5f867) |
+| 13 | 25501421 | Upgrade campaign 0 StakingVault | [`0xcd652e18e090b58fa99124df540b1c08af1c7b337ca9306f5c813d279dbddd85`](https://etherscan.io/tx/0xcd652e18e090b58fa99124df540b1c08af1c7b337ca9306f5c813d279dbddd85) |
+| 14 | 25501422 | Initialize campaign 0 season stake | [`0x93c04b9375d621956037b30b62806d4ca632773a7dc4daf879c9a01098d945e8`](https://etherscan.io/tx/0x93c04b9375d621956037b30b62806d4ca632773a7dc4daf879c9a01098d945e8) |
+| 15 | 25501424 | Replace campaign 0 SaleClassic | [`0x552a76ace504b8fcd7c07b7357c1cce66da44c353f1f32ccd5406fa2cf264bbd`](https://etherscan.io/tx/0x552a76ace504b8fcd7c07b7357c1cce66da44c353f1f32ccd5406fa2cf264bbd) |
+| 16 | 25501425 | Upgrade campaign 1 StakingVault | [`0x49b45f21b2211d703cdf8f82790d4ad32f353e0801a988ab7c32775a00b03d58`](https://etherscan.io/tx/0x49b45f21b2211d703cdf8f82790d4ad32f353e0801a988ab7c32775a00b03d58) |
+| 17 | 25501426 | Initialize campaign 1 season stake | [`0x4e6a2d0a85116272b9f7443e6d92a84bf2763f2a56474fa7b4c6b801f745a314`](https://etherscan.io/tx/0x4e6a2d0a85116272b9f7443e6d92a84bf2763f2a56474fa7b4c6b801f745a314) |
+| 18 | 25501427 | Replace campaign 1 SaleClassic | [`0x29379e0d8de2e85de8c890b187dd1708dbf864a3f8ed6f18de1f7250e5edfbad`](https://etherscan.io/tx/0x29379e0d8de2e85de8c890b187dd1708dbf864a3f8ed6f18de1f7250e5edfbad) |
+| 19 | 25501429 | Revoke campaign 0 prior SaleClassic | [`0xe6e14ca629001efd3fd677f7e2c57cc84c5aff4bac110ebd6cd2d94f998f2d0c`](https://etherscan.io/tx/0xe6e14ca629001efd3fd677f7e2c57cc84c5aff4bac110ebd6cd2d94f998f2d0c) |
+| 20 | 25501430 | Revoke campaign 1 prior SaleClassic | [`0x7717ac9890d00482f57a1264ea6afab8fa670bedc383c2bbec4475b2eddcdde5`](https://etherscan.io/tx/0x7717ac9890d00482f57a1264ea6afab8fa670bedc383c2bbec4475b2eddcdde5) |
+| 21 | 25501431 | Unpause campaign 0 | [`0xdaaab825a70605eab99256158f58c63f210568d0816acaa8e63a19d83918d352`](https://etherscan.io/tx/0xdaaab825a70605eab99256158f58c63f210568d0816acaa8e63a19d83918d352) |
+| 22 | 25501432 | Unpause campaign 1 | [`0x8bc87548cf81d829747c29645139176ffb5c12c624e76a89229c1817c5f47891`](https://etherscan.io/tx/0x8bc87548cf81d829747c29645139176ffb5c12c624e76a89229c1817c5f47891) |
+
+### Authority, registries, and external infrastructure
+
+| Role | Address | State |
+|---|---|---|
+| Owner EOA | `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55` | Factory owner and every listed ProxyAdmin owner |
+| CampaignFactory proxy | `0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2` | Current production Factory |
+| CampaignFactory implementation | `0xC591c1c9F3269368457f06540b7EAC06a8A8d269` | July 2026 security upgrade |
+| CampaignFactory ProxyAdmin | `0xa65cFB968Ea5b02e38602f5eebFe157BaE6b1473` | Owner EOA controlled |
+| CampaignRegistry | `0xA3AEb95Ff4555E266aa1366000204a75FaD4142B` | Non-proxy registry |
+| Legacy ProducerRegistry | `0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5` | Immutable pre-social registry; retained until V2 rollout |
+| EAS | `0xA1207F3BBa224E2c9c3c6D5aF63D0eb1582Ce587` | Canonical Ethereum mainnet EAS; `getSchemaRegistry()` verified on-chain |
+| EAS SchemaRegistry | `0xA7b39296258348C78294F95B872b282326A97BDF` | Canonical Ethereum mainnet registry |
+
+### Factory implementation pointers for new campaigns
+
+| Component | Implementation |
 |---|---|
-| CampaignFactory (proxy) | [`0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2`](https://etherscan.io/address/0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2) |
-| CampaignFactory impl | [`0x3EEeD505C21C945845Fb8f57917B035532E0Ac87`](https://etherscan.io/address/0x3EEeD505C21C945845Fb8f57917B035532E0Ac87) |
-| Campaign impl | [`0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b`](https://etherscan.io/address/0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b) |
-| CampaignToken impl | [`0x53b2c6C52363C36BF35D728A15a36DFC0882c11b`](https://etherscan.io/address/0x53b2c6C52363C36BF35D728A15a36DFC0882c11b) |
-| StakingVault impl | [`0xA9Ae8956B199A2f8a087584cA3B7cf9Fca5066D1`](https://etherscan.io/address/0xA9Ae8956B199A2f8a087584cA3B7cf9Fca5066D1) |
-| YieldToken impl | [`0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20`](https://etherscan.io/address/0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20) |
-| HarvestManager impl | [`0x852987797CCB62735B9880CEaE3251e948bcBA50`](https://etherscan.io/address/0x852987797CCB62735B9880CEaE3251e948bcBA50) |
-| SaleClassicModule impl | [`0xa1f01A442359E596D8a98aa7c5595016CeBe193a`](https://etherscan.io/address/0xa1f01A442359E596D8a98aa7c5595016CeBe193a) |
-| CollateralModule impl | [`0x1e6D432813BA9B4477ACCC87788bf461c1A55B02`](https://etherscan.io/address/0x1e6D432813BA9B4477ACCC87788bf461c1A55B02) |
-| RepaymentModule impl | [`0x34326058FD53c773Fd7E67a20af17d73ae4d793A`](https://etherscan.io/address/0x34326058FD53c773Fd7E67a20af17d73ae4d793A) |
-| EcommerceModule impl | [`0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c`](https://etherscan.io/address/0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c) |
-| DebtRestructuringModule impl | [`0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a`](https://etherscan.io/address/0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a) |
-| CampaignProceedsSplitModule impl | [`0xb57073310911a902b082d4A7d0CD7dA26e27775D`](https://etherscan.io/address/0xb57073310911a902b082d4A7d0CD7dA26e27775D) |
-| DirectIssueModule impl | [`0x236855EAFb5fbe864E3557f8b621950cBB46d816`](https://etherscan.io/address/0x236855EAFb5fbe864E3557f8b621950cBB46d816) |
-| ProjectUpdatesModule impl | [`0x43FD484D3e12071a53181c3727354530230bEFCf`](https://etherscan.io/address/0x43FD484D3e12071a53181c3727354530230bEFCf) |
-| CampaignRegistry | [`0xA3AEb95Ff4555E266aa1366000204a75FaD4142B`](https://etherscan.io/address/0xA3AEb95Ff4555E266aa1366000204a75FaD4142B) |
-| ProducerRegistry | [`0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5`](https://etherscan.io/address/0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5) |
-| GrowfiToken (proxy) | [`0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725`](https://etherscan.io/address/0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725) |
-| GrowfiToken impl | [`0xdB8Da814194ADbe8E4fe80Cff87d10f483623D1E`](https://etherscan.io/address/0xdB8Da814194ADbe8E4fe80Cff87d10f483623D1E) |
-| GrowfiTreasury (proxy) | [`0x47ea5710ea674f5D653A59c96836E2d20288813a`](https://etherscan.io/address/0x47ea5710ea674f5D653A59c96836E2d20288813a) |
-| GrowfiTreasury impl | [`0x36DE403428280C10e7332534ae0f80e01FFa5982`](https://etherscan.io/address/0x36DE403428280C10e7332534ae0f80e01FFa5982) |
-| GrowfiMinter (proxy) | [`0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B`](https://etherscan.io/address/0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B) |
-| GrowfiFeeSplitter (proxy) | [`0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f`](https://etherscan.io/address/0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f) |
-| GrowfiStakingPool (proxy) | [`0xD4f6c69457F34332D3cd9ea287F69a91e84a803A`](https://etherscan.io/address/0xD4f6c69457F34332D3cd9ea287F69a91e84a803A) |
+| Campaign | `0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b` |
+| CampaignToken | `0x53b2c6C52363C36BF35D728A15a36DFC0882c11b` |
+| StakingVault | `0xe9a9D14227B1bBe6c41de8002098Ef14F4768CEa` |
+| YieldToken | `0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20` |
+| HarvestManager | `0x852987797CCB62735B9880CEaE3251e948bcBA50` |
 
-### Mainnet stablecoin config
+### GROW system proxies
 
-| Token | Address | Decimals | Feed | Treasury accepted |
-|---|---|---:|---|:-:|
-| USDC | [`0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48`](https://etherscan.io/address/0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48) | 6 | [`0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6`](https://etherscan.io/address/0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6) | yes |
+| Contract | Proxy | Current implementation | ProxyAdmin |
+|---|---|---|---|
+| GrowfiToken | `0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725` | `0xdB8Da814194ADbe8E4fe80Cff87d10f483623D1E` | `0x161395596Bf49c76127024aae445098238822f58` |
+| GrowfiMinter | `0x3D44d8c9D078f3aD92CacE67C09DdE9e8172A98B` | `0x9b45d7cbD6D4Ca54E1221Fb1f8b44E13BD92d66B` | `0x09ea0284C08Dd2864aA1B02d229E4b8417d2868a` |
+| GrowfiTreasury | `0x47ea5710ea674f5D653A59c96836E2d20288813a` | `0xAF3c5Bc33E57e0f37723a72B0D2cA1D1F7Ef3594` | `0x38226B48b60cbddca6Fc9DdA94684850468060B9` |
+| GrowfiFeeSplitter | `0x18b1E79F7b7a802f75e7F2261a9f7f2Bfbcd831f` | `0x484d5110C280da9F135e85a1E722C4908BafbB08` | `0x90552b96A709EbabD2Ca224394B8424dcC873f5F` |
+| GrowfiStakingPool | `0xD4f6c69457F34332D3cd9ea287F69a91e84a803A` | `0xd7C37b9d844b48f886aAA8a7eba237bd337980A1` | `0x406933B2309771B14490d7e002722fbb1eDCdBDC` |
 
-Treasury stablecoin config: scale `1e12`, heartbeat `86400`, depeg band
+### Module implementation state
+
+Factory approval controls new module attachments. Revocation does not disable a
+module already attached to a campaign.
+
+| Module | Implementation | Factory approved | Default | Existing attachment |
+|---|---|:-:|:-:|---|
+| SaleClassic current | `0x3C5077c5eE8cB22886352f331D105d770693ec5D` | yes | yes | Campaigns 0 and 1 |
+| SaleClassic retired A | `0x82dea032125FB620E104BF4837c3dEE43C52444E` | no | no | none after security rollout |
+| SaleClassic retired B | `0xa1f01A442359E596D8a98aa7c5595016CeBe193a` | no | no | none after security rollout |
+| Collateral current | `0x1e6D432813BA9B4477ACCC87788bf461c1A55B02` | yes | yes | Campaign 1 |
+| Collateral earlier approved | `0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6` | yes | no | Campaign 0 |
+| Repayment | `0x34326058FD53c773Fd7E67a20af17d73ae4d793A` | yes | no | none |
+| Ecommerce current | `0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c` | yes | no | none |
+| Ecommerce retired | `0x881883a9fd1c296D198EE9937603E8Eec1AE5E70` | no | no | Campaign 0 |
+| DebtRestructuring | `0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a` | yes | no | none |
+| CampaignProceedsSplit | `0xb57073310911a902b082d4A7d0CD7dA26e27775D` | yes | no | Campaign 1 |
+| DirectIssue | `0x236855EAFb5fbe864E3557f8b621950cBB46d816` | yes | no | Campaign 1 |
+| ProjectUpdates | `0x43FD484D3e12071a53181c3727354530230bEFCf` | yes | no | Campaign 1 |
+
+### Existing campaign 0
+
+Producer: `0xE6c30AD5AeE7AD22e9F39D51d67667587cdD05A1`
+
+| Component | Proxy | Current implementation | ProxyAdmin |
+|---|---|---|---|
+| Campaign | `0x3Cae6813bbA201a1953Caac00A70f3B4e6DAB23f` | `0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b` | `0x5B49CeeC63b69f81D60702511fcC75Cb4710ac5a` |
+| CampaignToken | `0x64CA37e2ADbd27578805D41eE2F93a20B709ee37` | `0x53b2c6C52363C36BF35D728A15a36DFC0882c11b` | `0x599a55Ee0b7C0E2de8C27125F20639B43Fe51ae3` |
+| YieldToken | `0x63862751fb0E30b8eb779078EdE708D4D020bf24` | `0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20` | `0x1D50a71b8b9946018E24605D437671eB14Ef9681` |
+| StakingVault | `0x2EA8d789B815d5AD34154f622B5dD0A1e94DA060` | `0xe9a9D14227B1bBe6c41de8002098Ef14F4768CEa` | `0x7F810DC8E3D19D6850DcE3d76d4EcaB5dA0F0Ff9` |
+| HarvestManager | `0x395FBf71eE5a943a426583F9BBC880847f8e3DE2` | `0x852987797CCB62735B9880CEaE3251e948bcBA50` | `0x1f842639590969180CFeBEAFEF58CBC28f5508D8` |
+
+Attached modules: SaleClassic `0x3C5077c5eE8cB22886352f331D105d770693ec5D`,
+Collateral `0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6`, and Ecommerce
+`0x881883a9fd1c296D198EE9937603E8Eec1AE5E70`.
+The campaign, vault, and harvest manager are unpaused. Season stake accounting
+is initialized; `currentSeasonStaked` and `totalStaked` both equal `49,900 CT`.
+
+### Existing campaign 1
+
+Producer: `0xE6c30AD5AeE7AD22e9F39D51d67667587cdD05A1`
+
+| Component | Proxy | Current implementation | ProxyAdmin |
+|---|---|---|---|
+| Campaign | `0xd9dC6494FD749a015EA682DA49858aBbC3Ac9e14` | `0xE2c24D56b90BAe3Db93E4a7E4c5B46d91545020b` | `0xCd3b98329149840B05FF06f517a815424F639C08` |
+| CampaignToken | `0xea70BBbfA4570346875E74f5F297C93c3facc28E` | `0x53b2c6C52363C36BF35D728A15a36DFC0882c11b` | `0xec2337adb74485D9d593C1764Ac85Bd7de6AD33A` |
+| YieldToken | `0xb727BD9F445CA98104F64e4ba3Cd8Afe4CE695A0` | `0xfC5e8518a0C6cb87A7a98293f6Ed0E87fCe2aC20` | `0xC3Ca7af3750afE727D956E46ca810Dd44c1bc484` |
+| StakingVault | `0xd54A3C5D68CFdbaE7e68aE4DC3787Dbe37237EE8` | `0xe9a9D14227B1bBe6c41de8002098Ef14F4768CEa` | `0x627CEB880705Ad2fe04f81B63d879555ec1382Dc` |
+| HarvestManager | `0x45a5e2a94dfb65257d1a3455d31f050aD38d0a04` | `0x852987797CCB62735B9880CEaE3251e948bcBA50` | `0x5f62037E3f30950b97358a5f9E78dE4e36F5384E` |
+
+Attached modules: SaleClassic `0x3C5077c5eE8cB22886352f331D105d770693ec5D`,
+Collateral `0x1e6D432813BA9B4477ACCC87788bf461c1A55B02`, CampaignProceedsSplit
+`0xb57073310911a902b082d4A7d0CD7dA26e27775D`, DirectIssue
+`0x236855EAFb5fbe864E3557f8b621950cBB46d816`, and ProjectUpdates
+`0x43FD484D3e12071a53181c3727354530230bEFCf`.
+The campaign, vault, and harvest manager are unpaused. Season stake accounting
+is initialized; `currentSeasonStaked` and `totalStaked` both equal
+`133.266666666666666666 CT`.
+
+### Mainnet assets and oracle
+
+| Asset or service | Address | Protocol state |
+|---|---|---|
+| USDC | `0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48` | Factory/Treasury enabled; 6 decimals |
+| USDT | `0xdAC17F958D2ee523a2206206994597C13D831ec7` | Frontend reference only; not Factory enabled |
+| DAI | `0x6B175474E89094C44Da98b954EedeAC495271d0F` | Frontend reference only; not Factory enabled |
+| Chainlink USDC/USD | `0x8fFfFfd4AfB6115b954Bd326cbe7B4BA576818f6` | Treasury USDC feed |
+
+Treasury USDC config: scale `1e12`, heartbeat `86400`, depeg band
 `9500`-`10500`. Factory `minSeasonDuration` is `2592000` seconds (30 days).
 
 ### Frontend env (Ethereum Mainnet)
@@ -64,6 +159,8 @@ Treasury stablecoin config: scale `1e12`, heartbeat `86400`, depeg band
 NEXT_PUBLIC_CHAIN_ID=1
 NEXT_PUBLIC_FACTORY_ADDRESS=0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2
 NEXT_PUBLIC_USDC_ADDRESS=0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+NEXT_PUBLIC_USDT_ADDRESS=0xdAC17F958D2ee523a2206206994597C13D831ec7
+NEXT_PUBLIC_DAI_ADDRESS=0x6B175474E89094C44Da98b954EedeAC495271d0F
 NEXT_PUBLIC_REGISTRY_ADDRESS=0xA3AEb95Ff4555E266aa1366000204a75FaD4142B
 NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS=0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5
 NEXT_PUBLIC_REPAYMENT_IMPL=0x34326058FD53c773Fd7E67a20af17d73ae4d793A

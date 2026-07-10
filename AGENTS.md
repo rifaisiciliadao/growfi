@@ -13,7 +13,9 @@ attestations in the header as a clickable handle pill with the platform icon.
 The link must prefer `Producer.socialProfileUrl`, then fall back to the known
 platform handle URL (currently X/Twitter), then `socialProofUrl`. Keep this UI
 behind `NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION=true`; mainnet must not query or
-render social fields until its contracts and subgraph support them.
+render social fields until ProducerRegistry V2 and its second subgraph data
+source are live. The immutable legacy mainnet registry at
+`0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5` does not expose the social ABI.
 
 Backend social EAS publishing on Sepolia must use multiple RPC endpoints. Prefer
 `SOCIAL_RPC_URLS` as a comma-separated list; the app also appends Sepolia public
@@ -43,12 +45,23 @@ the frontend env, and the ugraph indexer all pointed at mainnet. Full address
 set in `CONTRACTS.md` (Ethereum Mainnet section, factory
 `0x81c2ecb09B8062cC9F3A4F8682318456304f4aE2`, deploy block `25328624`).
 Sequencer-uptime feed = `address(0)` because this is L1.
+On 2026-07-10 the security rollout completed in blocks `25501399`-`25501432`.
+The live Factory implementation is
+`0xC591c1c9F3269368457f06540b7EAC06a8A8d269`, the live Treasury
+implementation is `0xAF3c5Bc33E57e0f37723a72B0D2cA1D1F7Ef3594`, the future and both
+existing StakingVault proxies use `0xe9a9D14227B1bBe6c41de8002098Ef14F4768CEa`,
+and the default plus both existing SaleClassic slots use
+`0x3C5077c5eE8cB22886352f331D105d770693ec5D`. The retired SaleClassic
+implementations are revoked. `deployments/mainnet.json` is the machine-readable
+live-state manifest; run `npm --prefix platform/backend run
+verify:mainnet-addresses` before relying on any documented address.
 The mainnet deploy was patched before any campaign existed at block `25328977`
 via `script/UpgradeMainnetAuditMitigations.s.sol`: current factory pointers and
 default/optional module impls are the audit-hardened ones in `CONTRACTS.md`, and
 the stale launch module impls are revoked in the factory whitelist.
 On 2026-06-19 the factory proxy was upgraded in place for the ecommerce fee
-model: live factory impl `0x3EEeD505C21C945845Fb8f57917B035532E0Ac87`, live
+model: the then-current factory impl was
+`0x3EEeD505C21C945845Fb8f57917B035532E0Ac87`, and the current
 EcommerceModule impl `0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c`. The factory
 global ecommerce protocol fee is `300` bps by default/currently, capped at `1000`
 bps, and owner-controlled through `setEcommerceProtocolFeeBps`. The old
@@ -57,14 +70,16 @@ for future attaches, but already-attached campaign module slots are unchanged.
 Existing campaigns migrate only if their producer detaches/reattaches the
 ecommerce module through the web app.
 On 2026-07-07 the mainnet factory registry was extended for the latest module
-set. New default implementations for future campaigns are SaleClassicModule
-`0xa1f01A442359E596D8a98aa7c5595016CeBe193a` and CollateralModule
+set. That rollout installed SaleClassicModule
+`0xa1f01A442359E596D8a98aa7c5595016CeBe193a`, which the 2026-07-10 security
+rollout superseded and revoked. The current default CollateralModule remains
 `0x1e6D432813BA9B4477ACCC87788bf461c1A55B02`; optional implementations
 approved in the factory are CampaignProceedsSplitModule
 `0xb57073310911a902b082d4A7d0CD7dA26e27775D`, DirectIssueModule
 `0x236855EAFb5fbe864E3557f8b621950cBB46d816`, and ProjectUpdatesModule
-`0x43FD484D3e12071a53181c3727354530230bEFCf`. Existing campaign module slots
-were intentionally not migrated by the rollout script.
+`0x43FD484D3e12071a53181c3727354530230bEFCf`. The July 7 rollout did not
+migrate existing campaign module slots; the July 10 security rollout later
+migrated both existing SaleClassic slots only.
 
 No production Safe address is currently configured in the admin app. The live
 FeeSplitter `operations()` receiver is still the deployer
@@ -542,7 +557,7 @@ Tier thresholds are snapshotted on the first non-excluded buy per campaign, so l
 
 ## Deployments
 
-See `CONTRACTS.md` for current Ethereum Mainnet addresses (factory proxy, impls, registries, GROW contracts, frontend env vars). See `DEPLOY.md` for the DigitalOcean App Platform runbook (frontend + backend) — `.do/app.yaml` spec, per-service Dockerfiles, CLI-only secret injection via `doctl apps update` + `jq` spec patching, and the auto-deploy-on-push flow against `main`. Live at `https://growfi.dev` (custom domain, registered in Reown WalletConnect's allowlist for the project ID baked into `.do/app.yaml`). The bare DO subdomain `https://growfi-test-m9s8u.ondigitalocean.app` still resolves but is no longer the canonical URL — surface `growfi.dev` everywhere user-facing. App id `9e4019f4-8dbc-4170-8546-ce7d8579e3a4`, team `turinglabs`. The separate admin app uses `.do/admin.yaml` and should be published at `https://admin.growfi.dev`; do not route it through the public frontend component. **Path-based ingress gotcha**: the backend rule needs `preserve_path_prefix: true` — by default DO App Platform strips the match prefix before forwarding, so a rule matching `/api` would deliver `/upload` to the backend while our routes are `/api/upload` → every endpoint 404s. The flag is documented inline in `.do/app.yaml`.
+See `CONTRACTS.md` for current Ethereum Mainnet addresses (factory proxy, impls, registries, GROW contracts, frontend env vars). See `DEPLOY.md` for the DigitalOcean App Platform runbook (frontend + backend) — `.do/app.yaml` spec, per-service Dockerfiles, CLI-only secret injection via `doctl apps update` + `jq` spec patching, and the auto-deploy-on-push flow against `main`. Live at `https://growfi.dev` (custom domain, registered in Reown WalletConnect's allowlist for the project ID baked into `.do/app.yaml`). The bare DO subdomain `https://growfi-test-m9s8u.ondigitalocean.app` still resolves but is no longer the canonical URL — surface `growfi.dev` everywhere user-facing. Production is app `growfi-mainnet`, id `9e4019f4-8dbc-4170-8546-ce7d8579e3a4`, under the DigitalOcean RIFAI team selector `i=b9d43f`. Use a `doctl` context authenticated for that team; the currently saved `default` context belongs to a different team and cannot access this app. The separate admin app uses `.do/admin.yaml` and should be published at `https://admin.growfi.dev`; do not route it through the public frontend component. **Path-based ingress gotcha**: the backend rule needs `preserve_path_prefix: true` — by default DO App Platform strips the match prefix before forwarding, so a rule matching `/api` would deliver `/upload` to the backend while our routes are `/api/upload` → every endpoint 404s. The flag is documented inline in `.do/app.yaml`.
 
 ## Audit history
 
@@ -610,7 +625,7 @@ platform/
 
 Fastify on **port 4001** (4000 was taken locally). Uses `@aws-sdk/client-s3` against DigitalOcean Spaces (S3-compatible).
 
-**Storage target** — team `turinglabs`, project `Rifai`, bucket `growfi-media` in region `fra1`:
+**Storage target** — DigitalOcean RIFAI team, project `Rifai`, bucket `growfi-media` in region `fra1`:
 - Endpoint: `https://fra1.digitaloceanspaces.com`
 - Public URL base: `https://growfi-media.fra1.digitaloceanspaces.com/`
 - CORS: `GET`/`HEAD` from any origin
@@ -646,7 +661,7 @@ Fastify on **port 4001** (4000 was taken locally). Uses `@aws-sdk/client-s3` aga
 | `DELETE /api/notifications/me` | Body `{ address, issuedAt, nonce, signature }` over a fixed `Action: delete` message. Hard-deletes the record. |
 | `GET /api/notifications/unsubscribe?token=` | One-click opt-out from a digest email. Token is `<address>.<hmac>` keyed on `NOTIFICATIONS_UNSUB_SECRET`; flips `optedIn=false` and renders a confirmation HTML page. Idempotent. No wallet popup needed because the user just received the email — that's enough proof of ownership for an opt-out (it can never escalate privileges). |
 
-Env: `PORT`, `HOST`, `DO_SPACES_*`, plus invite-gate envs `INVITES_OBJECT_PREFIX` (default `invites`), `APP_URL` (embedded in approval emails and investor-source links), `ADMIN_API_KEY` (backend admin API / invite CLI only; not used by `platform/admin`), `ADMIN_NOTIFY_EMAIL` (default `hey@growfi.dev`, set to empty to disable invite fan-out), `INVESTOR_NOTIFY_EMAIL` (optional override for `/api/investors/request`; falls back to `ADMIN_NOTIFY_EMAIL`), `RESEND_API_KEY`, `RESEND_FROM`, `INVITE_RATE_WINDOW_MS`, `INVITE_RATE_MAX`, social attestation envs `SOCIAL_CHALLENGE_SECRET`, `SOCIAL_VERIFIER_PRIVATE_KEY`, `PRODUCER_REGISTRY_ADDRESS`, `CHAIN_ID`, `SOCIAL_RPC_URL`, `SOCIAL_EAS_ENABLED`, `SOCIAL_REGISTRY_RELAY`, optional `SOCIAL_EAS_ADDRESS` / `SOCIAL_EAS_SCHEMA_REGISTRY_ADDRESS`, plus notification envs `NOTIFICATIONS_OBJECT_PREFIX` (default `notifications`), `NOTIFICATIONS_UNSUB_SECRET` (HMAC key for unsubscribe links — rotate to invalidate all live links), `NOTIFIER_INTERVAL_MS` (default `600000` = 10min), `NOTIFIER_DISABLED` (set to `1` to stop the digest worker without a redeploy), project-update reaction env `PROJECT_UPDATE_REACTIONS_OBJECT_PREFIX` (default `project-update-reactions`), and `SUBGRAPH_URL` (optional; defaults to ugraph latest in code). For backend social txs, RPC priority is `SOCIAL_RPC_URL`, then `RPC_URL`, then `SEPOLIA_RPC_URL` on Sepolia; Sepolia falls back to `https://ethereum-sepolia-rpc.publicnode.com` when none of those are set.
+Env: `PORT`, `HOST`, `DO_SPACES_*`, plus invite-gate envs `INVITES_OBJECT_PREFIX` (default `invites`), `APP_URL` (embedded in approval emails and investor-source links), `ADMIN_API_KEY` (backend admin API / invite CLI only; not used by `platform/admin`), `ADMIN_NOTIFY_EMAIL` (default `hey@growfi.dev`, set to empty to disable invite fan-out), `INVESTOR_NOTIFY_EMAIL` (optional override for `/api/investors/request`; falls back to `ADMIN_NOTIFY_EMAIL`), `RESEND_API_KEY`, `RESEND_FROM`, `INVITE_RATE_WINDOW_MS`, `INVITE_RATE_MAX`, social attestation envs `SOCIAL_CHALLENGE_SECRET`, `SOCIAL_VERIFIER_PRIVATE_KEY`, `PRODUCER_REGISTRY_ADDRESS`, `CHAIN_ID`, `SOCIAL_RPC_URL`, `SOCIAL_EAS_ENABLED`, `SOCIAL_REGISTRY_RELAY`, `SOCIAL_CHALLENGES_OBJECT_PREFIX` (default `social-challenges`), `SOCIAL_EAS_MAX_GAS_PRICE_WEI`, optional `SOCIAL_EAS_ADDRESS` / `SOCIAL_EAS_SCHEMA_REGISTRY_ADDRESS`, plus notification envs `NOTIFICATIONS_OBJECT_PREFIX` (default `notifications`), `NOTIFICATIONS_UNSUB_SECRET` (HMAC key for unsubscribe links — rotate to invalidate all live links), `NOTIFIER_INTERVAL_MS` (default `600000` = 10min), `NOTIFIER_DISABLED` (set to `1` to stop the digest worker without a redeploy), project-update reaction env `PROJECT_UPDATE_REACTIONS_OBJECT_PREFIX` (default `project-update-reactions`), and `SUBGRAPH_URL` (optional; defaults to ugraph latest in code). For backend social txs, RPC priority is `SOCIAL_RPC_URL`, then `RPC_URL`, then `SEPOLIA_RPC_URL` on Sepolia; Sepolia falls back to `https://ethereum-sepolia-rpc.publicnode.com` when none of those are set.
 
 File constraints (5 MB, `image/{jpeg,png,webp,avif,gif}`) enforced in-route.
 

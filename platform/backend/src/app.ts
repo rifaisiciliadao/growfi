@@ -1,11 +1,20 @@
 import Fastify, { type FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { nanoid } from "nanoid";
-import { getAddress, type Address } from "viem";
+import { getAddress, verifyMessage, type Address, type Hex } from "viem";
 import { buildTree } from "./merkle.js";
-import { snapshotSeasonYield, type SnapshotResult } from "./snapshot.js";
+import {
+  readCampaignProducer,
+  snapshotSeasonYield,
+  type SnapshotResult,
+} from "./snapshot.js";
+import {
+  buildMerklePublicationMessage,
+  type MerklePublicationInput,
+} from "./merkle-authorization.js";
+import type { ResolveHostname } from "./public-http.js";
 import { buildSpacesStore, type InviteStore } from "./store.js";
 import {
   buildNoopSender,
@@ -42,6 +51,7 @@ export interface AppConfig {
 export interface AppDeps {
   config: AppConfig;
   putObject: (cmd: PutObjectCommand) => Promise<unknown>;
+  deleteObject?: (cmd: DeleteObjectCommand) => Promise<unknown>;
   fetchJson?: (url: string) => Promise<Response>;
   snapshot?: (campaign: Address, seasonId: bigint) => Promise<SnapshotResult>;
   inviteStore?: InviteStore;
@@ -64,6 +74,11 @@ export interface AppDeps {
   socialChallengeTtlMs?: number;
   socialAttestationTtlSeconds?: number;
   socialOnchainAttester?: SocialOnchainAttester | null;
+  socialChallengeConsumer?: (reservationId: Hex) => Promise<boolean>;
+  socialChallengeReleaser?: (reservationId: Hex) => Promise<void>;
+  socialChallengesObjectPrefix?: string;
+  resolveHostname?: ResolveHostname;
+  campaignProducer?: (campaign: Address) => Promise<Address>;
 }
 
 interface CampaignDmrvMetadata {
@@ -153,6 +168,7 @@ export function buildDefaultDeps(): AppDeps {
         Boolean(process.env.DO_SPACES_SECRET),
     },
     putObject: (cmd) => s3.send(cmd),
+    deleteObject: (cmd) => s3.send(cmd),
     snapshot: snapshotSeasonYield,
     inviteStore,
     notificationStore,
@@ -179,6 +195,9 @@ export function buildDefaultDeps(): AppDeps {
     socialRegistryAddress,
     socialChainId,
     socialOnchainAttester,
+    socialChallengesObjectPrefix:
+      process.env.SOCIAL_CHALLENGES_OBJECT_PREFIX || "social-challenges",
+    campaignProducer: readCampaignProducer,
   };
 }
 
@@ -211,6 +230,7 @@ function buildDefaultSocialOnchainAttester(input: {
     resolver: addressFromEnv(process.env.SOCIAL_EAS_RESOLVER) || undefined,
     revocable: booleanFromEnv(process.env.SOCIAL_EAS_REVOCABLE, true),
     relayRegistry: booleanFromEnv(process.env.SOCIAL_REGISTRY_RELAY, true),
+    maxGasPriceWei: positiveBigIntFromEnv(process.env.SOCIAL_EAS_MAX_GAS_PRICE_WEI),
   });
 }
 
@@ -272,6 +292,17 @@ function addressFromEnv(value: string | undefined): Address | null {
   }
 }
 
+function positiveBigIntFromEnv(value: string | undefined): bigint | undefined {
+  if (!value) return undefined;
+  try {
+    const parsed = BigInt(value);
+    return parsed > 0n ? parsed : undefined;
+  } catch {
+    console.warn("[env] ignoring invalid positive bigint value");
+    return undefined;
+  }
+}
+
 function booleanFromEnv(value: string | undefined, defaultValue: boolean): boolean {
   if (value === undefined || value === "") return defaultValue;
   return /^(1|true|yes|on)$/i.test(value);
@@ -326,6 +357,35 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   const snapshot = deps.snapshot ?? snapshotSeasonYield;
   const fetchJson = deps.fetchJson ?? ((url: string) => fetch(url));
   const fetchText = deps.fetchText ?? ((url: string) => fetch(url));
+  const consumeSocialChallenge = deps.socialChallengeConsumer ?? (async (reservationId: Hex) => {
+    const prefix = deps.socialChallengesObjectPrefix ?? "social-challenges";
+    try {
+      await putObject(new PutObjectCommand({
+        Bucket: config.spacesBucket,
+        Key: `${prefix}/${reservationId.slice(2)}.json`,
+        Body: JSON.stringify({ reservationId, consumedAt: Date.now() }),
+        ContentType: "application/json",
+        ACL: "private",
+        CacheControl: "no-store",
+        IfNoneMatch: "*",
+      }));
+      return true;
+    } catch (err) {
+      const status = (err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+      if (status === 412 || (err as { name?: string }).name === "PreconditionFailed") {
+        return false;
+      }
+      throw err;
+    }
+  });
+  const releaseSocialChallenge = deps.socialChallengeReleaser ?? (async (reservationId: Hex) => {
+    if (!deps.deleteObject) return;
+    const prefix = deps.socialChallengesObjectPrefix ?? "social-challenges";
+    await deps.deleteObject(new DeleteObjectCommand({
+      Bucket: config.spacesBucket,
+      Key: `${prefix}/${reservationId.slice(2)}.json`,
+    }));
+  });
 
   const app = Fastify({
     logger: process.env.NODE_ENV === "test"
@@ -397,7 +457,11 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     challengeTtlMs: deps.socialChallengeTtlMs,
     attestationTtlSeconds: deps.socialAttestationTtlSeconds,
     fetchText,
+    resolveHostname: deps.resolveHostname,
     onchainAttester: deps.socialOnchainAttester,
+    campaignProducer: deps.campaignProducer,
+    consumeChallenge: consumeSocialChallenge,
+    releaseChallenge: releaseSocialChallenge,
   });
 
   app.post("/api/upload", async (req, reply) => {
@@ -583,14 +647,25 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       totalYieldSupply: string;
       holders: Array<{ user: string; yieldAmount: string }>;
       minProductClaim?: string;
+      authorization?: {
+        expiresAt: number;
+        signature: Hex;
+      };
     };
   }>("/api/merkle/generate", async (req, reply) => {
     if (!config.hasCredentials) {
       return reply.status(503).send({ error: "DO Spaces non configurato" });
     }
 
-    const { campaign, seasonId, totalProductUnits, totalYieldSupply, holders, minProductClaim } =
-      req.body;
+    const {
+      campaign,
+      seasonId,
+      totalProductUnits,
+      totalYieldSupply,
+      holders,
+      minProductClaim,
+      authorization,
+    } = req.body;
     if (!campaign || seasonId === undefined || !totalProductUnits || !totalYieldSupply || !holders) {
       return reply.status(400).send({ error: "campos requeridos" });
     }
@@ -600,6 +675,44 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
     const totalUnits = BigInt(totalProductUnits);
     const denominator = BigInt(totalYieldSupply);
     const minClaim = BigInt(minProductClaim ?? "0");
+
+    if (!authorization || !Number.isSafeInteger(authorization.expiresAt)) {
+      return reply.status(401).send({ error: "Merkle publication signature is required" });
+    }
+    const now = Date.now();
+    if (authorization.expiresAt <= now || authorization.expiresAt > now + 10 * 60 * 1000) {
+      return reply.status(401).send({ error: "Merkle publication signature expired or too far in the future" });
+    }
+    if (!deps.campaignProducer) {
+      return reply.status(503).send({ error: "Campaign producer verification is unavailable" });
+    }
+
+    let producer: Address;
+    try {
+      producer = await deps.campaignProducer(campaignAddr);
+    } catch {
+      return reply.status(502).send({ error: "Unable to resolve campaign producer" });
+    }
+    const publicationInput: MerklePublicationInput = {
+      campaign: campaignAddr,
+      seasonId: seasonIdBig,
+      totalProductUnits: totalUnits.toString(),
+      totalYieldSupply: denominator.toString(),
+      holders,
+      minProductClaim: minClaim.toString(),
+    };
+    const publicationMessage = buildMerklePublicationMessage(
+      publicationInput,
+      authorization.expiresAt,
+    );
+    const authorized = await verifyMessage({
+      address: producer,
+      message: publicationMessage,
+      signature: authorization.signature,
+    }).catch(() => false);
+    if (!authorized) {
+      return reply.status(403).send({ error: "Invalid campaign producer signature" });
+    }
 
     if (denominator === 0n) {
       return reply.status(400).send({ error: "totalYieldSupply is zero" });
@@ -638,7 +751,8 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
 
     const { root, proofs } = buildTree(seasonIdBig, leaves);
 
-    const key = `merkle/${campaignAddr.toLowerCase()}/${seasonIdBig}.json`;
+    const key =
+      `merkle/${campaignAddr.toLowerCase()}/${seasonIdBig}/${root.toLowerCase()}.json`;
     const payload = {
       campaign: campaignAddr,
       seasonId: seasonIdBig.toString(),
@@ -655,16 +769,26 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
       generatedAt: Date.now(),
     };
 
-    await putObject(
-      new PutObjectCommand({
-        Bucket: config.spacesBucket,
-        Key: key,
-        Body: JSON.stringify(payload, null, 2),
-        ContentType: "application/json",
-        ACL: "public-read",
-        CacheControl: "public, max-age=86400",
-      }),
-    );
+    try {
+      await putObject(
+        new PutObjectCommand({
+          Bucket: config.spacesBucket,
+          Key: key,
+          Body: JSON.stringify(payload, null, 2),
+          ContentType: "application/json",
+          ACL: "public-read",
+          CacheControl: "public, max-age=31536000, immutable",
+          IfNoneMatch: "*",
+        }),
+      );
+    } catch (err) {
+      const status = (err as { $metadata?: { httpStatusCode?: number } }).$metadata?.httpStatusCode;
+      const name = (err as { name?: string }).name;
+      if (status === 412 || name === "PreconditionFailed") {
+        return reply.status(409).send({ error: "Merkle proof set already published" });
+      }
+      throw err;
+    }
 
     return {
       root,
@@ -674,18 +798,33 @@ export async function buildApp(deps: AppDeps): Promise<FastifyInstance> {
   });
 
   app.get<{
-    Params: { campaign: string; seasonId: string; user: string };
-  }>("/api/merkle/:campaign/:seasonId/:user", async (req, reply) => {
-    const { campaign, seasonId, user } = req.params;
-    const url = `${config.spacesPublicBase}/merkle/${campaign.toLowerCase()}/${seasonId}.json`;
-
-    const res = await fetchJson(url);
+    Params: { campaign: string; seasonId: string; root: string; user: string };
+  }>("/api/merkle/:campaign/:seasonId/:root/:user", async (req, reply) => {
+    const { campaign, seasonId, root, user } = req.params;
+    if (!/^0x[0-9a-fA-F]{64}$/.test(root)) {
+      return reply.status(400).send({ error: "Invalid Merkle root" });
+    }
+    const base = `${config.spacesPublicBase}/merkle/${campaign.toLowerCase()}/${seasonId}`;
+    let url = `${base}/${root.toLowerCase()}.json`;
+    let res = await fetchJson(url);
+    if (!res.ok) {
+      const legacyUrl = `${base}.json`;
+      const legacy = await fetchJson(legacyUrl);
+      if (legacy.ok) {
+        url = legacyUrl;
+        res = legacy;
+      }
+    }
     if (!res.ok) {
       return reply.status(404).send({ error: "Merkle tree not found", url });
     }
     const payload = (await res.json()) as {
+      root?: string;
       leaves: Array<{ user: string; yieldAmount?: string; productAmount: string; proof: string[] }>;
     };
+    if (!payload.root || payload.root.toLowerCase() !== root.toLowerCase()) {
+      return reply.status(409).send({ error: "Published Merkle root does not match on-chain root" });
+    }
 
     const match = payload.leaves.find(
       (l) => l.user.toLowerCase() === user.toLowerCase(),

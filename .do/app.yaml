@@ -97,6 +97,27 @@ services:
       - key: NOTIFIER_INTERVAL_MS
         value: "600000"
         scope: RUN_TIME
+      # --- Social verification (mainnet relay remains disabled for first deploy) ---
+      - key: CHAIN_ID
+        value: "1"
+        scope: RUN_TIME
+      - key: PRODUCER_REGISTRY_ADDRESS
+        # Temporary legacy address while EAS is disabled. Replace with the V2
+        # address emitted by RegisterMainnetSocialEAS before enabling relay.
+        value: "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5"
+        scope: RUN_TIME
+      - key: SOCIAL_EAS_ENABLED
+        value: "false"
+        scope: RUN_TIME
+      - key: SOCIAL_REGISTRY_RELAY
+        value: "true"
+        scope: RUN_TIME
+      - key: SOCIAL_CHALLENGES_OBJECT_PREFIX
+        value: social-challenges
+        scope: RUN_TIME
+      - key: SOCIAL_EAS_MAX_GAS_PRICE_WEI
+        value: "50000000000"
+        scope: RUN_TIME
       # Secrets (set via dashboard / `doctl apps update --spec ...`, not committed here):
       #   DO_SPACES_KEY                (SECRET, RUN_TIME)
       #   DO_SPACES_SECRET             (SECRET, RUN_TIME)
@@ -109,6 +130,8 @@ services:
       #   SOCIAL_RPC_URL               (RUN_TIME; Sepolia/mainnet RPC used to publish EAS + registry txs)
       #   SOCIAL_EAS_ENABLED           (RUN_TIME; set to "true" only where backend tx relay is intended)
       #   SOCIAL_REGISTRY_RELAY        (RUN_TIME; default true, writes ProducerRegistry.setSocialAttestation after EAS)
+      #   SOCIAL_CHALLENGES_OBJECT_PREFIX (RUN_TIME; default "social-challenges", atomic replay reservations)
+      #   SOCIAL_EAS_MAX_GAS_PRICE_WEI (RUN_TIME; fail-closed gas price ceiling for sponsored EAS txs)
       #   SUBGRAPH_URL                 (optional; defaults to ugraph latest in code)
       #   NOTIFIER_DISABLED            (optional; set to "1" to stop the digest worker without a redeploy)
 
@@ -152,16 +175,26 @@ services:
         value: "0xA3AEb95Ff4555E266aa1366000204a75FaD4142B"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_PRODUCER_REGISTRY_ADDRESS
+        # Replace with ProducerRegistry V2 in the post-EAS frontend build.
         value: "0x651fb29e69Bde3ADE988e8E75e9A3012272D2de5"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_REPAYMENT_IMPL
         value: "0x34326058FD53c773Fd7E67a20af17d73ae4d793A"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_ECOMMERCE_IMPL
-        value: "0x881883a9fd1c296D198EE9937603E8Eec1AE5E70"
+        value: "0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_DEBT_RESTRUCTURING_IMPL
         value: "0x6411BA1923A71E7dAA9BD738D31fF9F81B80319a"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_PROCEEDS_SPLIT_IMPL
+        value: "0xb57073310911a902b082d4A7d0CD7dA26e27775D"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_DIRECT_ISSUE_IMPL
+        value: "0x236855EAFb5fbe864E3557f8b621950cBB46d816"
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_PROJECT_UPDATES_IMPL
+        value: "0x43FD484D3e12071a53181c3727354530230bEFCf"
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_GROW_TOKEN
         value: "0xDcb4af0c05bc86D4F3C3351f30735b56a70ad725"
@@ -180,6 +213,9 @@ services:
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_SUBGRAPH_URL
         value: https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
+        scope: BUILD_TIME
+      - key: NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION
+        value: "false"
         scope: BUILD_TIME
       # Same-origin — the /api prefix is routed to the backend service.
       - key: NEXT_PUBLIC_BACKEND_URL

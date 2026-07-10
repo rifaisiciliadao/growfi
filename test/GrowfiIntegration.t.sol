@@ -615,6 +615,45 @@ contract GrowfiIntegrationTest is Test {
 
     // ---------- E2E: full harvest cycle, Treasury earns + 80/20 distribution ----------
 
+    function test_treasuryStakedBackingCountsInFloorAndCanExitWithoutPenalty() public {
+        address campaign = _createCampaign(50e18, 200e18, 1e18);
+        _approveAndFundUsdc(PRODUCER, 50 * ONE_USDC, campaign);
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campaign)).buy(address(usdc), 50 * ONE_USDC);
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campaign)).activateCampaign();
+
+        vm.prank(address(factory));
+        growTreasury.addTrackedCampaign(campaign);
+        usdc.mint(address(growTreasury), 50 * ONE_USDC);
+        vm.prank(address(factory));
+        growTreasury.allocateToCampaign(campaign, address(usdc), 50 * ONE_USDC);
+
+        IERC20 ct = IERC20(IGrowfiCampaignFull(payable(campaign)).campaignToken());
+        uint256 liquidFloor = growTreasury.intrinsicFloorPrice();
+
+        vm.prank(PRODUCER);
+        IGrowfiCampaignFull(payable(campaign)).startSeason();
+        vm.prank(address(factory));
+        uint256 positionId = growTreasury.stakeOnCampaign(campaign, 50e18);
+
+        assertEq(ct.balanceOf(address(growTreasury)), 0);
+        assertEq(growTreasury.intrinsicFloorPrice(), liquidFloor, "staked backing remains in floor");
+
+        GrowfiStakingVault vault = GrowfiStakingVault(IGrowfiCampaignFull(payable(campaign)).stakingVault());
+        vm.prank(ALICE);
+        vm.expectRevert(GrowfiStakingVault.UnauthorizedForceUnstake.selector);
+        vault.forceUnstake(positionId);
+
+        vm.prank(address(factory));
+        growTreasury.unstakeFromCampaign(campaign, positionId);
+
+        assertEq(ct.balanceOf(address(growTreasury)), 50e18, "full principal returned immediately");
+        assertEq(growTreasury.intrinsicFloorPrice(), liquidFloor, "liquid backing preserves floor");
+        (,,,,, bool active) = vault.positions(positionId);
+        assertFalse(active);
+    }
+
     /// @dev Real lifecycle: Treasury allocates to a real campaign, stakes the CampaignTokens,
     ///      earns YIELD across a season, commits USDC redeem, producer deposits, Treasury claims
     ///      USDC and distributes 80% to GROW stakers / 20% retained.
@@ -680,6 +719,10 @@ contract GrowfiIntegrationTest is Test {
         GrowfiYieldToken yt = GrowfiYieldToken(address(vault.yieldToken()));
         uint256 treasuryYield = yt.balanceOf(address(growTreasury));
         assertGt(treasuryYield, 0, "treasury earned YIELD");
+
+        vm.prank(address(factory));
+        growTreasury.unstakeFromCampaign(campaign, positionId);
+        assertEq(ct.balanceOf(address(growTreasury)), 50e18, "treasury CT returned to liquid backing");
 
         // ============================================================
         // Phase 7: Producer reports harvest

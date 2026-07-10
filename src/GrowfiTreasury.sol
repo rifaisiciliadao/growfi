@@ -146,6 +146,7 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     event StakingPoolUpdated(address indexed previous, address indexed current);
     event StakerRewardBpsUpdated(uint256 previous, uint256 current);
     event Staked(address indexed campaign, uint256 amount, uint256 positionId);
+    event Unstaked(address indexed campaign, uint256 indexed positionId);
     event YieldClaimed(address indexed campaign, uint256 positionId);
     event UsdcRedeemCommitted(address indexed campaign, uint256 indexed seasonId, uint256 yieldAmount);
     event UsdcClaimed(
@@ -340,7 +341,8 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
     ///        or malformed, that stablecoin is silently excluded from the backing valuation
     ///        (conservative: floor goes DOWN, not up — protects against "fake $1" inflation).
     ///      • CampaignTokens: only count if the owning campaign is in Active state.
-    ///        Both idle Treasury-held CT and active Treasury staking positions count.
+    ///        Both liquid Treasury holdings and active Treasury staking positions count;
+    ///        staked backing can be returned in full through `unstakeFromCampaign`.
     ///        Buyback / Funding / Ended → excluded. Buyback CTs are recovered separately
     ///        via `buybackFromCampaign`; Ended/Funding shouldn't normally hold Treasury CT.
     function intrinsicFloorPrice() external view returns (uint256) {
@@ -549,6 +551,15 @@ contract GrowfiTreasury is Initializable, ReentrancyGuard, IGrowfiTreasury {
         if (!_trackedCampaigns.contains(campaign)) revert NotTracked();
         IGrowfiStakingVaultMin(IGrowfiCampaignView(campaign).stakingVault()).claimYield(positionId);
         emit YieldClaimed(campaign, positionId);
+    }
+
+    /// @notice Return a Treasury-owned staking position to liquid CampaignTokens.
+    ///         The full principal and accrued yield are returned without penalty.
+    function unstakeFromCampaign(address campaign, uint256 positionId) external onlyFactory nonReentrant {
+        if (!_trackedCampaigns.contains(campaign)) revert NotTracked();
+        IGrowfiStakingVaultMin vault = IGrowfiStakingVaultMin(IGrowfiCampaignView(campaign).stakingVault());
+        vault.forceUnstake(positionId);
+        emit Unstaked(campaign, positionId);
     }
 
     /// @notice Burn the Treasury's YIELD for a season and register the USDC commit.

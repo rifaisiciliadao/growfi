@@ -1,4 +1,5 @@
 import type { CampaignDmrvMetadata } from "@/lib/dmrv";
+import { getAddress, keccak256, toBytes, type Address } from "viem";
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? "";
 
@@ -123,10 +124,11 @@ export interface MerkleProof {
 export async function fetchMerkleProof(
   campaign: string,
   seasonId: string | number | bigint,
+  root: string,
   user: string,
 ): Promise<MerkleProof | null> {
   const res = await fetch(
-    `${BACKEND_URL}/api/merkle/${campaign.toLowerCase()}/${seasonId}/${user.toLowerCase()}`,
+    `${BACKEND_URL}/api/merkle/${campaign.toLowerCase()}/${seasonId}/${root.toLowerCase()}/${user.toLowerCase()}`,
   );
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Merkle fetch failed: ${res.status}`);
@@ -175,6 +177,10 @@ export async function generateMerkleTree(input: {
   totalYieldSupply: string;
   holders: Array<{ user: string; yieldAmount: string }>;
   minProductClaim?: string;
+  authorization: {
+    expiresAt: number;
+    signature: `0x${string}`;
+  };
 }): Promise<MerkleGenerateResult> {
   const body = {
     ...input,
@@ -190,6 +196,41 @@ export async function generateMerkleTree(input: {
     throw new Error(err.error || "Merkle gen failed");
   }
   return res.json();
+}
+
+export function buildMerklePublicationMessage(
+  input: {
+    campaign: string;
+    seasonId: string | number | bigint;
+    totalProductUnits: string;
+    totalYieldSupply: string;
+    holders: Array<{ user: string; yieldAmount: string }>;
+    minProductClaim?: string;
+  },
+  expiresAt: number,
+): string {
+  const campaign = getAddress(input.campaign);
+  const canonical = {
+    campaign: campaign.toLowerCase() as Address,
+    seasonId: BigInt(input.seasonId).toString(),
+    totalProductUnits: BigInt(input.totalProductUnits).toString(),
+    totalYieldSupply: BigInt(input.totalYieldSupply).toString(),
+    minProductClaim: BigInt(input.minProductClaim ?? "0").toString(),
+    holders: input.holders
+      .map((holder) => ({
+        user: getAddress(holder.user).toLowerCase() as Address,
+        yieldAmount: BigInt(holder.yieldAmount).toString(),
+      }))
+      .sort((a, b) => a.user.localeCompare(b.user)),
+  };
+  const payloadHash = keccak256(toBytes(JSON.stringify(canonical)));
+  return [
+    "GrowFi Merkle publication",
+    `Campaign: ${campaign}`,
+    `Season: ${canonical.seasonId}`,
+    `Payload hash: ${payloadHash}`,
+    `Expires at: ${expiresAt}`,
+  ].join("\n");
 }
 
 export interface EcommerceCatalogItem {
@@ -566,6 +607,9 @@ export async function uploadProducerProfile(input: {
 
 export interface SocialVerificationChallenge {
   wallet: string;
+  campaign: string | null;
+  chainId: number;
+  registryAddress: string | null;
   platform: string;
   handle: string;
   profileUrl: string;
@@ -613,6 +657,7 @@ export interface SocialVerificationResult {
 
 export async function requestSocialVerificationChallenge(input: {
   wallet: string;
+  campaign: string;
   platform: string;
   handle?: string;
   profileUrl?: string;
@@ -635,6 +680,7 @@ export async function requestSocialVerificationChallenge(input: {
 
 export async function verifySocialPost(input: {
   wallet: string;
+  campaign: string;
   platform: string;
   handle?: string;
   profileUrl?: string;
@@ -645,6 +691,7 @@ export async function verifySocialPost(input: {
   code: string;
   message: string;
   challenge: string;
+  walletSignature: `0x${string}`;
   onchainNonce: string;
 }): Promise<SocialVerificationResult> {
   const res = await fetch(`${BACKEND_URL}/api/social-verification/verify`, {

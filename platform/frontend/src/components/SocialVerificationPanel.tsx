@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useQueryClient } from "@tanstack/react-query";
-import { useReadContract, useWriteContract } from "wagmi";
+import { useReadContract, useSignMessage, useWriteContract } from "wagmi";
 import type { Address } from "viem";
 import { abis, getAddresses } from "@/contracts";
 import {
@@ -31,9 +31,11 @@ const SOCIAL_PLATFORM_OPTIONS = [
 
 export function SocialVerificationPanel({
   producerAddress,
+  campaignAddress,
   producer,
 }: {
   producerAddress: Address;
+  campaignAddress: Address;
   producer: SubgraphProducer | null | undefined;
 }) {
   const t = useTranslations("grower.social");
@@ -42,6 +44,7 @@ export function SocialVerificationPanel({
   const queryClient = useQueryClient();
   const { producerRegistry } = getAddresses();
   const { writeContractAsync } = useWriteContract();
+  const { signMessageAsync } = useSignMessage();
 
   const [platform, setPlatform] = useState("x");
   const [handle, setHandle] = useState("");
@@ -105,6 +108,7 @@ export function SocialVerificationPanel({
       setBusy("challenge");
       const next = await requestSocialVerificationChallenge({
         wallet: producerAddress,
+        campaign: campaignAddress,
         platform,
         handle: isWebsitePlatform ? "" : handle,
         profileUrl,
@@ -126,8 +130,12 @@ export function SocialVerificationPanel({
     setError(null);
     try {
       setBusy("verify");
+      const walletSignature = await signMessageAsync({
+        message: challenge.message,
+      });
       const result = await verifySocialPost({
         wallet: producerAddress,
+        campaign: campaignAddress,
         platform: challenge.platform,
         handle: challenge.handle,
         profileUrl: challenge.profileUrl,
@@ -138,6 +146,7 @@ export function SocialVerificationPanel({
         code: challenge.code,
         message: challenge.message,
         challenge: challenge.challenge,
+        walletSignature,
         onchainNonce: nonceRaw.toString(),
       });
       if (result.registry?.txHash) {

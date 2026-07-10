@@ -9,6 +9,10 @@ import {PausableUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/Pau
 import {GrowfiCampaignToken} from "./GrowfiCampaignToken.sol";
 import {GrowfiYieldToken} from "./GrowfiYieldToken.sol";
 
+interface IGrowfiFactoryTreasuryView {
+    function growfiTreasury() external view returns (address);
+}
+
 /// @title GrowfiStakingVault — Staking, Dynamic Yield, Penalties
 /// @notice Users stake $CAMPAIGN to earn $YIELD. Dynamic yield rate: 5x at 0% fill, 1x at 100%.
 ///         Synthetix-style accumulator for O(1) gas yield calculations.
@@ -71,6 +75,12 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
     uint256 public currentSeasonId;
     mapping(uint256 => Season) public seasons;
 
+    /// @dev Appended storage for the season-isolated accounting upgrade.
+    ///      Existing proxies use totalStaked until the factory initializes this
+    ///      value or the next season starts.
+    uint256 private _currentSeasonStaked;
+    bool public seasonStakeAccountingInitialized;
+
     // --- Events ---
 
     event Staked(
@@ -95,6 +105,7 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
     // --- Errors ---
 
     error OnlyCampaign();
+    error UnauthorizedForceUnstake();
     error OnlyFactory();
     error NotPositionOwner();
     error PositionNotActive();
@@ -105,6 +116,9 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
     error TooManyPositions();
     error SeasonAlreadyUsed();
     error RestakeSameSeason();
+    error InvalidSeasonStake();
+    error SeasonStakeAccountingAlreadyInitialized();
+    error SeasonStakeAccountingMigrationRequiresPause();
 
     // --- Modifiers ---
 
@@ -143,6 +157,18 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
         factory = factory_;
         maxSupply = maxSupply_;
         seasonDuration = seasonDuration_;
+        seasonStakeAccountingInitialized = true;
+    }
+
+    /// @notice Initialize season-isolated stake accounting after upgrading an
+    ///         existing proxy. The factory should call this at a season boundary
+    ///         with zero, or with the exact current-season eligible stake.
+    function initializeSeasonStakeAccounting(uint256 eligibleStake) external onlyFactory {
+        if (seasonStakeAccountingInitialized) revert SeasonStakeAccountingAlreadyInitialized();
+        if (!paused()) revert SeasonStakeAccountingMigrationRequiresPause();
+        if (eligibleStake > totalStaked) revert InvalidSeasonStake();
+        _currentSeasonStaked = eligibleStake;
+        seasonStakeAccountingInitialized = true;
     }
 
     /// @notice Set the GrowfiYieldToken address. Can only be called once.
@@ -163,6 +189,9 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
         IERC20(address(campaignToken)).safeTransferFrom(msg.sender, address(this), amount);
 
         totalStaked += amount;
+        if (seasonStakeAccountingInitialized) {
+            _currentSeasonStaked += amount;
+        }
 
         positionId = nextPositionId++;
         positions[positionId] = Position({
@@ -224,6 +253,7 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
         pos.active = false;
         pos.amount = 0;
         totalStaked -= stakedAmount;
+        _removeCurrentSeasonStake(pos.seasonId, stakedAmount);
 
         // Burn penalty amount
         if (penaltyAmount > 0) {
@@ -242,23 +272,25 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
         emit YieldRateUpdated(newRate, totalStaked, maxSupply);
     }
 
-    /// @notice Force-unstake a position on behalf of its owner. Callable only
-    ///         by the Campaign (which in turn is delegate-called by modules
-    ///         with a legitimate reason — e.g. the Repayment module pulling
-    ///         a user out of staking before refunding them).
-    /// @dev    Waives the linear penalty (the calling module is expected to
-    ///         compensate the user externally — that's the whole reason for
-    ///         the forced unstake) but forfeits accrued $YIELD the position
-    ///         would have earned this season (consistent with the regular
-    ///         early-unstake path).
-    /// @notice Producer-blessed exit path. The Campaign (delegate-caller)
-    ///         force-unstakes any position; full CT principal AND any
-    ///         accrued $YIELD go to the position owner — no penalty, no
-    ///         forfeit. Used by the RepaymentModule's `redeem`. Forfeit
-    ///         semantics are reserved for the holder-initiated `unstake`.
-    function forceUnstake(uint256 positionId) external nonReentrant onlyCampaign updateReward {
+    /// @notice Penalty-free exit that returns the full CT principal and accrued YIELD.
+    /// @dev The Campaign may force any position for repayment flows. The protocol
+    ///      Treasury may force only positions that it owns, keeping staked Treasury
+    ///      CampaignTokens fully available as redeemable backing.
+    function forceUnstake(uint256 positionId) external nonReentrant updateReward {
         Position storage pos = positions[positionId];
         if (!pos.active) revert PositionNotActive();
+
+        if (msg.sender != campaign) {
+            if (pos.owner != msg.sender) revert UnauthorizedForceUnstake();
+
+            address treasury;
+            try IGrowfiFactoryTreasuryView(factory).growfiTreasury() returns (address configuredTreasury) {
+                treasury = configuredTreasury;
+            } catch {
+                revert UnauthorizedForceUnstake();
+            }
+            if (treasury == address(0) || msg.sender != treasury) revert UnauthorizedForceUnstake();
+        }
 
         address owner_ = pos.owner;
         uint256 stakedAmount = pos.amount;
@@ -274,6 +306,7 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
         pos.active = false;
         pos.amount = 0;
         totalStaked -= stakedAmount;
+        _removeCurrentSeasonStake(pos.seasonId, stakedAmount);
 
         if (stakedAmount > 0) {
             IERC20(address(campaignToken)).safeTransfer(owner_, stakedAmount);
@@ -304,6 +337,9 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
         pos.startTime = block.timestamp;
         pos.rewardPerTokenPaid = rewardPerTokenStored;
         pos.seasonId = currentSeasonId;
+        if (seasonStakeAccountingInitialized) {
+            _currentSeasonStaked += pos.amount;
+        }
 
         emit Restaked(msg.sender, positionId, pos.amount, currentSeasonId);
     }
@@ -328,6 +364,9 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
             pos.startTime = block.timestamp;
             pos.rewardPerTokenPaid = rewardPerTokenStored;
             pos.seasonId = currentSeasonId;
+            if (seasonStakeAccountingInitialized) {
+                _currentSeasonStaked += pos.amount;
+            }
 
             emit Restaked(msg.sender, ids[i], pos.amount, currentSeasonId);
         }
@@ -375,6 +414,8 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
         if (seasons[seasonId].existed) revert SeasonAlreadyUsed();
 
         currentSeasonId = seasonId;
+        _currentSeasonStaked = 0;
+        seasonStakeAccountingInitialized = true;
         seasons[seasonId] = Season({
             startTime: block.timestamp,
             endTime: 0,
@@ -416,10 +457,15 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
     /// @notice Current dynamic yield rate (18 decimals). 5e18 at 0% fill, 1e18 at 100%.
     function currentYieldRate() public view returns (uint256) {
         if (maxSupply == 0) return MIN_YIELD_RATE;
-        // yieldRate = 5 - 4 * (totalStaked / maxSupply)
-        uint256 fillRatio = totalStaked * RATE_PRECISION / maxSupply;
+        // yieldRate = 5 - 4 * (current-season eligible stake / maxSupply)
+        uint256 fillRatio = currentSeasonStaked() * RATE_PRECISION / maxSupply;
         uint256 decay = (MAX_YIELD_RATE - MIN_YIELD_RATE) * fillRatio / RATE_PRECISION;
         return MAX_YIELD_RATE - decay;
+    }
+
+    /// @notice Stake that is eligible to accrue in the current season.
+    function currentSeasonStaked() public view returns (uint256) {
+        return seasonStakeAccountingInitialized ? _currentSeasonStaked : totalStaked;
     }
 
     /// @notice Get earned $YIELD for a position (not yet claimed).
@@ -475,16 +521,18 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
 
     function _updateRewardPerToken() internal {
         uint256 current = _rewardPerTokenCurrent();
-        if (current > rewardPerTokenStored && totalStaked > 0 && seasons[currentSeasonId].active) {
+        uint256 eligibleStake = currentSeasonStaked();
+        if (current > rewardPerTokenStored && eligibleStake > 0 && seasons[currentSeasonId].active) {
             uint256 delta = current - rewardPerTokenStored;
-            seasons[currentSeasonId].totalYieldOwed += delta * totalStaked / RATE_PRECISION;
+            seasons[currentSeasonId].totalYieldOwed += delta * eligibleStake / RATE_PRECISION;
         }
         rewardPerTokenStored = current;
         lastUpdateTime = block.timestamp;
     }
 
     function _rewardPerTokenCurrent() internal view returns (uint256) {
-        if (totalStaked == 0) return rewardPerTokenStored;
+        uint256 eligibleStake = currentSeasonStaked();
+        if (eligibleStake == 0) return rewardPerTokenStored;
         if (!seasons[currentSeasonId].active) return rewardPerTokenStored;
 
         uint256 elapsed = block.timestamp - lastUpdateTime;
@@ -492,7 +540,13 @@ contract GrowfiStakingVault is Initializable, ReentrancyGuard, PausableUpgradeab
         // rewardPerToken += elapsed * yieldRatePerSecond * RATE_PRECISION / totalStaked
         uint256 rate = currentYieldRate();
         uint256 rewardAccrued = elapsed * rate / SECONDS_PER_DAY;
-        return rewardPerTokenStored + rewardAccrued * RATE_PRECISION / totalStaked;
+        return rewardPerTokenStored + rewardAccrued * RATE_PRECISION / eligibleStake;
+    }
+
+    function _removeCurrentSeasonStake(uint256 positionSeasonId, uint256 amount) internal {
+        if (!seasonStakeAccountingInitialized || positionSeasonId != currentSeasonId) return;
+        if (amount > _currentSeasonStaked) revert InvalidSeasonStake();
+        _currentSeasonStaked -= amount;
     }
 
     function _earned(uint256 positionId) internal view returns (uint256) {

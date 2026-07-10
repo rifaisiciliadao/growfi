@@ -296,14 +296,13 @@ export default function CampaignDetail({
         </div>
       </div>
 
-      {isProducerViewing && hasCampaignData && (
+      {connected && hasCampaignData && (
         <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pt-4">
           <ActivateCtaBanner
             campaignAddress={campaignAddress}
             currentState={stateIdx}
             currentSupply={currentSupply}
             minCap={minCap}
-            isProducerViewing={isProducerViewing}
           />
         </div>
       )}

@@ -2,6 +2,7 @@ import { describe, it, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import type { FastifyInstance } from "fastify";
 import { getAddress, verifyTypedData } from "viem";
+import { privateKeyToAccount } from "viem/accounts";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
 import {
   buildApp,
@@ -11,7 +12,14 @@ import {
 } from "./app.js";
 import type { EmailPayload } from "./email.js";
 import type { SnapshotResult } from "./snapshot.js";
-import { computeEasSchemaUID } from "./social-verification.js";
+import {
+  computeEasSchemaUID,
+  SocialOnchainIssueError,
+} from "./social-verification.js";
+import {
+  buildMerklePublicationMessage,
+  type MerklePublicationInput,
+} from "./merkle-authorization.js";
 
 const ALICE = getAddress("0xAaaaAaaAAaaAAaAaaAAaaaAaaaaaaAAaaAAaAaAa");
 const BOB = getAddress("0xBbbbbbBBbBbbbBBBbbBBbbBbbbbbBBBbbbbBBbBb");
@@ -21,6 +29,10 @@ const YIELD = getAddress("0x3333333333333333333333333333333333333333");
 const TEST_REGISTRY_ADDRESS = getAddress("0x4444444444444444444444444444444444444444");
 const SKU = "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const TEST_VERIFIER_PRIVATE_KEY = `0x${"11".repeat(32)}` as const;
+const MERKLE_PRODUCER = privateKeyToAccount(
+  "0x59c6995e998f97a5a0044966f0945382e6d6f042d134929a5ea15a438b41f26a",
+);
+const SOCIAL_PRODUCER = privateKeyToAccount(`0x${"22".repeat(32)}`);
 const DEFAULT_SOCIAL_EAS_SCHEMA =
   "string protocol,address grower,string platform,string handle,string profileUrl,string proofUrl,bytes32 proofHash,uint64 issuedAt,uint64 expiresAt,uint256 nonce";
 
@@ -37,6 +49,7 @@ const SOCIAL_ENV_KEYS = [
   "SEPOLIA_RPC_URL",
   "MAINNET_RPC_URL",
   "ETHEREUM_RPC_URL",
+  "SOCIAL_EAS_MAX_GAS_PRICE_WEI",
 ] as const;
 
 interface TestHarness {
@@ -103,11 +116,27 @@ async function makeApp(overrides: Partial<AppDeps> = {}): Promise<TestHarness> {
         headers: { "content-type": "text/plain" },
       });
     },
+    resolveHostname: async () => [{ address: "93.184.216.34", family: 4 }],
+    campaignProducer: async () => MERKLE_PRODUCER.address,
     ...overrides,
   });
 
   harness.app = app;
   return harness;
+}
+
+async function authorizeMerklePayload<T extends MerklePublicationInput>(
+  payload: T,
+): Promise<T & {
+  authorization: { expiresAt: number; signature: `0x${string}` };
+}> {
+  const expiresAt = Date.now() + 60_000;
+  const message = buildMerklePublicationMessage(payload, expiresAt);
+  const signature = await MERKLE_PRODUCER.signMessage({ message });
+  return {
+    ...payload,
+    authorization: { expiresAt, signature },
+  };
 }
 
 describe("GET /health", () => {
@@ -577,7 +606,7 @@ describe("POST /api/ecommerce/purchase-receipt", () => {
 });
 
 describe("POST /api/merkle/generate", () => {
-  it("400 on empty holders (totalYield=0)", async () => {
+  it("401 without a producer signature", async () => {
     const { app } = await makeApp();
     const res = await app.inject({
       method: "POST",
@@ -585,10 +614,26 @@ describe("POST /api/merkle/generate", () => {
       payload: {
         campaign: CAMPAIGN,
         seasonId: 1,
+        totalProductUnits: "1",
+        totalYieldSupply: "1",
+        holders: [{ user: ALICE, yieldAmount: "1" }],
+      },
+    });
+    assert.equal(res.statusCode, 401);
+  });
+
+  it("400 on empty holders (totalYield=0)", async () => {
+    const { app } = await makeApp();
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/merkle/generate",
+      payload: await authorizeMerklePayload({
+        campaign: CAMPAIGN,
+        seasonId: 1,
         totalProductUnits: "1000000000000000000000",
         totalYieldSupply: "0",
         holders: [{ user: ALICE, yieldAmount: "0" }],
-      },
+      }),
     });
     assert.equal(res.statusCode, 400);
     assert.match(res.json().error, /totalYieldSupply/);
@@ -599,7 +644,7 @@ describe("POST /api/merkle/generate", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/merkle/generate",
-      payload: {
+      payload: await authorizeMerklePayload({
         campaign: CAMPAIGN,
         seasonId: 1,
         totalProductUnits: (10n * 10n ** 18n).toString(),
@@ -609,17 +654,17 @@ describe("POST /api/merkle/generate", () => {
           { user: BOB, yieldAmount: "1" },
         ],
         minProductClaim: (100n * 10n ** 18n).toString(),
-      },
+      }),
     });
     assert.equal(res.statusCode, 400);
   });
 
-  it("200 returns root + persists tree JSON to merkle/<campaign>/<season>.json", async () => {
+  it("200 stores an immutable, root-addressed proof set", async () => {
     const { app, puts } = await makeApp();
     const res = await app.inject({
       method: "POST",
       url: "/api/merkle/generate",
-      payload: {
+      payload: await authorizeMerklePayload({
         campaign: CAMPAIGN,
         seasonId: 3,
         totalProductUnits: (100n * 10n ** 18n).toString(),
@@ -628,7 +673,7 @@ describe("POST /api/merkle/generate", () => {
           { user: ALICE, yieldAmount: (6n * 10n ** 18n).toString() },
           { user: BOB, yieldAmount: (4n * 10n ** 18n).toString() },
         ],
-      },
+      }),
     });
     assert.equal(res.statusCode, 200);
     const body = res.json();
@@ -637,8 +682,9 @@ describe("POST /api/merkle/generate", () => {
     assert.equal(puts.length, 1);
     assert.equal(
       puts[0].input.Key,
-      `merkle/${CAMPAIGN.toLowerCase()}/3.json`,
+      `merkle/${CAMPAIGN.toLowerCase()}/3/${body.root}.json`,
     );
+    assert.equal(puts[0].input.IfNoneMatch, "*");
     const stored = JSON.parse(puts[0].input.Body as string);
     assert.equal(stored.root, body.root);
     assert.equal(stored.totalYieldSupply, (10n * 10n ** 18n).toString());
@@ -655,12 +701,62 @@ describe("POST /api/merkle/generate", () => {
     assert.equal(bob.productAmount, (40n * 10n ** 18n).toString());
   });
 
+  it("409 when the root-addressed proof set already exists", async () => {
+    const precondition = Object.assign(new Error("exists"), {
+      name: "PreconditionFailed",
+      $metadata: { httpStatusCode: 412 },
+    });
+    const { app } = await makeApp({
+      putObject: async () => {
+        throw precondition;
+      },
+    });
+    const payload = await authorizeMerklePayload({
+      campaign: CAMPAIGN,
+      seasonId: 3,
+      totalProductUnits: "100",
+      totalYieldSupply: "10",
+      holders: [{ user: ALICE, yieldAmount: "10" }],
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/merkle/generate",
+      payload,
+    });
+    assert.equal(res.statusCode, 409);
+    assert.match(res.json().error, /already published/);
+  });
+
+  it("403 when a non-producer signs the publication", async () => {
+    const { app } = await makeApp();
+    const unsigned = {
+      campaign: CAMPAIGN,
+      seasonId: 3,
+      totalProductUnits: "100",
+      totalYieldSupply: "10",
+      holders: [{ user: ALICE, yieldAmount: "10" }],
+    };
+    const expiresAt = Date.now() + 60_000;
+    const signature = await SOCIAL_PRODUCER.signMessage({
+      message: buildMerklePublicationMessage(unsigned, expiresAt),
+    });
+    const res = await app.inject({
+      method: "POST",
+      url: "/api/merkle/generate",
+      payload: {
+        ...unsigned,
+        authorization: { expiresAt, signature },
+      },
+    });
+    assert.equal(res.statusCode, 403);
+  });
+
   it("uses totalYieldSupply as the Solidity denominator, not local holder sum", async () => {
     const { app, puts } = await makeApp();
     const res = await app.inject({
       method: "POST",
       url: "/api/merkle/generate",
-      payload: {
+      payload: await authorizeMerklePayload({
         campaign: CAMPAIGN,
         seasonId: 4,
         totalProductUnits: (100n * 10n ** 18n).toString(),
@@ -669,7 +765,7 @@ describe("POST /api/merkle/generate", () => {
           { user: ALICE, yieldAmount: (6n * 10n ** 18n).toString() },
           { user: BOB, yieldAmount: (4n * 10n ** 18n).toString() },
         ],
-      },
+      }),
     });
     assert.equal(res.statusCode, 200);
 
@@ -690,7 +786,7 @@ describe("POST /api/merkle/generate", () => {
     const res = await app.inject({
       method: "POST",
       url: "/api/merkle/generate",
-      payload: {
+      payload: await authorizeMerklePayload({
         campaign: CAMPAIGN,
         seasonId: 4,
         totalProductUnits: (100n * 10n ** 18n).toString(),
@@ -698,19 +794,21 @@ describe("POST /api/merkle/generate", () => {
         holders: [
           { user: ALICE, yieldAmount: (6n * 10n ** 18n).toString() },
         ],
-      },
+      }),
     });
     assert.equal(res.statusCode, 400);
     assert.match(res.json().error, /exceeds/);
   });
 });
 
-describe("GET /api/merkle/:campaign/:seasonId/:user", () => {
+describe("GET /api/merkle/:campaign/:seasonId/:root/:user", () => {
+  const root = `0x${"12".repeat(32)}`;
+
   it("404 when the tree JSON is missing", async () => {
     const { app } = await makeApp();
     const res = await app.inject({
       method: "GET",
-      url: `/api/merkle/${CAMPAIGN}/1/${ALICE}`,
+      url: `/api/merkle/${CAMPAIGN}/1/${root}/${ALICE}`,
     });
     assert.equal(res.statusCode, 404);
   });
@@ -718,10 +816,12 @@ describe("GET /api/merkle/:campaign/:seasonId/:user", () => {
   it("404 when user not in the tree", async () => {
     const h = await makeApp();
     const treeUrl = `${h.app}`; // placeholder
-    const url = `https://cdn.example/test-bucket/merkle/${CAMPAIGN.toLowerCase()}/1.json`;
+    const url =
+      `https://cdn.example/test-bucket/merkle/${CAMPAIGN.toLowerCase()}/1/${root}.json`;
     h.fetchStub.set(url, {
       status: 200,
       body: {
+        root,
         leaves: [
           {
             user: BOB,
@@ -734,7 +834,7 @@ describe("GET /api/merkle/:campaign/:seasonId/:user", () => {
     });
     const res = await h.app.inject({
       method: "GET",
-      url: `/api/merkle/${CAMPAIGN}/1/${ALICE}`,
+      url: `/api/merkle/${CAMPAIGN}/1/${root}/${ALICE}`,
     });
     assert.equal(res.statusCode, 404);
     void treeUrl;
@@ -742,10 +842,12 @@ describe("GET /api/merkle/:campaign/:seasonId/:user", () => {
 
   it("200 returns { user, productAmount, proof } for eligible user", async () => {
     const h = await makeApp();
-    const url = `https://cdn.example/test-bucket/merkle/${CAMPAIGN.toLowerCase()}/2.json`;
+    const url =
+      `https://cdn.example/test-bucket/merkle/${CAMPAIGN.toLowerCase()}/2/${root}.json`;
     h.fetchStub.set(url, {
       status: 200,
       body: {
+        root,
         leaves: [
           {
             user: ALICE,
@@ -758,7 +860,7 @@ describe("GET /api/merkle/:campaign/:seasonId/:user", () => {
     });
     const res = await h.app.inject({
       method: "GET",
-      url: `/api/merkle/${CAMPAIGN}/2/${ALICE}`,
+      url: `/api/merkle/${CAMPAIGN}/2/${root}/${ALICE}`,
     });
     assert.equal(res.statusCode, 200);
     const body = res.json();
@@ -819,6 +921,17 @@ describe("POST /api/social-verification", () => {
     "0x59c6995e998f97a5a0044966f0945382e6d6f042d134929a5ea15a438b41f26a" as const;
   const registryAddress = getAddress("0x4444444444444444444444444444444444444444");
 
+  async function withWalletProof<T extends { message: string }>(
+    challenge: T,
+  ): Promise<T & { walletSignature: `0x${string}` }> {
+    return {
+      ...challenge,
+      walletSignature: await SOCIAL_PRODUCER.signMessage({
+        message: challenge.message,
+      }),
+    };
+  }
+
   it("503 when social verification secret is missing", async () => {
     const { app } = await makeApp();
     const res = await app.inject({
@@ -842,7 +955,7 @@ describe("POST /api/social-verification", () => {
       method: "POST",
       url: "/api/social-verification/challenge",
       payload: {
-        wallet: ALICE.toLowerCase(),
+        wallet: SOCIAL_PRODUCER.address.toLowerCase(),
         platform: "X",
         handle: "@alice",
         profileUrl: "https://x.com/alice",
@@ -850,7 +963,9 @@ describe("POST /api/social-verification", () => {
     });
     assert.equal(challengeRes.statusCode, 200);
     const challenge = challengeRes.json();
-    assert.equal(challenge.wallet, ALICE);
+    assert.equal(challenge.wallet, SOCIAL_PRODUCER.address);
+    assert.equal(challenge.chainId, 31337);
+    assert.equal(challenge.registryAddress, registryAddress);
     assert.equal(challenge.platform, "x");
     assert.equal(challenge.handle, "alice");
     assert.match(challenge.code, /^GROWFI-SOCIAL-/);
@@ -865,8 +980,8 @@ describe("POST /api/social-verification", () => {
       method: "POST",
       url: "/api/social-verification/verify",
       payload: {
-        ...challenge,
-        wallet: ALICE,
+        ...(await withWalletProof(challenge)),
+        wallet: SOCIAL_PRODUCER.address,
         proofUrl,
         onchainNonce: "7",
       },
@@ -875,7 +990,7 @@ describe("POST /api/social-verification", () => {
     const body = verifyRes.json();
     assert.equal(body.ok, true);
     assert.equal(body.authorizationReady, true);
-    assert.equal(body.attestation.producer, ALICE);
+    assert.equal(body.attestation.producer, SOCIAL_PRODUCER.address);
     assert.equal(body.attestation.platform, "x");
     assert.equal(body.attestation.handle, "alice");
     assert.equal(body.attestation.proofUrl, proofUrl);
@@ -979,12 +1094,22 @@ describe("POST /api/social-verification", () => {
     const easAddress = getAddress("0x5555555555555555555555555555555555555555");
     const schemaRegistryAddress = getAddress("0x6666666666666666666666666666666666666666");
     const relayInputs: unknown[] = [];
+    const reservations = new Set<string>();
     const h = await makeApp({
       socialChallengeSecret: "test-secret",
       socialVerifierPrivateKey: verifierPrivateKey,
       socialRegistryAddress: registryAddress,
       socialChainId: 31337,
       socialAttestationTtlSeconds: 3600,
+      campaignProducer: async (campaign) => {
+        assert.equal(campaign, CAMPAIGN);
+        return SOCIAL_PRODUCER.address;
+      },
+      socialChallengeConsumer: async (reservationId) => {
+        if (reservations.has(reservationId)) return false;
+        reservations.add(reservationId);
+        return true;
+      },
       socialOnchainAttester: {
         issue: async ({ attestation }) => {
           relayInputs.push({ ...attestation });
@@ -1012,7 +1137,8 @@ describe("POST /api/social-verification", () => {
       method: "POST",
       url: "/api/social-verification/challenge",
       payload: {
-        wallet: ALICE,
+        wallet: SOCIAL_PRODUCER.address,
+        campaign: CAMPAIGN,
         platform: "x",
         handle: "alice",
         profileUrl: "https://x.com/alice",
@@ -1030,8 +1156,8 @@ describe("POST /api/social-verification", () => {
       method: "POST",
       url: "/api/social-verification/verify",
       payload: {
-        ...challenge,
-        wallet: ALICE,
+        ...(await withWalletProof(challenge)),
+        wallet: SOCIAL_PRODUCER.address,
         proofUrl,
         onchainNonce: "8",
       },
@@ -1053,6 +1179,165 @@ describe("POST /api/social-verification", () => {
       (relayInputs[0] as { attestationUID: string }).attestationUID,
       "0x0000000000000000000000000000000000000000000000000000000000000000",
     );
+
+    const replayRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload: {
+        ...(await withWalletProof(challenge)),
+        wallet: SOCIAL_PRODUCER.address,
+        proofUrl,
+        onchainNonce: "8",
+      },
+    });
+    assert.equal(replayRes.statusCode, 409);
+    assert.equal(replayRes.json().error, "Social verification challenge already used");
+    assert.equal(relayInputs.length, 1);
+  });
+
+  it("requires a campaign owned by the wallet before sponsored EAS publication", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialOnchainAttester: {
+        issue: async () => {
+          throw new Error("must not publish");
+        },
+      },
+      campaignProducer: async () => MERKLE_PRODUCER.address,
+    });
+
+    const missingCampaign = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: SOCIAL_PRODUCER.address,
+        platform: "x",
+        handle: "alice",
+      },
+    });
+    assert.equal(missingCampaign.statusCode, 400);
+
+    const wrongProducer = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: SOCIAL_PRODUCER.address,
+        campaign: CAMPAIGN,
+        platform: "x",
+        handle: "alice",
+      },
+    });
+    assert.equal(wrongProducer.statusCode, 403);
+    assert.equal(wrongProducer.json().error, "Wallet is not the producer of this campaign");
+  });
+
+  it("releases a nonce reservation when EAS fails before submission", async () => {
+    const reservations = new Set<string>();
+    let issueCalls = 0;
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      campaignProducer: async () => SOCIAL_PRODUCER.address,
+      socialChallengeConsumer: async (reservationId) => {
+        if (reservations.has(reservationId)) return false;
+        reservations.add(reservationId);
+        return true;
+      },
+      socialChallengeReleaser: async (reservationId) => {
+        reservations.delete(reservationId);
+      },
+      socialOnchainAttester: {
+        issue: async () => {
+          issueCalls += 1;
+          throw new SocialOnchainIssueError(new Error("RPC unavailable"), false);
+        },
+      },
+    });
+
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: SOCIAL_PRODUCER.address,
+        campaign: CAMPAIGN,
+        platform: "x",
+        handle: "alice",
+      },
+    });
+    const challenge = challengeRes.json();
+    const proofUrl = "https://x.com/alice/status/retry";
+    h.fetchStub.set(proofUrl, { status: 200, body: challenge.code });
+    const payload = {
+      ...(await withWalletProof(challenge)),
+      wallet: SOCIAL_PRODUCER.address,
+      proofUrl,
+      onchainNonce: "9",
+    };
+
+    const first = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload,
+    });
+    const retry = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload,
+    });
+
+    assert.equal(first.statusCode, 502);
+    assert.equal(retry.statusCode, 502);
+    assert.equal(issueCalls, 2);
+    assert.equal(reservations.size, 0);
+  });
+
+  it("keeps a nonce reservation after an EAS transaction was submitted", async () => {
+    const reservations = new Set<string>();
+    let releaseCalls = 0;
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      campaignProducer: async () => SOCIAL_PRODUCER.address,
+      socialChallengeConsumer: async (reservationId) => {
+        if (reservations.has(reservationId)) return false;
+        reservations.add(reservationId);
+        return true;
+      },
+      socialChallengeReleaser: async () => {
+        releaseCalls += 1;
+      },
+      socialOnchainAttester: {
+        issue: async () => {
+          throw new SocialOnchainIssueError(new Error("registry relay failed"), true);
+        },
+      },
+    });
+
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: SOCIAL_PRODUCER.address,
+        campaign: CAMPAIGN,
+        platform: "x",
+        handle: "alice",
+      },
+    });
+    const challenge = challengeRes.json();
+    const proofUrl = "https://x.com/alice/status/submitted";
+    h.fetchStub.set(proofUrl, { status: 200, body: challenge.code });
+    const payload = {
+      ...(await withWalletProof(challenge)),
+      wallet: SOCIAL_PRODUCER.address,
+      proofUrl,
+      onchainNonce: "10",
+    };
+
+    const first = await h.app.inject({ method: "POST", url: "/api/social-verification/verify", payload });
+    const retry = await h.app.inject({ method: "POST", url: "/api/social-verification/verify", payload });
+
+    assert.equal(first.statusCode, 502);
+    assert.equal(retry.statusCode, 409);
+    assert.equal(releaseCalls, 0);
+    assert.equal(reservations.size, 1);
   });
 
   it("400 when the proof URL does not contain the challenge code", async () => {
@@ -1067,7 +1352,7 @@ describe("POST /api/social-verification", () => {
       method: "POST",
       url: "/api/social-verification/challenge",
       payload: {
-        wallet: ALICE,
+        wallet: SOCIAL_PRODUCER.address,
         platform: "x",
         handle: "alice",
         profileUrl: "https://x.com/alice",
@@ -1085,13 +1370,116 @@ describe("POST /api/social-verification", () => {
       method: "POST",
       url: "/api/social-verification/verify",
       payload: {
-        ...challenge,
+        ...(await withWalletProof(challenge)),
         proofUrl,
         onchainNonce: "0",
       },
     });
     assert.equal(verifyRes.statusCode, 400);
     assert.match(verifyRes.json().error, /verification code/);
+  });
+
+  it("401 when the social proof is not authorized by the target wallet", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+    });
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: SOCIAL_PRODUCER.address,
+        platform: "x",
+        handle: "alice",
+        profileUrl: "https://x.com/alice",
+      },
+    });
+    const challenge = challengeRes.json();
+    const proofUrl = "https://x.com/alice/status/invalid-wallet";
+    h.fetchStub.set(proofUrl, {
+      status: 200,
+      body: `GrowFi social verification post ${challenge.code}`,
+    });
+    const walletSignature = await MERKLE_PRODUCER.signMessage({
+      message: challenge.message,
+    });
+
+    const verifyRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload: {
+        ...challenge,
+        walletSignature,
+        proofUrl,
+        onchainNonce: "0",
+      },
+    });
+    assert.equal(verifyRes.statusCode, 401);
+    assert.equal(h.fetchCalls.length, 0);
+  });
+
+  it("400 before fetch when a website proof targets a private address", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+    });
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: SOCIAL_PRODUCER.address,
+        platform: "website",
+        profileUrl: "http://127.0.0.1",
+      },
+    });
+    const challenge = challengeRes.json();
+    const verifyRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload: {
+        ...(await withWalletProof(challenge)),
+        proofUrl: "http://127.0.0.1/proof",
+        onchainNonce: "0",
+      },
+    });
+    assert.equal(verifyRes.statusCode, 400);
+    assert.match(verifyRes.json().error, /public HTTP/);
+    assert.equal(h.fetchCalls.length, 0);
+  });
+
+  it("400 before fetch when DNS resolves a website proof to a private address", async () => {
+    const h = await makeApp({
+      socialChallengeSecret: "test-secret",
+      socialVerifierPrivateKey: verifierPrivateKey,
+      socialRegistryAddress: registryAddress,
+      socialChainId: 31337,
+      resolveHostname: async () => [{ address: "10.0.0.7", family: 4 }],
+    });
+    const challengeRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/challenge",
+      payload: {
+        wallet: SOCIAL_PRODUCER.address,
+        platform: "website",
+        profileUrl: "https://internal.example",
+      },
+    });
+    const challenge = challengeRes.json();
+    const verifyRes = await h.app.inject({
+      method: "POST",
+      url: "/api/social-verification/verify",
+      payload: {
+        ...(await withWalletProof(challenge)),
+        proofUrl: "https://internal.example/proof",
+        onchainNonce: "0",
+      },
+    });
+    assert.equal(verifyRes.statusCode, 400);
+    assert.equal(h.fetchCalls.length, 0);
   });
 
   it("400 when the proof URL does not match the selected platform", async () => {

@@ -472,7 +472,7 @@
     },
     "activateCta": {
       "title": "Cap minimo raggiunto — pronta per l'attivazione",
-      "body": "La tua campagna ha raggiunto il cap minimo. Attivala ora per aprire la stagione di staking e far iniziare a guadagnare gli staker.",
+      "body": "Il minimo on-chain è stato raggiunto. Qualsiasi wallet connesso può attivare la campagna e sbloccare l'escrow della raccolta.",
       "cta": "Attiva campagna",
       "sig": "Firma attivazione…",
       "chain": "Confermo on-chain…"

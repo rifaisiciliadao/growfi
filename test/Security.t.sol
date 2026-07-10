@@ -170,6 +170,10 @@ contract SecurityTest is Test {
     function test_factoryCanPauseCampaign() public {
         factory.pauseCampaign(0);
 
+        (,,,, address harvestManager,,) = factory.campaigns(0);
+        assertTrue(stakingVault.paused());
+        assertTrue(GrowfiHarvestManager(harvestManager).paused());
+
         vm.prank(alice);
         vm.expectRevert();
         campaign.buy(address(usdc), 1_000_000);
@@ -179,9 +183,27 @@ contract SecurityTest is Test {
         factory.pauseCampaign(0);
         factory.unpauseCampaign(0);
 
+        (,,,, address harvestManager,,) = factory.campaigns(0);
+        assertFalse(stakingVault.paused());
+        assertFalse(GrowfiHarvestManager(harvestManager).paused());
+
         vm.prank(alice);
         campaign.buy(address(usdc), 1_440_000);
         assertGt(campaignToken.balanceOf(alice), 0);
+    }
+
+    function test_seasonStakeMigrationRequiresPausedVault() public {
+        vm.store(address(stakingVault), bytes32(uint256(15)), bytes32(0));
+        assertFalse(stakingVault.seasonStakeAccountingInitialized());
+
+        vm.expectRevert(GrowfiStakingVault.SeasonStakeAccountingMigrationRequiresPause.selector);
+        factory.initializeCampaignSeasonStakeAccounting(0, 0);
+
+        factory.pauseCampaign(0);
+        factory.initializeCampaignSeasonStakeAccounting(0, 0);
+
+        assertTrue(stakingVault.seasonStakeAccountingInitialized());
+        assertEq(stakingVault.currentSeasonStaked(), 0);
     }
 
     function test_nonOwnerCannotPause() public {

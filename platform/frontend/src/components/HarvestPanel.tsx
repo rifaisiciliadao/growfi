@@ -485,6 +485,7 @@ function SeasonCard({
         <ProductRedemption
           campaignAddress={campaignAddress}
           seasonId={season.seasonId}
+          merkleRoot={season.merkleRoot}
           user={user}
           userYieldBalance={userYieldBalance}
           pendingKind={pendingKind}
@@ -815,6 +816,7 @@ function StatusBadge({ phase }: { phase: 1 | 2 | 3 | 4 }) {
 function ProductRedemption({
   campaignAddress,
   seasonId,
+  merkleRoot,
   user,
   userYieldBalance,
   pendingKind,
@@ -822,6 +824,7 @@ function ProductRedemption({
 }: {
   campaignAddress: Address;
   seasonId: string;
+  merkleRoot: string;
   user: Address;
   userYieldBalance: bigint;
   pendingKind: string | null;
@@ -830,9 +833,9 @@ function ProductRedemption({
   const t = useTranslations("detail.harvest");
 
   const { data: proofData, isLoading } = useQuery({
-    queryKey: ["merkle-proof", campaignAddress, seasonId, user?.toLowerCase()],
+    queryKey: ["merkle-proof", campaignAddress, seasonId, merkleRoot, user?.toLowerCase()],
     enabled: !!user,
-    queryFn: () => fetchMerkleProof(campaignAddress, seasonId, user),
+    queryFn: () => fetchMerkleProof(campaignAddress, seasonId, merkleRoot, user),
     retry: 1,
     staleTime: Infinity,
   });
