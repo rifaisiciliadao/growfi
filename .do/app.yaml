@@ -105,7 +105,7 @@ services:
         value: "0x267901bB08cb864b204D92185Fac8d6f9dee0F98"
         scope: RUN_TIME
       - key: SOCIAL_EAS_ENABLED
-        value: "false"
+        value: "true"
         scope: RUN_TIME
       - key: SOCIAL_REGISTRY_RELAY
         value: "true"
@@ -215,7 +215,7 @@ services:
         value: https://ugraph.growfi.dev/subgraphs/growfi/latest/gn
         scope: BUILD_TIME
       - key: NEXT_PUBLIC_ENABLE_SOCIAL_VERIFICATION
-        value: "false"
+        value: "true"
         scope: BUILD_TIME
       # Same-origin — the /api prefix is routed to the backend service.
       - key: NEXT_PUBLIC_BACKEND_URL
