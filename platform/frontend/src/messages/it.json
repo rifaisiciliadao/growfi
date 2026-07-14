@@ -1372,10 +1372,6 @@
     "invalidAddress": "Indirizzo coltivatore non valido.",
     "anonymous": "Anon grower",
     "editProfile": "Modifica profilo",
-    "createProfile": "Crea profilo",
-    "noProfileYet": "Questo wallet non ha ancora pubblicato un profilo.",
-    "profileSelfHint": "Sei connesso con questo wallet. Crea il profilo per renderlo riconoscibile su GrowFi.",
-    "profileConnectHint": "Per creare o modificare questo profilo, connettiti con questo wallet esatto.",
     "campaignsTitle": "Campagne",
     "noCampaigns": "Nessuna campagna di questo coltivatore.",
     "wallet": {

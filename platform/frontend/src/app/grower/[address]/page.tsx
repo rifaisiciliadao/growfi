@@ -199,34 +199,13 @@ export default function ProducerPage({
         </div>
       )}
 
-      {profileLoadingCombined ? (
+      {profileLoadingCombined && (
         <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 mb-10">
           <div className="space-y-3">
             <div className="h-4 w-3/4 rounded bg-surface-container-high animate-pulse" />
             <div className="h-4 w-1/2 rounded bg-surface-container-high animate-pulse" />
           </div>
         </div>
-      ) : (
-        !profile &&
-        !protocolLabel &&
-        !editing && (
-          <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-8 mb-10 text-center">
-            <p className="text-sm font-semibold text-on-surface">
-              {t("noProfileYet")}
-            </p>
-            <p className="mt-2 text-sm text-on-surface-variant">
-              {isSelfProfile ? t("profileSelfHint") : t("profileConnectHint")}
-            </p>
-            {isSelfProfile && (
-              <button
-                onClick={() => setEditing(true)}
-                className="mt-5 inline-flex items-center justify-center bg-primary text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition"
-              >
-                {t("createProfile")}
-              </button>
-            )}
-          </div>
-        )
       )}
 
       {editing && (

@@ -1372,10 +1372,6 @@
     "invalidAddress": "Endereço de produtor inválido.",
     "anonymous": "Produtor anônimo",
     "editProfile": "Editar perfil",
-    "createProfile": "Criar perfil",
-    "noProfileYet": "Esta carteira ainda não publicou um perfil.",
-    "profileSelfHint": "Você está conectado com esta carteira. Crie o perfil para torná-lo reconhecível na GrowFi.",
-    "profileConnectHint": "Para criar ou editar este perfil, conecte-se com esta carteira exata.",
     "campaignsTitle": "Campanhas",
     "noCampaigns": "Ainda não há campanhas deste produtor.",
     "wallet": {
