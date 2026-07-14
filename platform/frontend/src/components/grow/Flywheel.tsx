@@ -8,7 +8,6 @@ import { useTranslations } from "next-intl";
  * and the yield feeds $GROW stakers — closing the loop.
  *
  * Reading order: top-left → top-right → bottom-right → bottom-left → loops back.
- * The clockwise SVG arrow in the centre reinforces the direction.
  */
 export function Flywheel() {
   const t = useTranslations("grow.flywheel");
@@ -54,29 +53,6 @@ export function Flywheel() {
           <p className="mt-4 max-w-xl text-sm leading-6 text-emerald-50/70 md:text-base">
             {t("subtitle")}
           </p>
-          <div aria-hidden className="mt-8 hidden text-emerald-300/80 lg:block">
-            <svg width="152" height="72" viewBox="0 0 152 72" fill="none">
-              <path
-                d="M26 36C26 18.327 40.327 4 58 4H94C111.673 4 126 18.327 126 36C126 53.673 111.673 68 94 68H58C40.327 68 26 53.673 26 36Z"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeDasharray="6 6"
-              />
-              <path d="M121 24L135 36L121 48" stroke="currentColor" strokeWidth="2" />
-              <path d="M31 48L17 36L31 24" stroke="currentColor" strokeWidth="2" />
-              <text
-                x="76"
-                y="42"
-                textAnchor="middle"
-                fontSize="12"
-                fontWeight="700"
-                fill="currentColor"
-                className="font-mono"
-              >
-                $GROW
-              </text>
-            </svg>
-          </div>
         </header>
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
