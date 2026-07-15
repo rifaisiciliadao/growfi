@@ -331,7 +331,11 @@ export default function CampaignDetail({
       )}
 
       <div className="max-w-7xl mx-auto px-4 md:px-8 lg:px-16 pb-5 pt-4 md:pb-8 md:pt-5 flex flex-col lg:flex-row gap-8 md:gap-12 items-start">
-        <div className="w-full lg:w-[65%] flex flex-col gap-6">
+        <div
+          className={`flex w-full flex-col gap-6 ${
+            effectiveTab === "manage" ? "" : "lg:w-[65%]"
+          }`}
+        >
           {effectiveTab === "invest" && (
             <>
               <FundingProgressCard
@@ -483,38 +487,40 @@ export default function CampaignDetail({
             )}
         </div>
 
-        <aside className="w-full lg:w-[35%] sticky top-40 flex flex-col gap-4">
-          <StatsCard
-            pricePerToken={pricePerToken}
-            maxCap={maxCap}
-            currentSupply={currentSupply}
-            totalStaked={
-              sgCampaign ? BigInt(sgCampaign.totalStaked) : 0n
-            }
-            currentYieldRate={
-              sgCampaign ? BigInt(sgCampaign.currentYieldRate) : 0n
-            }
-          />
-          {sgCampaign && (
-            <ProductiveAssetCard
-              annualHarvestUsd18={BigInt(sgCampaign.expectedAnnualHarvestUsd ?? "0")}
-              annualHarvest18={BigInt(sgCampaign.expectedAnnualHarvest ?? "0")}
-              productUnit={productUnitLabel(metadata?.productType)}
-              firstHarvestYear={BigInt(sgCampaign.firstHarvestYear ?? "0")}
-              coverageHarvests={BigInt(sgCampaign.coverageHarvests ?? "0")}
-              maxCap18={maxCap}
-              pricePerToken18={pricePerToken}
-              collateralLocked6={BigInt(sgCampaign.collateralLocked ?? "0")}
-              collateralDrawn6={BigInt(sgCampaign.collateralDrawn ?? "0")}
+        {effectiveTab !== "manage" && (
+          <aside className="sticky top-40 flex w-full flex-col gap-4 lg:w-[35%]">
+            <StatsCard
+              pricePerToken={pricePerToken}
+              maxCap={maxCap}
+              currentSupply={currentSupply}
+              totalStaked={
+                sgCampaign ? BigInt(sgCampaign.totalStaked) : 0n
+              }
+              currentYieldRate={
+                sgCampaign ? BigInt(sgCampaign.currentYieldRate) : 0n
+              }
             />
-          )}
-          <TokensAcceptedCard
-            campaignAddress={isValidAddress ? campaignAddress : undefined}
-          />
-          <ProducerCard
-            producer={producerAddress}
-          />
-        </aside>
+            {sgCampaign && (
+              <ProductiveAssetCard
+                annualHarvestUsd18={BigInt(sgCampaign.expectedAnnualHarvestUsd ?? "0")}
+                annualHarvest18={BigInt(sgCampaign.expectedAnnualHarvest ?? "0")}
+                productUnit={productUnitLabel(metadata?.productType)}
+                firstHarvestYear={BigInt(sgCampaign.firstHarvestYear ?? "0")}
+                coverageHarvests={BigInt(sgCampaign.coverageHarvests ?? "0")}
+                maxCap18={maxCap}
+                pricePerToken18={pricePerToken}
+                collateralLocked6={BigInt(sgCampaign.collateralLocked ?? "0")}
+                collateralDrawn6={BigInt(sgCampaign.collateralDrawn ?? "0")}
+              />
+            )}
+            <TokensAcceptedCard
+              campaignAddress={isValidAddress ? campaignAddress : undefined}
+            />
+            <ProducerCard
+              producer={producerAddress}
+            />
+          </aside>
+        )}
       </div>
     </>
   );

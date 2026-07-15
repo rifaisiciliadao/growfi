@@ -172,7 +172,7 @@ export function ProducerManagePanel({
   ];
 
   return (
-    <div className="bg-surface-container-lowest rounded-2xl border border-outline-variant/15 p-4 md:p-5">
+    <div className="min-w-0 rounded-2xl border border-outline-variant/15 bg-surface-container-lowest p-4 md:p-5">
       <div className="mb-6">
         <h2 className="text-2xl font-bold tracking-tight text-on-surface mb-2">
           {t("title")}
@@ -181,7 +181,7 @@ export function ProducerManagePanel({
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[220px_minmax(0,1fr)]">
-        <nav className="flex gap-2 overflow-x-auto rounded-2xl border border-outline-variant/15 bg-surface-container-low p-2 lg:sticky lg:top-36 lg:flex-col lg:overflow-visible">
+        <nav className="flex max-w-full gap-2 overflow-x-auto rounded-2xl border border-outline-variant/15 bg-surface-container-low p-2 lg:sticky lg:top-36 lg:flex-col lg:overflow-visible">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -545,7 +545,7 @@ function ProjectInfoManager({
             if (file) handleImage(file);
           }}
           disabled={busy}
-          className="text-sm text-on-surface-variant"
+          className="max-w-full text-sm text-on-surface-variant"
         />
         {imagePreview && (
           <img
@@ -1446,7 +1446,7 @@ function ProjectUpdatesManager({
             const file = e.target.files?.[0];
             if (file) handleImage(file);
           }}
-          className="text-sm"
+          className="max-w-full text-sm"
         />
         {imagePreview && (
           <img
