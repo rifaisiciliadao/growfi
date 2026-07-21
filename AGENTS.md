@@ -218,6 +218,19 @@ Frontend project-update support lives in `platform/frontend/src/contracts/projec
 module in its own pane. The `Project info` pane updates campaign metadata by
 uploading a new metadata JSON and calling `CampaignRegistry.setMetadata`; it
 preserves existing metadata fields such as `dmrv` unless the user changes them.
+The `Campaign parameters` pane also exposes producer-only product pricing for
+campaigns whose router maps `CollateralModule.updateHarvestCommitment`. The
+editor changes only `expectedAnnualHarvestUsd` and `expectedAnnualHarvest`;
+it must pass the current on-chain `firstHarvestYear` and `coverageHarvests`
+through unchanged. Keep it disabled when the selector is unavailable, the
+campaign is paused or outside Funding/Active, or collateral is locked/drawn.
+`expectedAnnualHarvestUsd` is an economic commitment used by implied-yield,
+payback, buyer-return, and collateral calculations, not display-only pricing.
+Changing only `expectedAnnualHarvest` changes the displayed product unit price
+without changing implied yield or payback, but it also changes the public
+annual product quantity commitment. Mainnet campaign 0 attached the current
+Collateral implementation at block `25579676`; the separate quantity update
+still requires the campaign producer's signature.
 
 Public frontend navigation now has dedicated `/campaigns` and `/faq` routes.
 Keep the homepage focused on the compact hero + high-level protocol flow; the
