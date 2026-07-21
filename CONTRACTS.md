@@ -5,7 +5,8 @@
 **Factory deployed:** 2026-06-16 at block `25328624` · **Security rollout:**
 2026-07-10, blocks `25501399`-`25501432` · **ProducerRegistry V2 and EAS:**
 2026-07-10, blocks `25502651`-`25502666` · **On-chain inventory verified at
-block:** `25503315` ·
+block:** `25503315` · **Campaign 0 Collateral module refreshed at block:**
+`25579676` ·
 **Owner:** `0xA229F3c9851E26fC9eA18157b88cd1CDA6F90e55`
 
 The values in this section are a live-state inventory, not deployment-script
@@ -51,6 +52,17 @@ serially so each state transition was confirmed before the next one was sent.
 | 20 | 25501430 | Revoke campaign 1 prior SaleClassic | [`0x7717ac9890d00482f57a1264ea6afab8fa670bedc383c2bbec4475b2eddcdde5`](https://etherscan.io/tx/0x7717ac9890d00482f57a1264ea6afab8fa670bedc383c2bbec4475b2eddcdde5) |
 | 21 | 25501431 | Unpause campaign 0 | [`0xdaaab825a70605eab99256158f58c63f210568d0816acaa8e63a19d83918d352`](https://etherscan.io/tx/0xdaaab825a70605eab99256158f58c63f210568d0816acaa8e63a19d83918d352) |
 | 22 | 25501432 | Unpause campaign 1 | [`0x8bc87548cf81d829747c29645139176ffb5c12c624e76a89229c1817c5f47891`](https://etherscan.io/tx/0x8bc87548cf81d829747c29645139176ffb5c12c624e76a89229c1817c5f47891) |
+
+### Campaign 0 product-pricing module migration
+
+| # | Block | Action | Transaction |
+|---:|---:|---|---|
+| 1 | 25579676 | Replace campaign 0 Collateral module with the current approved implementation | [`0x5d293b2b622df4368837c284af6dd5bce6c80c6a1e54576a77b5a0435d58e27c`](https://etherscan.io/tx/0x5d293b2b622df4368837c284af6dd5bce6c80c6a1e54576a77b5a0435d58e27c) |
+
+The migration preserved the existing annual USD commitment, annual product
+quantity, first harvest year, coverage, token price, caps, supply, and zero
+collateral balances. It enabled the producer-only `updateHarvestCommitment`
+selector for a separate signed product-pricing update.
 
 ### ProducerRegistry V2 and EAS transaction ledger
 
@@ -129,8 +141,8 @@ module already attached to a campaign.
 | SaleClassic current | `0x3C5077c5eE8cB22886352f331D105d770693ec5D` | yes | yes | Campaigns 0 and 1 |
 | SaleClassic retired A | `0x82dea032125FB620E104BF4837c3dEE43C52444E` | no | no | none after security rollout |
 | SaleClassic retired B | `0xa1f01A442359E596D8a98aa7c5595016CeBe193a` | no | no | none after security rollout |
-| Collateral current | `0x1e6D432813BA9B4477ACCC87788bf461c1A55B02` | yes | yes | Campaign 1 |
-| Collateral earlier approved | `0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6` | yes | no | Campaign 0 |
+| Collateral current | `0x1e6D432813BA9B4477ACCC87788bf461c1A55B02` | yes | yes | Campaigns 0 and 1 |
+| Collateral earlier approved | `0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6` | yes | no | none |
 | Repayment | `0x34326058FD53c773Fd7E67a20af17d73ae4d793A` | yes | no | none |
 | Ecommerce current | `0x5214CA79f4eb9298e506e2B3181aF0aD24B9Bd4c` | yes | no | none |
 | Ecommerce retired | `0x881883a9fd1c296D198EE9937603E8Eec1AE5E70` | no | no | Campaign 0 |
@@ -152,7 +164,7 @@ Producer: `0xE6c30AD5AeE7AD22e9F39D51d67667587cdD05A1`
 | HarvestManager | `0x395FBf71eE5a943a426583F9BBC880847f8e3DE2` | `0x852987797CCB62735B9880CEaE3251e948bcBA50` | `0x1f842639590969180CFeBEAFEF58CBC28f5508D8` |
 
 Attached modules: SaleClassic `0x3C5077c5eE8cB22886352f331D105d770693ec5D`,
-Collateral `0x09cC36a83fd80C278B16A9F91b4360782bf4E9f6`, and Ecommerce
+Collateral `0x1e6D432813BA9B4477ACCC87788bf461c1A55B02`, and Ecommerce
 `0x881883a9fd1c296D198EE9937603E8Eec1AE5E70`.
 The campaign, vault, and harvest manager are unpaused. Season stake accounting
 is initialized; `currentSeasonStaked` and `totalStaked` both equal `49,900 CT`.

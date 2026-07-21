@@ -15,6 +15,7 @@ import {
   isAddress,
   parseUnits,
   zeroAddress,
+  zeroHash,
   type Address,
 } from "viem";
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
@@ -101,6 +102,7 @@ type ManageTab =
 
 const harvestAbi = abis.HarvestManager as never;
 const USDC_DECIMALS = 6;
+const UPDATE_HARVEST_COMMITMENT_SELECTOR = "0x36bbb7d4" as const;
 const PAYMENT_TOKEN_OPTIONS = getEnabledTokens(CHAIN_ID);
 const PAYMENT_TOKEN_FALLBACK_ADDRESSES = PAYMENT_TOKEN_OPTIONS.map((token) =>
   resolveTokenAddress(token, CHAIN_ID),
@@ -257,6 +259,12 @@ export function ProducerManagePanel({
                 campaignAddress={campaignAddress}
                 currentState={currentState}
               />
+              <div className="mt-5">
+                <HarvestCommitmentEditor
+                  campaignAddress={campaignAddress}
+                  currentState={currentState}
+                />
+              </div>
             </ManagePane>
           )}
 
@@ -3722,6 +3730,271 @@ function ParametersEditor({
       </ParamField>
     </div>
   );
+}
+
+function HarvestCommitmentEditor({
+  campaignAddress,
+  currentState,
+}: {
+  campaignAddress: Address;
+  currentState: number;
+}) {
+  const t = useTranslations("detail.manage.parameters");
+  const notify = useTxNotify();
+  const queryClient = useQueryClient();
+  const { writeContractAsync } = useWriteContract();
+  const [annualUsd, setAnnualUsd] = useState("");
+  const [annualQuantity, setAnnualQuantity] = useState("");
+  const [hydrated, setHydrated] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const { data, refetch } = useReadContracts({
+    contracts: [
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "expectedAnnualHarvestUsd",
+      },
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "expectedAnnualHarvest",
+      },
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "firstHarvestYear",
+      },
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "coverageHarvests",
+      },
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "collateralLocked",
+      },
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "collateralDrawn",
+      },
+      {
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "paused",
+      },
+      {
+        address: campaignAddress,
+        abi: campaignModuleHostAbi,
+        functionName: "selectorToType",
+        args: [UPDATE_HARVEST_COMMITMENT_SELECTOR],
+      },
+    ] as never,
+    query: { refetchInterval: 20_000 },
+  });
+
+  type MaybeResult = { result?: unknown };
+  const rows = (data ?? []) as readonly MaybeResult[];
+  const onChainAnnualUsd = (rows[0]?.result as bigint | undefined) ?? 0n;
+  const onChainAnnualQuantity = (rows[1]?.result as bigint | undefined) ?? 0n;
+  const onChainFirstHarvestYear = (rows[2]?.result as bigint | undefined) ?? 0n;
+  const onChainCoverageHarvests = (rows[3]?.result as bigint | undefined) ?? 0n;
+  const collateralLocked = (rows[4]?.result as bigint | undefined) ?? 0n;
+  const collateralDrawn = (rows[5]?.result as bigint | undefined) ?? 0n;
+  const paused = (rows[6]?.result as boolean | undefined) ?? false;
+  const selectorRoute =
+    (rows[7]?.result as `0x${string}` | undefined) ?? zeroHash;
+
+  useEffect(() => {
+    if (hydrated || !data) return;
+    setAnnualUsd(formatUnits(onChainAnnualUsd, 18));
+    setAnnualQuantity(formatUnits(onChainAnnualQuantity, 18));
+    setHydrated(true);
+  }, [
+    data,
+    hydrated,
+    onChainAnnualQuantity,
+    onChainAnnualUsd,
+  ]);
+
+  const parsedAnnualUsd = parsePositiveUnits(annualUsd);
+  const parsedAnnualQuantity = parsePositiveUnits(annualQuantity);
+  const impliedUnitPrice =
+    parsedAnnualUsd !== null && parsedAnnualQuantity !== null
+      ? Number(formatUnits(parsedAnnualUsd, 18)) /
+        Number(formatUnits(parsedAnnualQuantity, 18))
+      : null;
+
+  const moduleReady = selectorRoute !== zeroHash;
+  const stateAllowed = currentState === 0 || currentState === 1;
+  const collateralIsClear = collateralLocked === 0n && collateralDrawn === 0n;
+  const formValid =
+    parsedAnnualUsd !== null && parsedAnnualQuantity !== null;
+  const disabled =
+    saving || !moduleReady || !stateAllowed || !collateralIsClear || paused;
+
+  const stateKey =
+    (["funding", "active", "buyback", "ended"] as const)[currentState] ??
+    "funding";
+  const stateLabel = t(`states.${stateKey}`);
+  const disabledMessage = !moduleReady
+    ? t("commitmentModuleUpgradeRequired")
+    : !collateralIsClear
+      ? t("commitmentCollateralLocked")
+      : paused
+        ? t("commitmentPaused")
+        : !stateAllowed
+          ? t("commitmentStateDisabled", { state: stateLabel })
+          : null;
+
+  const submit = async () => {
+    if (
+      disabled ||
+      parsedAnnualUsd === null ||
+      parsedAnnualQuantity === null
+    ) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const hash = await writeContractAsync({
+        address: campaignAddress,
+        abi: campaignAbi,
+        functionName: "updateHarvestCommitment",
+        args: [
+          {
+            expectedAnnualHarvestUsd: parsedAnnualUsd,
+            expectedAnnualHarvest: parsedAnnualQuantity,
+            firstHarvestYear: onChainFirstHarvestYear,
+            coverageHarvests: onChainCoverageHarvests,
+          },
+        ],
+      });
+      const receipt = await waitForTx(hash);
+      if (receipt.status !== "success") {
+        throw new Error(t("commitmentReverted"));
+      }
+      await refetch();
+      await queryClient.invalidateQueries({
+        queryKey: ["subgraph", "campaign", campaignAddress.toLowerCase()],
+      });
+      notify.success(t("commitmentUpdated"), hash);
+    } catch (err) {
+      notify.error(t("commitmentUpdateFailed"), err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const currentAnnualUsd = Number(formatUnits(onChainAnnualUsd, 18));
+  const currentAnnualQuantity = Number(
+    formatUnits(onChainAnnualQuantity, 18),
+  );
+
+  return (
+    <section className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-5">
+      <div className="mb-4">
+        <h4 className="text-sm font-bold text-on-surface">
+          {t("commitmentTitle")}
+        </h4>
+        <p className="mt-1 text-xs leading-relaxed text-on-surface-variant">
+          {t("commitmentSubtitle")}
+        </p>
+      </div>
+
+      {disabledMessage ? (
+        <div className="mb-4 rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-3 text-xs text-on-surface-variant">
+          {disabledMessage}
+        </div>
+      ) : null}
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <ParamField
+          label={t("annualHarvestUsd")}
+          current={formatCurrency(currentAnnualUsd)}
+          hint={t("annualHarvestUsdHint")}
+          disabled={disabled}
+        >
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={annualUsd}
+            onChange={(event) => setAnnualUsd(event.target.value)}
+            disabled={disabled}
+            aria-label={t("annualHarvestUsd")}
+            className="input w-full"
+          />
+        </ParamField>
+
+        <ParamField
+          label={t("annualHarvestQuantity")}
+          current={currentAnnualQuantity.toLocaleString()}
+          hint={t("annualHarvestQuantityHint")}
+          disabled={disabled}
+        >
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={annualQuantity}
+            onChange={(event) => setAnnualQuantity(event.target.value)}
+            disabled={disabled}
+            aria-label={t("annualHarvestQuantity")}
+            className="input w-full"
+          />
+        </ParamField>
+
+      </div>
+
+      <div className="mt-4 flex flex-col gap-3 rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-xs font-semibold text-on-surface">
+            {t("impliedUnitPrice")}
+          </p>
+          <p className="mt-1 text-[11px] text-on-surface-variant">
+            {t("impliedUnitPriceHint")}
+          </p>
+        </div>
+        <strong className="font-mono text-xl tabular-nums text-on-surface">
+          {impliedUnitPrice !== null && Number.isFinite(impliedUnitPrice)
+            ? formatCurrency(impliedUnitPrice)
+            : t("notAvailable")}
+        </strong>
+      </div>
+
+      <div className="mt-4 flex justify-end">
+        <button
+          type="button"
+          onClick={submit}
+          disabled={disabled || !formValid}
+          className="regen-gradient flex h-10 items-center gap-2 whitespace-nowrap rounded-full px-5 text-xs font-semibold text-white transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {saving ? <Spinner size={12} /> : null}
+          {saving ? t("savingCommitment") : t("saveCommitment")}
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function parsePositiveUnits(value: string) {
+  try {
+    const parsed = parseUnits(value.trim(), 18);
+    return parsed > 0n ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatCurrency(value: number) {
+  return `$${value.toLocaleString(undefined, {
+    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+    maximumFractionDigits: 2,
+  })}`;
 }
 
 function ParamField({

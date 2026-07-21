@@ -39,6 +39,13 @@ export const campaignModuleHostAbi = [
     ],
     outputs: [],
   },
+  {
+    type: "function",
+    name: "selectorToType",
+    stateMutability: "view",
+    inputs: [{ name: "selector", type: "bytes4" }],
+    outputs: [{ name: "moduleType", type: "bytes32" }],
+  },
 ] as const;
 
 export const repaymentModuleAbi = [
