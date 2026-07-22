@@ -455,6 +455,7 @@ Example reference: `script/UpgradeFactoryV2.s.sol` (adds `minSeasonDuration`, re
 - Local dry-run command: `ALLOW_DIRTY=1 FOUNDRY_TEST_CMD='FOUNDRY_PROFILE=ci forge test --match-path test/AuditMitigations.t.sol' sh scripts/go-live-check.sh`.
 - Strict live smoke command: set `REQUIRE_LIVE_SMOKE=1` plus `RPC_URL`, `GROW_TOKEN_ADDRESS`, `GROWFI_FACTORY_ADDRESS`, `GROWFI_BACKEND_URL`, `GROWFI_FRONTEND_URL`, and `UGRAPH_GRAPHQL_URL`.
 - `.env.example` files are tracked for `platform/backend`, `platform/frontend`, `platform/admin`, and `platform/subgraph`. `platform/frontend/.env.example` is intentionally force-added because its local `.gitignore` ignores `.env*`.
+- Foundry output under `broadcast/` is local-only for every network. Never force-add deployment receipts or transaction inputs; record authoritative production references in `CONTRACTS.md` and `deployments/` instead.
 
 ### Ethereum Mainnet (current)
 
@@ -487,7 +488,7 @@ Example reference: `script/UpgradeFactoryV2.s.sol` (adds `minSeasonDuration`, re
 
 - `script/DeployRegistry.s.sol`, `script/DeployProducerRegistry.s.sol` — kept for standalone registry redeploys.
 - `script/seed-demo.sh` — single-campaign bash post-deploy seed (image + metadata + producer profile + KYC). Still belongs to the pre-v4 flow.
-- All other pre-v4 scripts (`Deploy.s.sol`, `DeployTestnet.s.sol`, `MultiCampaignSetup.s.sol`, `OliveSetup.s.sol`, `OliveFinish.s.sol`, `SmokeTest.s.sol`, `SepoliaSmoke.s.sol`, `AnvilSmoke.s.sol`, `UpgradeFactoryV2.s.sol`) were **removed at the v4 cut** — their flows don't match the module factory shape and broadcast paths now live under `broadcast/<NewScript>/11155111/`.
+- All other pre-v4 scripts (`Deploy.s.sol`, `DeployTestnet.s.sol`, `MultiCampaignSetup.s.sol`, `OliveSetup.s.sol`, `OliveFinish.s.sol`, `SmokeTest.s.sol`, `SepoliaSmoke.s.sol`, `AnvilSmoke.s.sol`, `UpgradeFactoryV2.s.sol`) were **removed at the v4 cut** because their flows don't match the module factory shape. Do not restore them from local Foundry broadcast artifacts.
 - `script/UpgradeHarvestManager.s.sol` — deploys a new HarvestManager impl, points factory at it for future campaigns, and walks through every HM proxy listed in env (OLIVE/FAST/SMOKE) upgrading each via its own ProxyAdmin. Template for per-campaign impl upgrades.
 - `script/SmokeTest.s.sol` — single-buy happy-path assertion (fixed-rate mint math).
 - `script/SmokeTest1h.s.sol` — single-actor lifecycle bootstrap with 1h season; stakes, ready for endSeason + harvest after time elapses.
