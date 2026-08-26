@@ -216,8 +216,9 @@ Frontend project-update support lives in `platform/frontend/src/contracts/projec
 
 `ProducerManagePanel` is organized as vertical tabs on desktop, with each
 module in its own pane. The `Project info` pane updates campaign metadata by
-uploading a new metadata JSON and calling `CampaignRegistry.setMetadata`; it
-preserves existing metadata fields such as `dmrv` unless the user changes them.
+uploading a new metadata JSON and calling `CampaignRegistry.setMetadata`. It
+lets the producer add, change or clear the optional Silvi Protocol project ID
+(`dmrv`); an empty field unlinks the map.
 The `Campaign parameters` pane also exposes producer-only product pricing for
 campaigns whose router maps `CollateralModule.updateHarvestCommitment`. The
 editor changes only `expectedAnnualHarvestUsd` and `expectedAnnualHarvest`;
@@ -274,9 +275,10 @@ metadata descriptions with raw `dangerouslySetInnerHTML` directly.
 
 Campaign metadata may also carry optional Silvi Protocol links under `dmrv`:
 `{ provider: "silvi", projectId, url, embedUrl, geojsonUrl, linkedAt }`.
-`/create` stores this when the grower enters a Silvi project ID; campaign
-pages expose a dedicated `silvi` tab that renders the iframe from `embedUrl`
-with a loader and links to the full map + GeoJSON. URL construction lives in
+`/create` and the campaign `manage` → `Project info` pane store this when the
+grower enters a Silvi project ID; campaign pages expose a dedicated `silvi`
+tab that renders the iframe from `embedUrl` with a loader and links to the
+full map + GeoJSON. URL construction lives in
 `platform/frontend/src/lib/dmrv.ts` and uses
 `NEXT_PUBLIC_SILVI_MAP_BASE_URL` when configured, defaulting to
 `https://silvi.growfi.dev`. Do not expose the Silvi API key in GrowFi; the

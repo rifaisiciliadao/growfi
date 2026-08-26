@@ -19,6 +19,11 @@ import {
   type Address,
 } from "viem";
 import { abis, getAddresses, CHAIN_ID } from "@/contracts";
+import {
+  buildSilviDmrvMetadata,
+  isValidSilviProjectId,
+  normalizeSilviProjectId,
+} from "@/lib/dmrv";
 import { campaignTokenConfigAbi } from "@/contracts/campaign";
 import {
   getEnabledTokens,
@@ -386,6 +391,9 @@ function ProjectInfoManager({
   const [imagePreview, setImagePreview] = useState<string | null>(
     metadata?.image ?? null,
   );
+  const [dmrvProjectId, setDmrvProjectId] = useState(
+    metadata?.dmrv?.projectId ?? "",
+  );
   const [stage, setStage] = useState<
     | { kind: "idle" }
     | { kind: "uploading" }
@@ -402,8 +410,10 @@ function ProjectInfoManager({
     setProductType(metadata?.productType ?? "");
     setImagePreview(metadata?.image ?? null);
     setImageFile(null);
+    setDmrvProjectId(metadata?.dmrv?.projectId ?? "");
   }, [
     metadata?.description,
+    metadata?.dmrv?.projectId,
     metadata?.image,
     metadata?.location,
     metadata?.name,
@@ -436,6 +446,11 @@ function ProjectInfoManager({
       setStage({ kind: "error", message: t("descriptionRequired") });
       return;
     }
+    const normalizedDmrvProjectId = normalizeSilviProjectId(dmrvProjectId);
+    if (normalizedDmrvProjectId && !isValidSilviProjectId(normalizedDmrvProjectId)) {
+      setStage({ kind: "error", message: t("dmrvProjectIdInvalid") });
+      return;
+    }
 
     try {
       setStage({ kind: "uploading" });
@@ -450,7 +465,7 @@ function ProjectInfoManager({
         location: location.trim(),
         productType: productType.trim(),
         imageUrl,
-        dmrv: metadata?.dmrv ?? null,
+        dmrv: buildSilviDmrvMetadata(normalizedDmrvProjectId),
       });
 
       setStage({ kind: "signing" });
@@ -527,6 +542,41 @@ function ProjectInfoManager({
           className="input"
           placeholder={t("productTypePlaceholder")}
         />
+      </label>
+
+      <label className="mt-4 block">
+        <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-on-surface-variant">
+          {t("dmrvProjectId")}
+        </span>
+        <input
+          type="text"
+          inputMode="numeric"
+          value={dmrvProjectId}
+          onBeforeInput={(e) => {
+            const data = (e.nativeEvent as InputEvent).data;
+            if (data && /\D/.test(data)) e.preventDefault();
+          }}
+          onChange={(e) => {
+            const normalized = normalizeSilviProjectId(e.currentTarget.value);
+            if (e.currentTarget.value !== normalized) e.currentTarget.value = normalized;
+            setDmrvProjectId(normalized);
+          }}
+          onPaste={(e) => {
+            e.preventDefault();
+            setDmrvProjectId(normalizeSilviProjectId(e.clipboardData.getData("text")));
+          }}
+          disabled={busy}
+          className="input"
+          placeholder={t("dmrvProjectIdPlaceholder")}
+        />
+        <p className="mt-2 text-xs leading-5 text-on-surface-variant">
+          {t("dmrvProjectIdHint")}
+        </p>
+        {dmrvProjectId.trim() && isValidSilviProjectId(dmrvProjectId) && (
+          <p className="mt-2 text-xs font-medium text-primary">
+            {t("dmrvProjectPreview", { projectId: dmrvProjectId })}
+          </p>
+        )}
       </label>
 
       <div className="mt-4">
