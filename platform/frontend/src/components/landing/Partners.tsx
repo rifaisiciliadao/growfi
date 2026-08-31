@@ -5,7 +5,7 @@ import { useInView } from "@/lib/landing/useInView";
 
 type Partner = {
   name: string;
-  roleKey: "rifaiRole" | "silviRole";
+  roleKey: "rifaiRole" | "silviRole" | "refiDaoRole";
   url: string;
   logoPath: string;
   logoHeight: number;
@@ -27,6 +27,14 @@ const PARTNERS: Partner[] = [
     url: "https://silvi.earth/",
     logoPath: "/partners/silvi.png",
     logoHeight: 36,
+  },
+  {
+    name: "ReFi DAO",
+    roleKey: "refiDaoRole",
+    url: "https://refidao.com/",
+    logoPath: "/partners/refidao.svg",
+    logoHeight: 48,
+    rounded: true,
   },
 ];
 
@@ -65,7 +73,7 @@ export function Partners() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {PARTNERS.map((p, i) => (
             <a
               key={p.name}
